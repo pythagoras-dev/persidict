@@ -52,6 +52,11 @@ class SafeStrTuple(Sequence, Hashable):
                 assert False, f"Invalid argument type: {type(a)}"
         self.strings = tuple(candidate_strings)
 
+    @property
+    def str_chain(self) -> tuple[str, ...]:
+        """for backward compatibility"""
+        return self.strings
+
     def __getitem__(self, key:int)-> str:
         """Return a string at position key."""
         return self.strings[key]
