@@ -156,7 +156,7 @@ class FileDirDict(PersiDict):
         """Convert a key into a filesystem path."""
 
         key = sign_safe_str_tuple(key, self.digest_len)
-        key = [self.base_dir] + list(key.str_chain)
+        key = [self.base_dir] + list(key.strings)
         dir_names = key[:-1] if is_file_path else key
 
         if create_subdirs:

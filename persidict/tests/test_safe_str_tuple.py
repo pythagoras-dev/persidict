@@ -107,7 +107,7 @@ def test_flattening():
     l_2 = ['d', 'e', ('f','g'), 'h']
     l_3 = ['i', 'j', ['k', 'l', ('m',('n','o')) ]]
     s = SafeStrTuple(l_1, SafeStrTuple(l_2), l_3)
-    assert "".join(s.str_chain) == "abcdefghijklmno"
+    assert "".join(s.strings) == "abcdefghijklmno"
 
 def test_rejecting_non_strings():
     """Test if SafeStrTuple rejects non-string elements."""
@@ -149,7 +149,7 @@ def test_eq_overrideability():
 
     class GoodTuple(SafeStrTuple):
         def __eq__(self, other):
-            return self.str_chain == other.str_chain
+            return self.strings == other.strings
 
     class GoodTuple2(SafeStrTuple):
         pass

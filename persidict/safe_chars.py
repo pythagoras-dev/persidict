@@ -2,6 +2,7 @@ import string
 from copy import deepcopy
 
 SAFE_CHARS_SET = set(string.ascii_letters + string.digits + "()_-~.=")
+SAFE_STRING_MAX_LENGTH = 254
 
 def get_safe_chars() -> set[str]:
     """Return a set of allowed characters."""

@@ -3,7 +3,7 @@
 from __future__ import annotations
 from collections.abc import Sequence, Mapping, Hashable
 from typing import Any
-from persidict.safe_chars import SAFE_CHARS_SET
+from persidict.safe_chars import SAFE_CHARS_SET, SAFE_STRING_MAX_LENGTH
 
 
 def _is_sequence_not_mapping(obj:Any) -> bool:
@@ -23,7 +23,7 @@ class SafeStrTuple(Sequence, Hashable):
     """An immutable sequence of non-emtpy URL/filename-safe strings.
     """
 
-    str_chain: tuple[str, ...]
+    strings: tuple[str, ...]
 
     def __init__(self, *args, **kwargs):
         """Create a SafeStrTuple from a sequence/tree of strings.
@@ -36,36 +36,37 @@ class SafeStrTuple(Sequence, Hashable):
         """
         assert len(kwargs) == 0
         assert len(args) > 0
-        candidate_str_chain = []
+        candidate_strings = []
         for a in args:
             if isinstance(a, SafeStrTuple):
-                candidate_str_chain.extend(a.str_chain)
+                candidate_strings.extend(a.strings)
             elif isinstance(a, str):
                 assert len(a) > 0
+                assert len(a) < SAFE_STRING_MAX_LENGTH
                 assert len(set(a) - SAFE_CHARS_SET) == 0
-                candidate_str_chain.append(a)
+                candidate_strings.append(a)
             elif _is_sequence_not_mapping(a):
                 if len(a) > 0:
-                    candidate_str_chain.extend(SafeStrTuple(*a).str_chain)
+                    candidate_strings.extend(SafeStrTuple(*a).strings)
             else:
                 assert False, f"Invalid argument type: {type(a)}"
-        self.str_chain = tuple(candidate_str_chain)
+        self.strings = tuple(candidate_strings)
 
     def __getitem__(self, key:int)-> str:
         """Return a string at position key."""
-        return self.str_chain[key]
+        return self.strings[key]
 
     def __len__(self) -> int:
         """Return the number of strings in the tuple."""
-        return len(self.str_chain)
+        return len(self.strings)
 
     def __hash__(self):
         """Return a hash of the tuple."""
-        return hash(self.str_chain)
+        return hash(self.strings)
 
     def __repr__(self) -> str:
         """Return repr(self)."""
-        return f"{type(self).__name__}({self.str_chain})"
+        return f"{type(self).__name__}({self.strings})"
 
 
     def __eq__(self, other) -> bool:
@@ -76,27 +77,27 @@ class SafeStrTuple(Sequence, Hashable):
         else:
             other = SafeStrTuple(other)
 
-        return self.str_chain == other.str_chain
+        return self.strings == other.strings
 
 
     def __add__(self, other) -> SafeStrTuple:
         """Return self + other."""
         other = SafeStrTuple(other)
-        return SafeStrTuple(*(self.str_chain + other.str_chain))
+        return SafeStrTuple(*(self.strings + other.strings))
 
     def __radd__(self, other) -> SafeStrTuple:
         """Return other + self."""
         other = SafeStrTuple(other)
-        return SafeStrTuple(*(other.str_chain + self.str_chain))
+        return SafeStrTuple(*(other.strings + self.strings))
 
     def __iter__(self):
         """Return iter(self)."""
-        return iter(self.str_chain)
+        return iter(self.strings)
 
     def __contains__(self, item) -> bool:
         """Return item in self."""
-        return item in self.str_chain
+        return item in self.strings
 
     def __reversed__(self) -> SafeStrTuple:
         """Return a reversed SafeStrTuple."""
-        return SafeStrTuple(*reversed(self.str_chain))
+        return SafeStrTuple(*reversed(self.strings))
