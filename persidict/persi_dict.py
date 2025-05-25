@@ -23,7 +23,6 @@ from __future__ import annotations
 from abc import abstractmethod
 import random
 from parameterizable import ParameterizableClass
-from copy import deepcopy
 from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
