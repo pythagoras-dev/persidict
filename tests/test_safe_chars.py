@@ -1,4 +1,4 @@
-from persidict.safe_chars import replace_unsafe_chars, SAFE_CHARS_SET
+from src.persidict.safe_chars import replace_unsafe_chars, SAFE_CHARS_SET
 
 def test_replace_unsafe_chars():
     assert replace_unsafe_chars("a@b*c", "_") == "a_b_c"

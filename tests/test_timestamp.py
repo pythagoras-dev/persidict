@@ -1,7 +1,8 @@
 import time
 
 from moto import mock_aws
-from persidict import FileDirDict, S3Dict, SafeStrTuple
+from src.persidict import FileDirDict, S3Dict
+
 
 @mock_aws
 def test_timestamp(tmpdir):

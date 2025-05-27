@@ -1,15 +1,8 @@
-import inspect
-import random
-from copy import deepcopy
-
 import pytest
 from moto import mock_aws
 
-from persidict import FileDirDict, S3Dict, SafeStrTuple
-import pandas as pd
-
 from parameterizable import CLASSNAME_PARAM_KEY
-from persidict.tests.data_for_mutable_tests import mutable_tests
+from data_for_mutable_tests import mutable_tests
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws

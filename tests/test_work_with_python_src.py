@@ -1,13 +1,9 @@
 import inspect
-import random
 
 import pytest
 from moto import mock_aws
 
-from persidict import FileDirDict, S3Dict, SafeStrTuple
-import pandas as pd
-
-from persidict.tests.data_for_mutable_tests import mutable_tests
+from data_for_mutable_tests import mutable_tests
 
 
 def demo_function(a:int=0, b:str="", c:float=0.0, d:bool=False):

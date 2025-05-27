@@ -1,6 +1,6 @@
 import random, time, multiprocessing
 
-from persidict import FileDirDict
+from src.persidict import FileDirDict
 
 def many_operations(dir_name:str, process_n:int):
     d = FileDirDict(dir_name)

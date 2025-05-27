@@ -1,12 +1,4 @@
-import inspect
-import random
-
-import pytest
-from moto import mock_aws
-
-from persidict import FileDirDict, S3Dict, SafeStrTuple
-import pandas as pd
-
+from src.persidict import FileDirDict, S3Dict
 
 mutable_tests = [
 
