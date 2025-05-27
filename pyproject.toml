@@ -1,0 +1,45 @@
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[project]
+name = "persidict"
+version = "0.17.0"
+description = "Simple persistent key-value store for Python. Values are stored as files on a disk or as S3 objects on AWS cloud."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Vlad (Volodymyr) Pavlov", email = "vlpavlov@ieee.org"}
+]
+keywords = ["persistence", "dicts", "distributed", "parallel"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+dependencies = [
+    "lz4",
+    "joblib",
+    "numpy",
+    "pandas",
+    "jsonpickle",
+    "boto3",
+    "parameterizable"
+]
+
+[project.urls]
+Homepage = "https://github.com/pythagoras-dev/persidict"
+
+[project.optional-dependencies]
+dev = [
+    "boto3",
+    "moto",
+    "pytest"
+]
