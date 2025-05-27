@@ -11,7 +11,7 @@ e.g. MacOS HFS.
 
 import base64
 import hashlib
-from src.persidict.safe_str_tuple import SafeStrTuple
+from .safe_str_tuple import SafeStrTuple
 
 
 def _create_signature_suffix(input_str:str, digest_len:int) -> str:

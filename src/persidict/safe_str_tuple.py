@@ -3,7 +3,7 @@
 from __future__ import annotations
 from collections.abc import Sequence, Mapping, Hashable
 from typing import Any
-from safe_chars import SAFE_CHARS_SET, SAFE_STRING_MAX_LENGTH
+from .safe_chars import SAFE_CHARS_SET, SAFE_STRING_MAX_LENGTH
 
 
 def _is_sequence_not_mapping(obj:Any) -> bool:
