@@ -166,7 +166,15 @@ The source code is hosted on GitHub at:
 Binary installers for the latest released version are available at the Python package index at:
 [https://pypi.org/project/persidict](https://pypi.org/project/persidict)
 
-        pip install persidict
+Using uv :
+```
+uv install persidict
+```
+
+Using pip (legacy alternative to uv):
+```
+pip install persidict
+```
 
 ## Dependencies
 
