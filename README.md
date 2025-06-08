@@ -168,7 +168,7 @@ Binary installers for the latest released version are available at the Python pa
 
 Using uv :
 ```
-uv install persidict
+uv add persidict
 ```
 
 Using pip (legacy alternative to uv):
