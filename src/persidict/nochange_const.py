@@ -5,7 +5,7 @@ use NO_CHANGE as the new value to indicate that
 the existing value should remain unchanged.
 """
 
-class NoChange_Class:
+class NoChangeFlag:
     _instance = None
 
     def __new__(cls):
@@ -13,5 +13,5 @@ class NoChange_Class:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-NoChange = NoChange_Class()
-NO_CHANGE = NoChange_Class()
+NoChange = NoChangeFlag()
+NO_CHANGE = NoChangeFlag()

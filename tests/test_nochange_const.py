@@ -1,10 +1,10 @@
 
-from src.persidict import NoChange_Class, NoChange, NO_CHANGE
+from src.persidict import NoChangeFlag, NoChange, NO_CHANGE
 
 def test_NoChangeClass():
-    """Test if NoChange_Class is a singleton.
+    """Test if NoChangeFlag is a singleton.
     """
-    assert NoChange is NoChange_Class()
-    assert NO_CHANGE is NoChange_Class()
-    NoChange_1 = NoChange_Class()
+    assert NoChange is NoChangeFlag()
+    assert NO_CHANGE is NoChangeFlag()
+    NoChange_1 = NoChangeFlag()
     assert NoChange is NoChange_1
