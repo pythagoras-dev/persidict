@@ -122,12 +122,13 @@ that simultaneously work with the same instance of a dictionary.
 * Values must be pickleable Python objects.
 * You can constrain values to be an instance of a specific class.
 * Insertion order is not preserved.
-* You can not assign initial key-value pairs to a dictionary in its constructor.
+* You cannot assign initial key-value pairs to a dictionary in its constructor.
 * `PersiDict` API has additional methods `delete_if_exists()`, `timestamp()`,
 `get_subdict()`, `subdicts()`, `random_keys()`, `newest_keys()`, 
 `oldest_keys()`, `newest_values()`, `oldest_values()`, 
 `get_params()`, `get_metaparams()`, and `get_default_metaparams()`,
 which are not available in native Python dicts.
+* You can use NO_CHANGE constant to avoid actually setting/updating a value.
 
 ## Fine Tuning
 

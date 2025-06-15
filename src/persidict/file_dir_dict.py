@@ -21,6 +21,7 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 import parameterizable
 
+from .nochange_const import NO_CHANGE
 from .safe_chars import replace_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
@@ -297,6 +298,9 @@ class FileDirDict(PersiDict):
 
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Set self[key] to value."""
+
+        if value is NO_CHANGE:
+            return
 
         if isinstance(value, PersiDict):
             raise TypeError(

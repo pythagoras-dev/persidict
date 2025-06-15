@@ -26,6 +26,7 @@ from parameterizable import ParameterizableClass
 from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
+from .nochange_const import NO_CHANGE
 from .safe_str_tuple import SafeStrTuple
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
@@ -148,6 +149,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Set self[key] to value."""
+        if value is NO_CHANGE:
+            return
         if self.immutable_items:
             if key in self:
                 raise KeyError("Can't modify an immutable key-value pair")
@@ -201,6 +204,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         # TODO: check edge cases to ensure the same semantics as standard dicts
         key = SafeStrTuple(key)
+        assert not default is NO_CHANGE
         if key in self:
             return self[key]
         else:

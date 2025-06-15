@@ -10,6 +10,7 @@ import parameterizable
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict
+from .nochange_const import NO_CHANGE
 from .file_dir_dict import FileDirDict, PersiDictKey
 
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
@@ -123,11 +124,11 @@ class S3Dict(PersiDict):
         """Return dictionary's URl"""
         return f"s3://{self.bucket_name}/{self.root_prefix}"
 
+
     @property
     def base_dir(self) -> str:
         """Return dictionary's base directory in the local filesystem"""
         return self.local_cache.base_dir
-
 
 
     def _build_full_objectname(self, key:PersiDictKey) -> str:
@@ -178,6 +179,9 @@ class S3Dict(PersiDict):
 
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Set self[key] to value. """
+
+        if value is NO_CHANGE:
+            return
 
         if isinstance(value, PersiDict):
             raise TypeError(
