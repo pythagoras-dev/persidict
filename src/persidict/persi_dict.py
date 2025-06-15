@@ -102,6 +102,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
         )
         return params
 
+    @property
+    @abstractmethod
+    def base_url(self):
+        """Return dictionary's URL"""
+        raise NotImplementedError
+
 
     def __repr__(self) -> str:
         """Return repr(self)"""

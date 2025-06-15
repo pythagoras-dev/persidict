@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import random
 import time
+from abc import abstractmethod
 from typing import Any, Optional
 
 import joblib
@@ -110,6 +111,7 @@ class FileDirDict(PersiDict):
 
         return repr_str
 
+
     def get_params(self):
         """Return configuration parameters of the dictionary."""
         params = super().get_params()
@@ -119,9 +121,14 @@ class FileDirDict(PersiDict):
         params.update(additional_params)
         return params
 
+    @property
+    def base_url(self) -> str:
+        """Return dictionary's URL"""
+        return f"file://{self.base_dir}"
+
 
     def __len__(self) -> int:
-        """ Get number of key-value pairs in the dictionary."""
+        """ Get the number of key-value pairs in the dictionary."""
 
         num_files = 0
         suffix = "." + self.file_type

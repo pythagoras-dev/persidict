@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from abc import abstractmethod
 from typing import Any, Optional
 
 import boto3
@@ -107,6 +108,7 @@ class S3Dict(PersiDict):
 
         return repr_str
 
+
     def get_params(self):
         """Return configuration parameters of the object as a dictionary."""
         params = self.local_cache.get_params()
@@ -114,6 +116,13 @@ class S3Dict(PersiDict):
         params["bucket_name"] = self.bucket_name
         params["root_prefix"] = self.root_prefix
         return params
+
+
+    @property
+    def base_url(self):
+        """Return dictionary's URl"""
+        return f"s3://{self.bucket_name}/{self.root_prefix}"
+
 
 
     def _build_full_objectname(self, key:PersiDictKey) -> str:
