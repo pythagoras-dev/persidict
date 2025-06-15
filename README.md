@@ -128,7 +128,8 @@ that simultaneously work with the same instance of a dictionary.
 `oldest_keys()`, `newest_values()`, `oldest_values()`, 
 `get_params()`, `get_metaparams()`, and `get_default_metaparams()`,
 which are not available in native Python dicts.
-* You can use NO_CHANGE constant to avoid actually setting/updating a value.
+* You can use NO_CHANGE constant as a fake new value 
+to avoid actually setting/updating a value.
 
 ## Fine Tuning
 

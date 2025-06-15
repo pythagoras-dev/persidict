@@ -1,6 +1,6 @@
 """A singleton constant to indicate no change in a value.
 
-When updating a val ue in a persistent dictionary,
+When updating a value in a persistent dictionary,
 use NO_CHANGE as the new value to indicate that
 the existing value should remain unchanged.
 """

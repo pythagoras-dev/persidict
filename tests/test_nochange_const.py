@@ -1,7 +1,7 @@
 
 from src.persidict import NoChangeFlag, NoChange, NO_CHANGE
 
-def test_NoChangeClass():
+def test_NoChangeFlag():
     """Test if NoChangeFlag is a singleton.
     """
     assert NoChange is NoChangeFlag()

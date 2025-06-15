@@ -7,7 +7,7 @@ from src.persidict import NO_CHANGE
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_donotchange(tmpdir, DictToTest, kwargs):
+def test_notchange(tmpdir, DictToTest, kwargs):
     dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
     dict_to_test.clear()
     model_dict = dict()
