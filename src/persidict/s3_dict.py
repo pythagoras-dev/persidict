@@ -33,7 +33,7 @@ class S3Dict(PersiDict):
     bucket_name: str
     root_prefix: str
     file_type: str
-    base_dir: str
+    _base_dir: str
 
     def __init__(self, bucket_name:str = "my_bucket"
                  , region:str = None
@@ -52,7 +52,7 @@ class S3Dict(PersiDict):
 
         root_prefix is a common S3 prefix for all objectnames in a dictionary.
 
-        base_dir is a local directory that will be used to store tmp files.
+        _base_dir is a local directory that will be used to store tmp files.
 
         base_class_for_values constraints the type of values that can be
         stored in the dictionary. If specified, it will be used to
@@ -99,7 +99,7 @@ class S3Dict(PersiDict):
         """Return repr(self)."""
 
         repr_str = super().__repr__()
-        repr_str = repr_str[:-1] + f", base_dir={self.local_cache.base_dir}"
+        repr_str = repr_str[:-1] + f", _base_dir={self.local_cache._base_dir}"
         repr_str += f", file_type={self.file_type}"
         repr_str += f", region={self.region}"
         repr_str += f", bucket_name={self.bucket_name}"
@@ -122,6 +122,11 @@ class S3Dict(PersiDict):
     def base_url(self):
         """Return dictionary's URl"""
         return f"s3://{self.bucket_name}/{self.root_prefix}"
+
+    @property
+    def base_dir(self) -> str:
+        """Return dictionary's base directory in the local filesystem"""
+        return self.local_cache.base_dir
 
 
 

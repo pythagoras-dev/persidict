@@ -45,7 +45,7 @@ class FileDirDict(PersiDict):
     text files (either in jason format or as a plain text).
     """
 
-    base_dir:str
+    _base_dir:str
     file_type:str
 
     def __init__(self
@@ -56,7 +56,7 @@ class FileDirDict(PersiDict):
                  , base_class_for_values: Optional[type] = None):
         """A constructor defines location of the store and file format to use.
 
-        base_dir is a directory that will contain all the files in
+        _base_dir is a directory that will contain all the files in
         the FileDirDict. If the directory does not exist, it will be created.
 
         base_class_for_values constraints the type of values that can be
@@ -98,14 +98,15 @@ class FileDirDict(PersiDict):
                 os.mkdir(base_dir)
         assert os.path.isdir(base_dir)
 
-        self.base_dir_param = base_dir
-        self.base_dir = os.path.abspath(base_dir)
+        # self.base_dir_param = _base_dir
+        self._base_dir = os.path.abspath(base_dir)
+
 
     def __repr__(self):
         """Return repr(self)."""
 
         repr_str = super().__repr__()
-        repr_str = repr_str[:-1] + f", base_dir={self.base_dir}"
+        repr_str = repr_str[:-1] + f", _base_dir={self._base_dir}"
         repr_str += f", file_type={self.file_type}"
         repr_str += " )"
 
@@ -116,15 +117,22 @@ class FileDirDict(PersiDict):
         """Return configuration parameters of the dictionary."""
         params = super().get_params()
         additional_params = dict(
-            base_dir=self.base_dir_param
+            base_dir=self.base_dir
             , file_type=self.file_type)
         params.update(additional_params)
         return params
 
+
     @property
     def base_url(self) -> str:
         """Return dictionary's URL"""
-        return f"file://{self.base_dir}"
+        return f"file://{self._base_dir}"
+
+
+    @property
+    def base_dir(self) -> str:
+        """Return dictionary's base directory"""
+        return self._base_dir
 
 
     def __len__(self) -> int:
@@ -132,7 +140,7 @@ class FileDirDict(PersiDict):
 
         num_files = 0
         suffix = "." + self.file_type
-        for subdir_info in os.walk(self.base_dir):
+        for subdir_info in os.walk(self._base_dir):
             files = subdir_info[2]
             files = [f_name for f_name in files
                      if f_name.endswith(suffix)]
@@ -146,13 +154,13 @@ class FileDirDict(PersiDict):
         if self.immutable_items:
             raise KeyError("Can't clear a dict that contains immutable items")
 
-        for subdir_info in os.walk(self.base_dir, topdown=False):
+        for subdir_info in os.walk(self._base_dir, topdown=False):
             (subdir_name, _, files) = subdir_info
             suffix = "." + self.file_type
             for f in files:
                 if f.endswith(suffix):
                     os.remove(os.path.join(subdir_name, f))
-            if (subdir_name != self.base_dir) and (
+            if (subdir_name != self._base_dir) and (
                     len(os.listdir(subdir_name)) == 0 ):
                 os.rmdir(subdir_name)
 
@@ -163,7 +171,7 @@ class FileDirDict(PersiDict):
         """Convert a key into a filesystem path."""
 
         key = sign_safe_str_tuple(key, self.digest_len)
-        key = [self.base_dir] + list(key.strings)
+        key = [self._base_dir] + list(key.strings)
         dir_names = key[:-1] if is_file_path else key
 
         if create_subdirs:
@@ -319,7 +327,7 @@ class FileDirDict(PersiDict):
     def _generic_iter(self, iter_type: str):
         """Underlying implementation for .items()/.keys()/.values() iterators"""
         assert iter_type in {"keys", "values", "items"}
-        walk_results = os.walk(self.base_dir)
+        walk_results = os.walk(self._base_dir)
         ext_len = len(self.file_type) + 1
 
         def splitter(dir_path: str):
@@ -341,7 +349,7 @@ class FileDirDict(PersiDict):
                 for f in files:
                     if f.endswith(suffix):
                         prefix_key = os.path.relpath(
-                            dir_name, start=self.base_dir)
+                            dir_name, start=self._base_dir)
 
                         result_key = (*splitter(prefix_key), f[:-ext_len])
                         result_key = SafeStrTuple(result_key)

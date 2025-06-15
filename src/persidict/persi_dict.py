@@ -93,6 +93,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         self.immutable_items = bool(immutable_items)
         self.base_class_for_values = base_class_for_values
 
+
     def get_params(self):
         """Return a dictionary of parameters for the PersiDict object."""
         params =  dict(
@@ -102,10 +103,18 @@ class PersiDict(MutableMapping, ParameterizableClass):
         )
         return params
 
+
     @property
     @abstractmethod
     def base_url(self):
         """Return dictionary's URL"""
+        raise NotImplementedError
+
+
+    @property
+    @abstractmethod
+    def base_dir(self):
+        """Return dictionary's base directory in the local filesystem"""
         raise NotImplementedError
 
 

@@ -15,7 +15,7 @@ def test_base_url(tmpdir, DictToTest, kwargs):
 
     if isinstance(dict_to_test, FileDirDict):
         assert dict_to_test.base_url.startswith("file:///")
-        assert dict_to_test.base_url.endswith(dict_to_test.base_dir)
+        assert dict_to_test.base_url.endswith(dict_to_test._base_dir)
 
     if isinstance(dict_to_test, S3Dict):
         assert dict_to_test.base_url.startswith("s3://")
