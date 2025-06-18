@@ -125,7 +125,8 @@ class FileDirDict(PersiDict):
             base_dir=self.base_dir
             , file_type=self.file_type)
         params.update(additional_params)
-        return params
+        sorted_params = dict(sorted(params.items()))
+        return sorted_params
 
 
     @property

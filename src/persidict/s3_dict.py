@@ -120,7 +120,8 @@ class S3Dict(PersiDict):
         params["region"] = self.region
         params["bucket_name"] = self.bucket_name
         params["root_prefix"] = self.root_prefix
-        return params
+        sorted_params = dict(sorted(params.items()))
+        return sorted_params
 
 
     @property

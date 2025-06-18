@@ -107,7 +107,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
             , digest_len=self.digest_len
             , base_class_for_values=self.base_class_for_values
         )
-        return params
+        sorted_params = dict(sorted(params.items()))
+        return sorted_params
 
 
     @property
