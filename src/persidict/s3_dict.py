@@ -330,6 +330,3 @@ class S3Dict(PersiDict):
         obj_name = self._build_full_objectname(key)
         response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
         return response["LastModified"].timestamp()
-
-
-parameterizable.register_parameterizable_class(S3Dict)
