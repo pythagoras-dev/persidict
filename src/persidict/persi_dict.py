@@ -93,6 +93,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             raise ValueError("digest_len must be non-negative")
         self.immutable_items = bool(immutable_items)
         self.base_class_for_values = base_class_for_values
+        ParameterizableClass.__init__(self)
 
 
     def get_params(self):
