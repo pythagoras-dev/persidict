@@ -397,3 +397,6 @@ class FileDirDict(PersiDict):
         key = SafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.getmtime(filename)
+
+
+parameterizable.register_parameterizable_class(FileDirDict)
