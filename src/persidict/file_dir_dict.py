@@ -120,7 +120,7 @@ class FileDirDict(PersiDict):
         This method is needed to support Parameterizable API.
         The method is absent in the original dict API.
         """
-        params = super().get_params()
+        params = PersiDict.get_params(self)
         additional_params = dict(
             base_dir=self.base_dir
             , file_type=self.file_type)

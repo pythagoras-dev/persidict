@@ -97,7 +97,11 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def get_params(self):
-        """Return a dictionary of parameters for the PersiDict object."""
+        """Return a dictionary of parameters for the PersiDict object.
+
+        This method is needed to support Parameterizable API.
+        The method is absent in the original dict API.
+        """
         params =  dict(
             immutable_items=self.immutable_items
             , digest_len=self.digest_len
@@ -109,14 +113,20 @@ class PersiDict(MutableMapping, ParameterizableClass):
     @property
     @abstractmethod
     def base_url(self):
-        """Return dictionary's URL"""
+        """Return dictionary's URL
+
+        This property is absent in the original dict API.
+        """
         raise NotImplementedError
 
 
     @property
     @abstractmethod
     def base_dir(self):
-        """Return dictionary's base directory in the local filesystem"""
+        """Return dictionary's base directory in the local filesystem.
+
+        This property is absent in the original dict API.
+        """
         raise NotImplementedError
 
 
@@ -225,8 +235,10 @@ class PersiDict(MutableMapping, ParameterizableClass):
         except:
             return False
 
+
     def __getstate__(self):
         raise TypeError("PersiDict is not picklable.")
+
 
     def __setstate__(self, state):
         raise TypeError("PersiDict is not picklable.")
@@ -275,6 +287,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         This method is absent in the original Python dict API.
         """
         raise NotImplementedError
+
 
     def subdicts(self) -> dict[str, PersiDict]:
         """Get a dictionary of sub-dictionaries.
@@ -338,6 +351,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         result = all_keys[:max_n]
         return result
 
+
     def oldest_values(self, max_n=None):
         """Return max_n the oldest values in the dictionary.
 
@@ -346,6 +360,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         This method is absent in the original Python dict API.
         """
         return [self[k] for k in self.oldest_keys(max_n)]
+
 
     def newest_values(self, max_n=None):
         """Return max_n the newest values in the dictionary.

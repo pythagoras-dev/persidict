@@ -111,7 +111,11 @@ class S3Dict(PersiDict):
 
 
     def get_params(self):
-        """Return configuration parameters of the object as a dictionary."""
+        """Return configuration parameters of the object as a dictionary.
+
+        This method is needed to support Parameterizable API.
+        The method is absent in the original dict API.
+        """
         params = self.local_cache.get_params()
         params["region"] = self.region
         params["bucket_name"] = self.bucket_name
@@ -121,13 +125,19 @@ class S3Dict(PersiDict):
 
     @property
     def base_url(self):
-        """Return dictionary's URl"""
+        """Return dictionary's URl.
+
+        This property is absent in the original dict API.
+        """
         return f"s3://{self.bucket_name}/{self.root_prefix}"
 
 
     @property
     def base_dir(self) -> str:
-        """Return dictionary's base directory in the local filesystem"""
+        """Return dictionary's base directory in the local filesystem.
+
+        This property is absent in the original dict API.
+        """
         return self.local_cache.base_dir
 
 
