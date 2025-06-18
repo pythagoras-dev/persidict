@@ -115,7 +115,11 @@ class FileDirDict(PersiDict):
 
 
     def get_params(self):
-        """Return configuration parameters of the dictionary."""
+        """Return configuration parameters of the dictionary.
+
+        This method is needed to support Parameterizable API.
+        The method is absent in the original dict API.
+        """
         params = super().get_params()
         additional_params = dict(
             base_dir=self.base_dir
@@ -126,13 +130,19 @@ class FileDirDict(PersiDict):
 
     @property
     def base_url(self) -> str:
-        """Return dictionary's URL"""
+        """Return dictionary's URL.
+
+        This property is absent in the original dict API.
+        """
         return f"file://{self._base_dir}"
 
 
     @property
     def base_dir(self) -> str:
-        """Return dictionary's base directory"""
+        """Return dictionary's base directory.
+
+        This property is absent in the original dict API.
+        """
         return self._base_dir
 
 
@@ -212,6 +222,7 @@ class FileDirDict(PersiDict):
             , digest_len=self.digest_len
             , base_class_for_values=self.base_class_for_values)
 
+
     def _read_from_file_impl(self, file_name:str) -> Any:
         """Read a value from a file. """
 
@@ -225,6 +236,7 @@ class FileDirDict(PersiDict):
             with open(file_name, 'r') as f:
                 result = f.read()
         return result
+
 
     def _read_from_file(self,file_name:str) -> Any:
         """Read a value from a file. """
@@ -244,6 +256,7 @@ class FileDirDict(PersiDict):
 
         return self._read_from_file_impl(file_name)
 
+
     def _save_to_file_impl(self, file_name:str, value:Any) -> None:
         """Save a value to a file. """
 
@@ -256,6 +269,7 @@ class FileDirDict(PersiDict):
         else:
             with open(file_name, 'w') as f:
                 f.write(value)
+
 
     def _save_to_file(self, file_name:str, value:Any) -> None:
         """Save a value to a file. """
@@ -276,11 +290,13 @@ class FileDirDict(PersiDict):
 
         self._save_to_file_impl(file_name, value)
 
+
     def __contains__(self, key:PersiDictKey) -> bool:
         """True if the dictionary has the specified key, else False. """
         key = SafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.isfile(filename)
+
 
     def __getitem__(self, key:PersiDictKey) -> Any:
         """ Implementation for x[y] syntax. """
@@ -295,6 +311,7 @@ class FileDirDict(PersiDict):
                     f"Value must be of type {self.base_class_for_values},"
                     + f" but it is {type(result)} instead.")
         return result
+
 
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Set self[key] to value."""
@@ -319,6 +336,7 @@ class FileDirDict(PersiDict):
             raise KeyError("Can't modify an immutable item")
         self._save_to_file(filename, value)
 
+
     def __delitem__(self, key:PersiDictKey) -> None:
         """Delete self[key]."""
         key = SafeStrTuple(key)
@@ -327,6 +345,7 @@ class FileDirDict(PersiDict):
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
         os.remove(filename)
+
 
     def _generic_iter(self, iter_type: str):
         """Underlying implementation for .items()/.keys()/.values() iterators"""
