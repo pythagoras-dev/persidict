@@ -9,7 +9,7 @@ from data_for_mutable_tests import mutable_tests
 def test_get_portable_params(tmpdir, DictToTest, kwargs):
     dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
     dict_to_test.clear()
-    model_params = DictToTest.__get_portable_default_params__()
+    model_params = DictToTest.get_portable_default_params()
     model_params.update(kwargs)
     model_params["base_dir"] = str(tmpdir)
 
@@ -21,7 +21,7 @@ def test_get_portable_params(tmpdir, DictToTest, kwargs):
                 if model_params["root_prefix"][-1] != "/":
                     model_params["root_prefix"] += "/"
 
-    params = dict_to_test.__get_portable_params__()
+    params = dict_to_test.get_portable_params()
     assert isinstance(params, dict)
     assert params == model_params
 
@@ -29,6 +29,6 @@ def test_get_portable_params(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_default_portable_params(tmpdir, DictToTest, kwargs):
-    dict_to_test_1 = DictToTest().__get_portable_params__()
-    dict_to_test_2 = DictToTest.__get_portable_default_params__()
+    dict_to_test_1 = DictToTest().get_portable_params()
+    dict_to_test_2 = DictToTest.get_portable_default_params()
     assert dict_to_test_1 == dict_to_test_2
