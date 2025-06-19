@@ -10,3 +10,8 @@ def test_s3_dict_registration():
     from src.persidict import S3Dict
     assert is_registered(S3Dict)
     smoketest_parameterizable_class(S3Dict)
+
+def test_no_change_registration():
+    from src.persidict import NoChangeFlag
+    assert is_registered(NoChangeFlag)
+    smoketest_parameterizable_class(NoChangeFlag)
