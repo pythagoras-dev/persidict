@@ -27,4 +27,5 @@ from .safe_str_tuple import SafeStrTuple
 from .persi_dict import PersiDict
 from .file_dir_dict import FileDirDict
 from .s3_dict import S3Dict
-from .nochange_const import *
+from .jokers import Joker, KeepCurrentFlag, DeleteCurrentFlag
+from .jokers import KEEP_CURRENT, DELETE_CURRENT

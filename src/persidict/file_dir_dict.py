@@ -12,7 +12,6 @@ from __future__ import annotations
 import os
 import random
 import time
-from abc import abstractmethod
 from typing import Any, Optional
 
 import joblib
@@ -21,7 +20,7 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 import parameterizable
 
-from .nochange_const import NO_CHANGE
+from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
 from .safe_chars import replace_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
@@ -317,7 +316,11 @@ class FileDirDict(PersiDict):
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Set self[key] to value."""
 
-        if value is NO_CHANGE:
+        if value is KEEP_CURRENT:
+            return
+
+        if value is DELETE_CURRENT:
+            self.delete_if_exists(key)
             return
 
         if isinstance(value, PersiDict):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from abc import abstractmethod
 from typing import Any, Optional
 
 import boto3
@@ -10,7 +9,7 @@ import parameterizable
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict
-from .nochange_const import NO_CHANGE
+from .jokers import KEEP_CURRENT, DELETE_CURRENT
 from .file_dir_dict import FileDirDict, PersiDictKey
 
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
@@ -191,7 +190,11 @@ class S3Dict(PersiDict):
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Set self[key] to value. """
 
-        if value is NO_CHANGE:
+        if value is KEEP_CURRENT:
+            return
+
+        if value is DELETE_CURRENT:
+            self.delete_if_exists(key)
             return
 
         if isinstance(value, PersiDict):
