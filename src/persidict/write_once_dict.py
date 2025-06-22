@@ -3,7 +3,8 @@ from __future__ import annotations
 import time
 
 from deepdiff import DeepDiff
-from parameterizable import register_parameterizable_class
+from parameterizable import register_parameterizable_class, sort_dict_by_keys
+
 from .jokers import KEEP_CURRENT, KeepCurrentFlag
 from .persi_dict import PersiDict
 from .file_dir_dict import FileDirDict
@@ -103,7 +104,7 @@ class WriteOnceDict(PersiDict):
         params = dict(
             wrapped_dict = self._wrapped_dict,
             p_consistency_checks = self.p_consistency_checks)
-        sorted_params = dict(sorted(params.items()))
+        sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
     def __setitem__(self, key, value):

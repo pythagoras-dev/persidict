@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 import boto3
 import parameterizable
+from parameterizable.dict_sorter import sort_dict_by_keys
 
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
@@ -119,7 +120,7 @@ class S3Dict(PersiDict):
         params["region"] = self.region
         params["bucket_name"] = self.bucket_name
         params["root_prefix"] = self.root_prefix
-        sorted_params = dict(sorted(params.items()))
+        sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
 

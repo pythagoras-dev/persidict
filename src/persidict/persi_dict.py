@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 import random
-from parameterizable import ParameterizableClass
+from parameterizable import ParameterizableClass, sort_dict_by_keys
 from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
@@ -107,7 +107,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             , digest_len=self.digest_len
             , base_class_for_values=self.base_class_for_values
         )
-        sorted_params = dict(sorted(params.items()))
+        sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
 

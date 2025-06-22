@@ -19,6 +19,7 @@ import jsonpickle
 import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 import parameterizable
+from parameterizable import sort_dict_by_keys
 
 from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
 from .safe_chars import replace_unsafe_chars
@@ -124,7 +125,7 @@ class FileDirDict(PersiDict):
             base_dir=self.base_dir
             , file_type=self.file_type)
         params.update(additional_params)
-        sorted_params = dict(sorted(params.items()))
+        sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
 
