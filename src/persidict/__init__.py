@@ -24,8 +24,9 @@ and replace_unsafe_chars(), which replaces forbidden characters in a string.
 """
 from .safe_chars import get_safe_chars, replace_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
-from .persi_dict import PersiDict
+from .persi_dict import PersiDict, PersiDictKey
 from .file_dir_dict import FileDirDict
 from .s3_dict import S3Dict
+from .write_once_dict import WriteOnceDict
 from .jokers import Joker, KeepCurrentFlag, DeleteCurrentFlag
 from .jokers import KEEP_CURRENT, DELETE_CURRENT

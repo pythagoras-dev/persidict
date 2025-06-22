@@ -1,5 +1,5 @@
 
-from src.persidict import (
+from src.persidict.jokers import (
     KeepCurrentFlag, KeepCurrent, KEEP_CURRENT
     , DeleteCurrentFlag, DeleteCurrent, DELETE_CURRENT)
 
