@@ -302,16 +302,18 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return result_subdicts
 
 
-    def random_keys(self, max_n:int):
-        """Return a list of random keys from the dictionary.
+    def random_key(self):
+        """Return a random key from the dictionary.
+
+        Returns a single random key if the dictionary is not empty.
+        Returns None if the dictionary is empty.
 
         This method is absent in the original Python dict API.
         """
         all_keys = list(self.keys())
-        if max_n > len(all_keys):
-            max_n = len(all_keys)
-        result = random.sample(all_keys, max_n)
-        return result
+        if not all_keys:
+            return None
+        return random.choice(all_keys)
 
 
     @abstractmethod
