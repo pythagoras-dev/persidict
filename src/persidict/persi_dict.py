@@ -309,11 +309,27 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns None if the dictionary is empty.
 
         This method is absent in the original Python dict API.
+
+        Implementation uses reservoir sampling to select a uniformly random key
+        in streaming time, without loading all keys into memory or using len().
         """
-        all_keys = list(self.keys())
-        if not all_keys:
+        iterator = iter(self.keys())
+        try:
+            # Get the first key
+            result = next(iterator)
+        except StopIteration:
+            # Dictionary is empty
             return None
-        return random.choice(all_keys)
+
+        # Reservoir sampling algorithm
+        i = 2
+        for key in iterator:
+            # Select current key with probability 1/i
+            if random.random() < 1/i:
+                result = key
+            i += 1
+
+        return result
 
 
     @abstractmethod
