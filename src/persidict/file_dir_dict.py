@@ -152,11 +152,20 @@ class FileDirDict(PersiDict):
 
         num_files = 0
         suffix = "." + self.file_type
-        for subdir_info in os.walk(self._base_dir):
-            files = subdir_info[2]
-            files = [f_name for f_name in files
-                     if f_name.endswith(suffix)]
-            num_files += len(files)
+        stack = [self._base_dir]
+
+        while stack:
+            path = stack.pop()
+            try:
+                with os.scandir(path) as it:
+                    for entry in it:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                        elif entry.is_file(follow_symlinks=False) and entry.name.endswith(suffix):
+                            num_files += 1
+            except PermissionError:
+                continue
+
         return num_files
 
 
