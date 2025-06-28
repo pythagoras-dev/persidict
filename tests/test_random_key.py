@@ -3,17 +3,9 @@ from moto import mock_aws
 from collections import Counter
 import random
 import time
-import threading
-import concurrent.futures
 from src.persidict import SafeStrTuple
 
 from data_for_mutable_tests import mutable_tests
-
-
-@pytest.fixture
-def create_dict(tmpdir, DictToTest, kwargs):
-    """Fixture to create a dictionary instance for testing."""
-    return DictToTest(base_dir=tmpdir, **kwargs)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

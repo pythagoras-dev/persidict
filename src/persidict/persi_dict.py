@@ -302,7 +302,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return result_subdicts
 
 
-    def random_key(self):
+    def random_key(self) -> PersiDictKey | None:
         """Return a random key from the dictionary.
 
         Returns a single random key if the dictionary is not empty.

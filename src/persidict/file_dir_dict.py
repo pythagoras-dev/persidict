@@ -203,7 +203,39 @@ class FileDirDict(PersiDict):
             file_name = key[-1] + "." + self.file_type
             return os.path.join(*dir_names, file_name)
         else:
-            return os.path.join(*dir_names)
+            return str(os.path.join(*dir_names))
+
+
+    def _build_key_from_full_path(self, full_path:str)->SafeStrTuple:
+        """Convert a filesystem path back into a key."""
+
+        # Ensure we're working with absolute paths
+        full_path = os.path.abspath(full_path)
+
+        # Remove the base directory from the path
+        if not full_path.startswith(self._base_dir):
+            raise ValueError(f"Path {full_path} is not within base directory {self._base_dir}")
+
+        # Get the relative path
+        rel_path = full_path[len(self._base_dir):].lstrip(os.sep)
+
+        if not rel_path:
+            return SafeStrTuple()
+
+        # Split the path into components
+        path_components = rel_path.split(os.sep)
+
+        # If it's a file path, remove the file extension from the last component
+        if os.path.isfile(full_path) and path_components[-1].endswith("." + self.file_type):
+            path_components[-1] = path_components[-1][:-len("." + self.file_type)]
+
+        # Create a SafeStrTuple from the path components
+        key = SafeStrTuple(*path_components)
+
+        # Unsign the key
+        key = unsign_safe_str_tuple(key, self.digest_len)
+
+        return key
 
 
     def get_subdict(self, key:PersiDictKey) -> FileDirDict:
@@ -402,6 +434,48 @@ class FileDirDict(PersiDict):
         key = SafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.getmtime(filename)
+
+
+    def random_key(self) -> PersiDictKey | None:
+        # canonicalise extension once
+        early_exit_cap = 10_000
+        ext = None
+        if self.file_type:
+            ext = self.file_type.lower()
+            if not ext.startswith("."):
+                ext = "." + ext
+
+        stack = [self._base_dir]
+        winner: Optional[str] = None
+        seen = 0
+
+        while stack:
+            path = stack.pop()
+            try:
+                with os.scandir(path) as it:
+                    for ent in it:
+                        if ent.is_dir(follow_symlinks=False):
+                            stack.append(ent.path)
+                            continue
+
+                        # cheap name test before stat()
+                        if ext and not ent.name.lower().endswith(ext):
+                            continue
+
+                        if ent.is_file(follow_symlinks=False):
+                            seen += 1
+                            if random.random() < 1 / seen:  # reservoir k=1
+                                winner = ent.path
+                            # early‑exit when cap reached
+                            if early_exit_cap and seen >= early_exit_cap:
+                                return self._build_key_from_full_path(os.path.abspath(winner))
+            except PermissionError:
+                continue
+
+        if winner is None:
+            return None
+        else:
+            return self._build_key_from_full_path(os.path.abspath(winner))
 
 
 parameterizable.register_parameterizable_class(FileDirDict)
