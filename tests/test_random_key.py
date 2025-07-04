@@ -31,15 +31,22 @@ def test_multi_item_dict_with_simple_keys(tmpdir, DictToTest, kwargs):
     """Test that random_key returns a valid key for a multi-item dictionary with simple keys."""
     dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
 
+    N=50
+
     # Add multiple items
-    for n in range(10):
+    for n in range(N):
         dict_to_test[str(n)] = n**2
 
+    all_found_keys = set()
+
     # Check that random_key returns a valid key
-    for _ in range(10):
+    for _ in range(N*2):
         random_key = dict_to_test.random_key()
         assert random_key is not None
         assert random_key in dict_to_test
+        all_found_keys.add(random_key)
+
+    assert len(all_found_keys) > n/2
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

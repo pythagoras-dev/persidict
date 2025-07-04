@@ -228,6 +228,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
     def __eq__(self, other) -> bool:
         """Return self==other. """
+        if isinstance(other, PersiDict):
+            return self.get_portable_params() == other.get_portable_params()
         try:
             if len(self) != len(other):
                 return False
