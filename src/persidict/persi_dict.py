@@ -228,6 +228,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
     def __eq__(self, other) -> bool:
         """Return self==other. """
+        if isinstance(other, PersiDict):
+            return self.get_portable_params() == other.get_portable_params()
         try:
             if len(self) != len(other):
                 return False
@@ -302,15 +304,33 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return result_subdicts
 
 
-    def random_keys(self, max_n:int):
-        """Return a list of random keys from the dictionary.
+    def random_key(self) -> PersiDictKey | None:
+        """Return a random key from the dictionary.
+
+        Returns a single random key if the dictionary is not empty.
+        Returns None if the dictionary is empty.
 
         This method is absent in the original Python dict API.
+
+        Implementation uses reservoir sampling to select a uniformly random key
+        in streaming time, without loading all keys into memory or using len().
         """
-        all_keys = list(self.keys())
-        if max_n > len(all_keys):
-            max_n = len(all_keys)
-        result = random.sample(all_keys, max_n)
+        iterator = iter(self.keys())
+        try:
+            # Get the first key
+            result = next(iterator)
+        except StopIteration:
+            # Dictionary is empty
+            return None
+
+        # Reservoir sampling algorithm
+        i = 2
+        for key in iterator:
+            # Select current key with probability 1/i
+            if random.random() < 1/i:
+                result = key
+            i += 1
+
         return result
 
 

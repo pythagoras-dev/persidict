@@ -4,7 +4,7 @@ Simple persistent dictionaries for Python.
 
 ## What Is It?
 
-`persidict` offers a simple persistent key-value store for Python. 
+`persidict` offers a very simple persistent key-value store for Python. 
 It saves the content of the dictionary in a folder on a disk 
 or in an S3 bucket on AWS. Each value is stored as a separate file / S3 object.
 Only text strings or sequences of strings are allowed as keys.
