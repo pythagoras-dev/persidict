@@ -258,11 +258,13 @@ class S3Dict(PersiDict):
             Bucket=self.bucket_name, Prefix = self.root_prefix)
 
         for page in page_iterator:
-            if "Contents" in page:
-                for key in page["Contents"]:
-                    obj_name = key["Key"]
-                    if obj_name.endswith(suffix):
-                        num_files += 1
+            contents = page.get("Contents")
+            if not contents:
+                continue
+            for key in contents:
+                obj_name = key["Key"]
+                if obj_name.endswith(suffix):
+                    num_files += 1
 
         return num_files
 
