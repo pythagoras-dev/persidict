@@ -253,7 +253,7 @@ class S3Dict(PersiDict):
         num_files = 0
         suffix = "." + self.file_type
 
-        paginator = self.s3_client.get_paginator("list_objects")
+        paginator = self.s3_client.get_paginator("list_objects_v2")
         page_iterator = paginator.paginate(
             Bucket=self.bucket_name, Prefix = self.root_prefix)
 
@@ -280,7 +280,7 @@ class S3Dict(PersiDict):
             return SafeStrTuple(result)
 
         def step():
-            paginator = self.s3_client.get_paginator("list_objects")
+            paginator = self.s3_client.get_paginator("list_objects_v2")
             page_iterator = paginator.paginate(
                 Bucket=self.bucket_name, Prefix = self.root_prefix)
 
