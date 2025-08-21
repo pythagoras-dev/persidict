@@ -287,20 +287,22 @@ class S3Dict(PersiDict):
                 Bucket=self.bucket_name, Prefix = self.root_prefix)
 
             for page in page_iterator:
-                if "Contents" in page:
-                    for key in page["Contents"]:
-                        obj_name = key["Key"]
-                        if not obj_name.endswith(suffix):
-                            continue
-                        obj_key = splitter(obj_name)
-                        if iter_type == "keys":
-                            yield unsign_safe_str_tuple(
-                                obj_key, self.digest_len)
-                        elif iter_type == "values":
-                            yield self[obj_key]
-                        else:
-                            yield (unsign_safe_str_tuple(
-                                obj_key, self.digest_len), self[obj_key])
+                contents = page.get("Contents")
+                if not contents:
+                    continue
+                for key in contents:
+                    obj_name = key["Key"]
+                    if not obj_name.endswith(suffix):
+                        continue
+                    obj_key = splitter(obj_name)
+                    if iter_type == "keys":
+                        yield unsign_safe_str_tuple(
+                            obj_key, self.digest_len)
+                    elif iter_type == "values":
+                        yield self[obj_key]
+                    else:
+                        yield (unsign_safe_str_tuple(
+                            obj_key, self.digest_len), self[obj_key])
 
         return step()
 
