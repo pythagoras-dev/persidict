@@ -269,9 +269,14 @@ class S3Dict(PersiDict):
         return num_files
 
 
-    def _generic_iter(self, iter_type: str):
+    def _generic_iter(self, result_type: str):
         """Underlying implementation for .items()/.keys()/.values() iterators"""
-        assert iter_type in {"keys", "values", "items"}
+
+        assert isinstance(result_type, set)
+        assert 1 <= len(result_type) <= 3
+        assert len(result_type | {"keys", "values", "timestamps"}) == 3
+        assert 1 <= len(result_type & {"keys", "values", "timestamps"}) <= 3
+
         suffix = "." + self.file_type
         ext_len = len(self.file_type) + 1
         prefix_len = len(self.root_prefix)
@@ -295,14 +300,25 @@ class S3Dict(PersiDict):
                     if not obj_name.endswith(suffix):
                         continue
                     obj_key = splitter(obj_name)
-                    if iter_type == "keys":
-                        yield unsign_safe_str_tuple(
+
+                    to_return = []
+
+                    if "keys" in result_type:
+                        key_to_return = unsign_safe_str_tuple(
                             obj_key, self.digest_len)
-                    elif iter_type == "values":
-                        yield self[obj_key]
+                        to_return.append(key_to_return)
+
+                    if "values" in result_type:
+                        value_to_return = self[obj_key]
+                        to_return.append(value_to_return)
+
+                    if len(to_return) == 1:
+                        yield to_return[0]
                     else:
-                        yield (unsign_safe_str_tuple(
-                            obj_key, self.digest_len), self[obj_key])
+                        if "timestamps" in result_type:
+                            timestamp_to_return = key["LastModified"].timestamp()
+                            to_return.append(timestamp_to_return)
+                        yield tuple(to_return)
 
         return step()
 

@@ -393,24 +393,28 @@ class FileDirDict(PersiDict):
         os.remove(filename)
 
 
-    def _generic_iter(self, iter_type: str):
+    def _generic_iter(self, result_type: set[str]):
         """Underlying implementation for .items()/.keys()/.values() iterators"""
-        assert iter_type in {"keys", "values", "items"}
+        assert isinstance(result_type, set)
+        assert 1 <= len(result_type) <= 3
+        assert len(result_type | {"keys", "values", "timestamps"}) == 3
+        assert 1 <= len(result_type & {"keys", "values", "timestamps"}) <= 3
+
         walk_results = os.walk(self._base_dir)
         ext_len = len(self.file_type) + 1
 
         def splitter(dir_path: str):
             """Transform a dirname into a PersiDictKey key"""
-            result = []
+            splitted_str = []
             if dir_path == ".":
-                return result
+                return splitted_str
             while True:
                 head, tail = os.path.split(dir_path)
-                result = [tail] + result
+                splitted_str = [tail] + splitted_str
                 dir_path = head
                 if len(head) == 0:
                     break
-            return tuple(result)
+            return tuple(splitted_str)
 
         def step():
             suffix = "." + self.file_type
@@ -423,14 +427,25 @@ class FileDirDict(PersiDict):
                         result_key = (*splitter(prefix_key), f[:-ext_len])
                         result_key = SafeStrTuple(result_key)
 
-                        if iter_type == "keys":
-                            yield unsign_safe_str_tuple(
+                        to_return = []
+
+                        if "keys" in result_type:
+                            key_to_return= unsign_safe_str_tuple(
                                 result_key, self.digest_len)
-                        elif iter_type == "values":
-                            yield self[result_key]
+                            to_return.append(key_to_return)
+
+                        if "values" in result_type:
+                            value_to_return = self[result_key]
+                            to_return.append(value_to_return)
+
+                        if len(result_type) == 1:
+                            yield to_return[0]
                         else:
-                            yield (unsign_safe_str_tuple(
-                                result_key, self.digest_len), self[result_key])
+                            if "timestamps" in result_type:
+                                timestamp_to_return = os.path.getmtime(
+                                    os.path.join(dir_name, f))
+                                to_return.append(timestamp_to_return)
+                            yield tuple(to_return)
 
         return step()
 

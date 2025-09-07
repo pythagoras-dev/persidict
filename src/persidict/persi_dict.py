@@ -185,30 +185,48 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @abstractmethod
-    def _generic_iter(self, iter_type: str):
-        """Underlying implementation for .items()/.keys()/.values() iterators"""
-        assert iter_type in {"keys", "values", "items"}
+    def _generic_iter(self, result_type: set[str]) -> Any:
+        """Underlying implementation for items/keys/values/... iterators"""
+        assert isinstance(result_type, set)
+        assert 1 <= len(result_type) <= 3
+        assert len(result_type | {"keys", "values", "timestamps"}) == 3
+        assert 1 <= len(result_type & {"keys", "values", "timestamps"}) <= 3
         raise NotImplementedError
 
 
     def __iter__(self):
         """Implement iter(self)."""
-        return self._generic_iter("keys")
+        return self._generic_iter({"keys"})
 
 
     def keys(self):
-        """D.keys() -> iterator object that provides access to D's keys"""
-        return self._generic_iter("keys")
+        """iterator object that provides access to keys"""
+        return  self._generic_iter({"keys"})
+
+
+    def keys_and_timestamps(self):
+        """iterator object that provides access to keys and timestamps"""
+        return self._generic_iter({"keys", "timestamps"})
 
 
     def values(self):
         """D.values() -> iterator object that provides access to D's values"""
-        return self._generic_iter("values")
+        return self._generic_iter({"values"})
+
+
+    def values_and_timestamps(self):
+        """iterator object that provides access to values and timestamps"""
+        return self._generic_iter({"values", "timestamps"})
 
 
     def items(self):
         """D.items() -> iterator object that provides access to D's items"""
-        return self._generic_iter("items")
+        return self._generic_iter({"keys", "values"})
+
+
+    def items_and_timestamps(self):
+        """iterator object that provides access to keys, values, and timestamps"""
+        return self._generic_iter({"keys", "values", "timestamps"})
 
 
     def setdefault(self, key:PersiDictKey, default:Any=None) -> Any:
