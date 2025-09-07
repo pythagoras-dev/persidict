@@ -384,16 +384,9 @@ class FileDirDict(PersiDict):
 
         def splitter(dir_path: str):
             """Transform a dirname into a PersiDictKey key"""
-            splitted_str = []
             if dir_path == ".":
-                return splitted_str
-            while True:
-                head, tail = os.path.split(dir_path)
-                splitted_str = [tail] + splitted_str
-                dir_path = head
-                if len(head) == 0:
-                    break
-            return tuple(splitted_str)
+                return []
+            return dir_path.split(os.sep)
 
         def step():
             suffix = "." + self.file_type
