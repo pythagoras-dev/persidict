@@ -367,18 +367,17 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp
-            key_timestamp_pairs = [(item[1], item[0])
-                                   for item in self.keys_and_timestamps()]
-            key_timestamp_pairs.sort()
-            return [key for timestamp, key in key_timestamp_pairs]
+            key_timestamp_pairs = list(self.keys_and_timestamps())
+            key_timestamp_pairs.sort(key=lambda x: x[1])
+            return [key for key,_ in key_timestamp_pairs]
         elif max_n <= 0:
             return []
         else:
             # Use heapq.nsmallest for efficient partial sorting without loading all keys into memory
-            key_timestamp_iterator = ((item[1], item[0])
-                                      for item in self.keys_and_timestamps())
-            smallest_pairs = heapq.nsmallest(max_n, key_timestamp_iterator)
-            return [key for timestamp, key in smallest_pairs]
+            smallest_pairs = heapq.nsmallest(max_n
+                                             , self.keys_and_timestamps()
+                                             , key=lambda x: x[1])
+            return [key for key,_ in smallest_pairs]
 
 
     def oldest_values(self, max_n=None):
@@ -388,20 +387,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         This method is absent in the original Python dict API.
         """
-        if max_n is None:
-            # If we need all keys, sort them all by timestamp
-            key_timestamp_pairs = [(item[1], item[0])
-                                   for item in self.values_and_timestamps()]
-            key_timestamp_pairs.sort()
-            return [key for timestamp, key in key_timestamp_pairs]
-        elif max_n <= 0:
-            return []
-        else:
-            # Use heapq.nsmallest for efficient partial sorting without loading all keys into memory
-            key_timestamp_iterator = ((item[1], item[0])
-                                      for item in self.values_and_timestamps())
-            smallest_pairs = heapq.nsmallest(max_n, key_timestamp_iterator)
-            return [key for timestamp, key in smallest_pairs]
+        return [self[k] for k in self.oldest_keys(max_n)]
 
 
     def newest_keys(self, max_n=None):
@@ -413,16 +399,17 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp in reverse order
-            key_timestamp_pairs = [(item[1], item[0]) for item in self.keys_and_timestamps()]
-            key_timestamp_pairs.sort(reverse=True)
-            return [key for timestamp, key in key_timestamp_pairs]
+            key_timestamp_pairs = list(self.keys_and_timestamps())
+            key_timestamp_pairs.sort(key=lambda x:x[1], reverse=True)
+            return [key for key,_ in key_timestamp_pairs]
         elif max_n <= 0:
             return []
         else:
             # Use heapq.nlargest for efficient partial sorting without loading all keys into memory
-            key_timestamp_iterator = ((item[1], item[0]) for item in self.keys_and_timestamps())
-            largest_pairs = heapq.nlargest(max_n, key_timestamp_iterator)
-            return [key for timestamp, key in largest_pairs]
+            largest_pairs = heapq.nlargest(max_n
+                                            , self.keys_and_timestamps()
+                                            , key=lambda item: item[1])
+            return [key for key,_ in largest_pairs]
 
 
     def newest_values(self, max_n=None):
@@ -432,17 +419,4 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         This method is absent in the original Python dict API.
         """
-        if max_n is None:
-            # If we need all keys, sort them all by timestamp in reverse order
-            key_timestamp_pairs = [(item[1], item[0])
-                                   for item in self.values_and_timestamps()]
-            key_timestamp_pairs.sort(reverse=True)
-            return [key for timestamp, key in key_timestamp_pairs]
-        elif max_n <= 0:
-            return []
-        else:
-            # Use heapq.nlargest for efficient partial sorting without loading all keys into memory
-            key_timestamp_iterator = ((item[1], item[0])
-                                      for item in self.values_and_timestamps())
-            largest_pairs = heapq.nlargest(max_n, key_timestamp_iterator)
-            return [key for timestamp, key in largest_pairs]
+        return [self[k] for k in self.newest_keys(max_n)]
