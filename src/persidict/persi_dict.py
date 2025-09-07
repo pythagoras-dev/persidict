@@ -371,19 +371,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp
-            key_timestamp_pairs = []
-            for item in self.keys_and_timestamps():
-                key_timestamp_pairs.append((item[1], item[0]))
+            key_timestamp_pairs = [(item[1], item[0]) for item in self.keys_and_timestamps()]
             key_timestamp_pairs.sort()
             return [key for timestamp, key in key_timestamp_pairs]
         elif max_n <= 0:
             return []
         else:
-            # Use heapq.nsmallest for efficient partial sorting
-            key_timestamp_pairs = []
-            for item in self.keys_and_timestamps():
-                key_timestamp_pairs.append((item[1], item[0]))
-            smallest_pairs = heapq.nsmallest(max_n, key_timestamp_pairs)
+            # Use heapq.nsmallest for efficient partial sorting without loading all keys into memory
+            key_timestamp_iterator = ((item[1], item[0]) for item in self.keys_and_timestamps())
+            smallest_pairs = heapq.nsmallest(max_n, key_timestamp_iterator)
             return [key for timestamp, key in smallest_pairs]
 
 
@@ -396,19 +392,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp in reverse order
-            key_timestamp_pairs = []
-            for item in self.keys_and_timestamps():
-                key_timestamp_pairs.append((item[1], item[0]))
+            key_timestamp_pairs = [(item[1], item[0]) for item in self.keys_and_timestamps()]
             key_timestamp_pairs.sort(reverse=True)
             return [key for timestamp, key in key_timestamp_pairs]
         elif max_n <= 0:
             return []
         else:
-            # Use heapq.nlargest for efficient partial sorting
-            key_timestamp_pairs = []
-            for item in self.keys_and_timestamps():
-                key_timestamp_pairs.append((item[1], item[0]))
-            largest_pairs = heapq.nlargest(max_n, key_timestamp_pairs)
+            # Use heapq.nlargest for efficient partial sorting without loading all keys into memory
+            key_timestamp_iterator = ((item[1], item[0]) for item in self.keys_and_timestamps())
+            largest_pairs = heapq.nlargest(max_n, key_timestamp_iterator)
             return [key for timestamp, key in largest_pairs]
 
 
