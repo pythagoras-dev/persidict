@@ -103,17 +103,6 @@ class FileDirDict(PersiDict):
         self._base_dir = os.path.abspath(base_dir)
 
 
-    def __repr__(self):
-        """Return repr(self)."""
-
-        repr_str = super().__repr__()
-        repr_str = repr_str[:-1] + f", _base_dir={self._base_dir}"
-        repr_str += f", file_type={self.file_type}"
-        repr_str += " )"
-
-        return repr_str
-
-
     def get_params(self):
         """Return configuration parameters of the dictionary.
 

@@ -134,13 +134,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
     def __repr__(self) -> str:
         """Return repr(self)"""
-        repr_str = self.__class__.__name__ + "("
-        repr_str += repr(dict(self.items()))
-        repr_str += f", immutable_items={self.immutable_items}"
-        repr_str += f", digest_len={self.digest_len}"
-        repr_str += f", base_class_for_values={self.base_class_for_values}"
-        repr_str += ")"
-        return repr_str
+        params = self.get_params()
+        params_str = ', '.join(f'{k}={v!r}' for k, v in params.items())
+        return f'{self.__class__.__name__}({params_str})'
 
 
     def __str__(self) -> str:

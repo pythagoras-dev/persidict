@@ -96,20 +96,6 @@ class S3Dict(PersiDict):
             self.root_prefix += "/"
 
 
-    def __repr__(self) -> str:
-        """Return repr(self)."""
-
-        repr_str = super().__repr__()
-        repr_str = repr_str[:-1] + f", _base_dir={self.local_cache._base_dir}"
-        repr_str += f", file_type={self.file_type}"
-        repr_str += f", region={self.region}"
-        repr_str += f", bucket_name={self.bucket_name}"
-        repr_str += f", root_prefix={self.root_prefix}"
-        repr_str += " )"
-
-        return repr_str
-
-
     def get_params(self):
         """Return configuration parameters of the object as a dictionary.
 
