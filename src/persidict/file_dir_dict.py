@@ -95,13 +95,7 @@ class FileDirDict(PersiDict):
         if os.path.isfile(base_dir):
             raise ValueError(f"{base_dir} is a file, not a directory.")
 
-        try: # extra protection to better handle concurrent access
-            if not os.path.isdir(base_dir):
-                os.mkdir(base_dir)
-        except:
-            time.sleep(random.random()/random.randint(1, 3))
-            if not os.path.isdir(base_dir):
-                os.mkdir(base_dir)
+        os.makedirs(base_dir, exist_ok=True)
         assert os.path.isdir(base_dir)
 
         # self.base_dir_param = _base_dir
