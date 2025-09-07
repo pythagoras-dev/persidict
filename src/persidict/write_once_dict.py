@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from functools import cache
 
 from deepdiff import DeepDiff
 from parameterizable import register_parameterizable_class, sort_dict_by_keys

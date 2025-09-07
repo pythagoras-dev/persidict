@@ -139,23 +139,9 @@ class FileDirDict(PersiDict):
     def __len__(self) -> int:
         """ Get the number of key-value pairs in the dictionary."""
 
-        num_files = 0
         suffix = "." + self.file_type
-        stack = [self._base_dir]
-
-        while stack:
-            path = stack.pop()
-            try:
-                with os.scandir(path) as it:
-                    for entry in it:
-                        if entry.is_dir(follow_symlinks=False):
-                            stack.append(entry.path)
-                        elif entry.is_file(follow_symlinks=False) and entry.name.endswith(suffix):
-                            num_files += 1
-            except PermissionError:
-                continue
-
-        return num_files
+        return sum(1 for _, _, files in os.walk(self._base_dir)
+                   for f in files if f.endswith(suffix))
 
 
     def clear(self) -> None:
@@ -173,6 +159,7 @@ class FileDirDict(PersiDict):
             if (subdir_name != self._base_dir) and (
                     len(os.listdir(subdir_name)) == 0 ):
                 os.rmdir(subdir_name)
+
 
     def _build_full_path(self
                          , key:SafeStrTuple
@@ -424,7 +411,8 @@ class FileDirDict(PersiDict):
                             to_return.append(key_to_return)
 
                         if "values" in result_type:
-                            value_to_return = self[result_key]
+                            full_path = os.path.join(dir_name, f)
+                            value_to_return = self._read_from_file(full_path)
                             to_return.append(value_to_return)
 
                         if len(result_type) == 1:

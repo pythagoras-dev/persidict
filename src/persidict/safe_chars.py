@@ -1,12 +1,11 @@
 import string
-from copy import deepcopy
 
 SAFE_CHARS_SET = set(string.ascii_letters + string.digits + "()_-~.=")
 SAFE_STRING_MAX_LENGTH = 254
 
 def get_safe_chars() -> set[str]:
     """Return a set of allowed characters."""
-    return deepcopy(SAFE_CHARS_SET)
+    return SAFE_CHARS_SET.copy()
 
 def replace_unsafe_chars(a_str:str, replace_with:str) -> str :
     """ Replace unsafe (special) characters with allowed (safe) ones."""
