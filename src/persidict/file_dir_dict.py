@@ -79,6 +79,10 @@ class FileDirDict(PersiDict):
 
         assert file_type == replace_unsafe_chars(file_type, "")
         self.file_type = file_type
+        if self.file_type == "__etag__":
+            raise ValueError(
+                "file_type cannot be 'etag' as it is a reserved"
+                " extension for S3 caching.")
 
         if (base_class_for_values is None or
                 not issubclass(base_class_for_values,str)):

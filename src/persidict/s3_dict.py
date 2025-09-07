@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from typing import Any, Optional
 
 import boto3
+from botocore.exceptions import ClientError
+
 import parameterizable
 from parameterizable.dict_sorter import sort_dict_by_keys
 
@@ -60,16 +63,19 @@ class S3Dict(PersiDict):
         check types of values in the dictionary. If not specified,
         no type checking will be performed and all types will be allowed.
 
-        file_type is extension, which will be used for all files in the dictionary.
+        file_type is an extension, which will be used for all files in the dictionary.
         If file_type has one of two values: "lz4" or "json", it defines
         which file format will be used by FileDirDict to store values.
         For all other values of file_type, the file format will always be plain
-        text. "lz4" or "json" allow to store arbitrary Python objects,
+        text. "lz4" or "json" allow storing arbitrary Python objects,
         while all other file_type-s only work with str objects.
         """
 
         super().__init__(immutable_items = immutable_items, digest_len = 0)
         self.file_type = file_type
+        if self.file_type == "__etag__":
+            raise ValueError(
+                "file_type cannot be 'etag' as it is a reserved extension for caching.")
 
         self.local_cache = FileDirDict(
             base_dir= base_dir
@@ -152,26 +158,60 @@ class S3Dict(PersiDict):
             return False
 
 
+    def _write_etag_file(self, file_name: str, etag: str):
+        """Atomically write the ETag to its cache file."""
+        if not etag:
+            return
+        etag_file_name = file_name + ".__etag__"
+        # Write to a temporary file and then rename for atomicity
+        fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(etag_file_name))
+        with os.fdopen(fd, "w") as f:
+            f.write(etag)
+        os.rename(temp_path, etag_file_name)
+
+
+
     def __getitem__(self, key:PersiDictKey) -> Any:
         """X.__getitem__(y) is an equivalent to X[y]. """
 
         key = SafeStrTuple(key)
         file_name = self.local_cache._build_full_path(key, create_subdirs=True)
 
-        if self.immutable_items:
-            try:
-                result = self.local_cache._read_from_file(file_name)
-                return result
-            except:
-                pass
+        if self.immutable_items and os.path.exists(file_name):
+            return self.local_cache._read_from_file(file_name)
 
         obj_name = self._build_full_objectname(key)
-        self.s3_client.download_file(self.bucket_name, obj_name, file_name)
-        result = self.local_cache._read_from_file(file_name)
-        if not self.immutable_items:
-            os.remove(file_name)
 
-        return result
+
+        try:
+            head = self.s3_client.head_object(
+                Bucket=self.bucket_name, Key=obj_name)
+            s3_etag = head.get("ETag")
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            else:
+                # Re-raise other client errors (e.g., permissions, throttling)
+                raise
+
+        etag_file_name = file_name + ".__etag__"
+        if not self.immutable_items and os.path.exists(file_name) and os.path.exists(etag_file_name):
+            with open(etag_file_name, "r") as f:
+                cached_etag = f.read()
+            if cached_etag == s3_etag:
+                return self.local_cache._read_from_file(file_name)
+
+        fd, temp_path = tempfile.mkstemp(dir=self.local_cache.base_dir)
+        os.close(fd)  # download_file needs a path, not an open file descriptor
+        try:
+            self.s3_client.download_file(self.bucket_name, obj_name, temp_path)
+            os.rename(temp_path, file_name)
+        except:
+            os.remove(temp_path)  # Clean up temp file on failure
+
+        self._write_etag_file(file_name, s3_etag)
+
+        return self.local_cache._read_from_file(file_name)
 
 
     def __setitem__(self, key:PersiDictKey, value:Any):
@@ -198,6 +238,25 @@ class S3Dict(PersiDict):
         key = SafeStrTuple(key)
         file_name = self.local_cache._build_full_path(key, create_subdirs=True)
         obj_name = self._build_full_objectname(key)
+
+        if self.immutable_items and os.path.exists(file_name):
+            raise KeyError("Can't modify an immutable item")
+
+        self.local_cache._save_to_file(file_name, value)
+        self.s3_client.upload_file(file_name, self.bucket_name, obj_name)
+
+        try:
+            head = self.s3_client.head_object(
+                Bucket=self.bucket_name, Key=obj_name)
+            s3_etag = head.get("ETag")
+            self._write_etag_file(file_name, s3_etag)
+        except ClientError:
+            # If we can't get ETag, we should remove any existing etag file
+            # to force a re-download on the next __getitem__ call.
+            etag_file_name = file_name + ".__etag__"
+            if os.path.exists(etag_file_name):
+                os.remove(etag_file_name)
+
 
         if self.immutable_items:
             key_is_present = False
@@ -231,7 +290,9 @@ class S3Dict(PersiDict):
         file_name = self.local_cache._build_full_path(key)
         if os.path.isfile(file_name):
             os.remove(file_name)
-
+        etag_file_name = file_name + ".__etag__"
+        if os.path.isfile(etag_file_name):
+            os.remove(etag_file_name)
 
     def __len__(self) -> int:
         """Return len(self).
