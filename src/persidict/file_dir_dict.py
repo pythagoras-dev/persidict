@@ -156,6 +156,7 @@ class FileDirDict(PersiDict):
 
         # we can't use shutil.rmtree() because
         # there may be overlapping dictionaries
+        # with different file_type-s
         for subdir_info in os.walk(self._base_dir, topdown=False):
             (subdir_name, _, files) = subdir_info
             suffix = "." + self.file_type
@@ -290,7 +291,7 @@ class FileDirDict(PersiDict):
             else:
                 with open(fd, 'w') as f:
                     f.write(value)
-            os.rename(temp_path, file_name)
+            os.replace(temp_path, file_name)
         except:
             os.remove(temp_path)
             raise

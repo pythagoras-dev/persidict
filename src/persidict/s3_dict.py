@@ -167,8 +167,7 @@ class S3Dict(PersiDict):
         fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(etag_file_name))
         with os.fdopen(fd, "w") as f:
             f.write(etag)
-        os.rename(temp_path, etag_file_name)
-
+        os.replace(temp_path, etag_file_name)
 
 
     def __getitem__(self, key:PersiDictKey) -> Any:
@@ -205,7 +204,7 @@ class S3Dict(PersiDict):
         os.close(fd)  # download_file needs a path, not an open file descriptor
         try:
             self.s3_client.download_file(self.bucket_name, obj_name, temp_path)
-            os.rename(temp_path, file_name)
+            os.replace(temp_path, file_name)
         except:
             os.remove(temp_path)  # Clean up temp file on failure
 
