@@ -154,6 +154,8 @@ class FileDirDict(PersiDict):
         if self.immutable_items:
             raise KeyError("Can't clear a dict that contains immutable items")
 
+        # we can't use shutil.rmtree() because
+        # there may be overlapping dictionaries
         for subdir_info in os.walk(self._base_dir, topdown=False):
             (subdir_name, _, files) = subdir_info
             suffix = "." + self.file_type
@@ -264,10 +266,11 @@ class FileDirDict(PersiDict):
         for i in range(n_retries):
             try:
                 return self._read_from_file_impl(file_name)
-            except:
-                time.sleep(random.random()/random.randint(1, 10))
-
-        return self._read_from_file_impl(file_name)
+            except Exception as e:
+                if i < n_retries - 1:
+                    time.sleep(random.uniform(0.01, 0.1) * (2 ** i))
+                else:
+                    raise e
 
 
     def _save_to_file_impl(self, file_name:str, value:Any) -> None:
