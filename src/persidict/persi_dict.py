@@ -88,7 +88,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                  , immutable_items:bool = False
                  , digest_len:int = 8
                  , base_class_for_values:Optional[type] = None
-                 , *args, **kwargas):
+                 , *args, **kwargs):
         self.digest_len = int(digest_len)
         if digest_len < 0:
             raise ValueError("digest_len must be non-negative")
