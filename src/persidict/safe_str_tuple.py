@@ -43,7 +43,7 @@ class SafeStrTuple(Sequence, Hashable):
             elif isinstance(a, str):
                 assert len(a) > 0
                 assert len(a) < SAFE_STRING_MAX_LENGTH
-                assert len(set(a) - SAFE_CHARS_SET) == 0
+                assert all(c in SAFE_CHARS_SET for c in a)
                 candidate_strings.append(a)
             elif _is_sequence_not_mapping(a):
                 if len(a) > 0:

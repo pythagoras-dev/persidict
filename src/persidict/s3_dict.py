@@ -234,7 +234,12 @@ class S3Dict(PersiDict):
 
 
     def __len__(self) -> int:
-        """Return len(self). """
+        """Return len(self).
+
+        WARNING: This operation can be very slow and costly on large S3 buckets
+        as it needs to iterate over all objects in the dictionary's prefix.
+        Avoid using it in performance-sensitive code.
+        """
 
         num_files = 0
         suffix = "." + self.file_type

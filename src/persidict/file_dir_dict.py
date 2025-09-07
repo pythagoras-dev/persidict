@@ -137,7 +137,12 @@ class FileDirDict(PersiDict):
 
 
     def __len__(self) -> int:
-        """ Get the number of key-value pairs in the dictionary."""
+        """ Get the number of key-value pairs in the dictionary.
+
+        WARNING: This operation can be slow on large dictionaries as it
+        needs to recursively walk the entire base directory.
+        Avoid using it in performance-sensitive code.
+        """
 
         suffix = "." + self.file_type
         return sum(1 for _, _, files in os.walk(self._base_dir)
@@ -437,46 +442,46 @@ class FileDirDict(PersiDict):
         return os.path.getmtime(filename)
 
 
-    def random_key(self) -> PersiDictKey | None:
-        # canonicalise extension once
-        early_exit_cap = 10_000
-        ext = None
-        if self.file_type:
-            ext = self.file_type.lower()
-            if not ext.startswith("."):
-                ext = "." + ext
-
-        stack = [self._base_dir]
-        winner: Optional[str] = None
-        seen = 0
-
-        while stack:
-            path = stack.pop()
-            try:
-                with os.scandir(path) as it:
-                    for ent in it:
-                        if ent.is_dir(follow_symlinks=False):
-                            stack.append(ent.path)
-                            continue
-
-                        # cheap name test before stat()
-                        if ext and not ent.name.lower().endswith(ext):
-                            continue
-
-                        if ent.is_file(follow_symlinks=False):
-                            seen += 1
-                            if random.random() < 1 / seen:  # reservoir k=1
-                                winner = ent.path
-                            # early‑exit when cap reached
-                            if early_exit_cap and seen >= early_exit_cap:
-                                return self._build_key_from_full_path(os.path.abspath(winner))
-            except PermissionError:
-                continue
-
-        if winner is None:
-            return None
-        else:
-            return self._build_key_from_full_path(os.path.abspath(winner))
+    # def random_key(self) -> PersiDictKey | None:
+    #     # canonicalise extension once
+    #     early_exit_cap = 10_000
+    #     ext = None
+    #     if self.file_type:
+    #         ext = self.file_type.lower()
+    #         if not ext.startswith("."):
+    #             ext = "." + ext
+    #
+    #     stack = [self._base_dir]
+    #     winner: Optional[str] = None
+    #     seen = 0
+    #
+    #     while stack:
+    #         path = stack.pop()
+    #         try:
+    #             with os.scandir(path) as it:
+    #                 for ent in it:
+    #                     if ent.is_dir(follow_symlinks=False):
+    #                         stack.append(ent.path)
+    #                         continue
+    #
+    #                     # cheap name test before stat()
+    #                     if ext and not ent.name.lower().endswith(ext):
+    #                         continue
+    #
+    #                     if ent.is_file(follow_symlinks=False):
+    #                         seen += 1
+    #                         if random.random() < 1 / seen:  # reservoir k=1
+    #                             winner = ent.path
+    #                         # early‑exit when cap reached
+    #                         if early_exit_cap and seen >= early_exit_cap:
+    #                             return self._build_key_from_full_path(os.path.abspath(winner))
+    #         except PermissionError:
+    #             continue
+    #
+    #     if winner is None:
+    #         return None
+    #     else:
+    #         return self._build_key_from_full_path(os.path.abspath(winner))
 
 
 parameterizable.register_parameterizable_class(FileDirDict)
