@@ -312,7 +312,7 @@ class S3Dict(PersiDict):
                         value_to_return = self[obj_key]
                         to_return.append(value_to_return)
 
-                    if len(to_return) == 1:
+                    if len(result_type) == 1:
                         yield to_return[0]
                     else:
                         if "timestamps" in result_type:
