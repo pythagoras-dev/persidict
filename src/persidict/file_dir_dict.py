@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import random
+import tempfile
 import time
 from typing import Any, Optional
 
@@ -181,17 +182,8 @@ class FileDirDict(PersiDict):
         dir_names = key[:-1] if is_file_path else key
 
         if create_subdirs:
-            current_dir = dir_names[0]
-            for dir_name in dir_names[1:]:
-                new_dir = os.path.join(current_dir, dir_name)
-                try: # extra protection to better handle concurrent access
-                    if not os.path.isdir(new_dir):
-                        os.mkdir(new_dir)
-                except:
-                    time.sleep(random.random()/random.randint(1, 3))
-                    if not os.path.isdir(new_dir):
-                        os.mkdir(new_dir)
-                current_dir = new_dir
+            dir_path = os.path.join(*dir_names)
+            os.makedirs(dir_path, exist_ok=True)
 
         if is_file_path:
             file_name = key[-1] + "." + self.file_type
@@ -287,16 +279,24 @@ class FileDirDict(PersiDict):
     def _save_to_file_impl(self, file_name:str, value:Any) -> None:
         """Save a value to a file. """
 
-        if self.file_type == "pkl":
-            with open(file_name, 'wb') as f:
-                joblib.dump(value, f, compress='lz4')
-        elif self.file_type == "json":
-            with open(file_name, 'w') as f:
-                f.write(jsonpickle.dumps(value, indent=4))
-        else:
-            with open(file_name, 'w') as f:
-                f.write(value)
+        dir_name = os.path.dirname(file_name)
+        # Use a temporary file and atomic rename to prevent data corruption
+        fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
 
+        try:
+            if self.file_type == "pkl":
+                with open(fd, 'wb') as f:
+                    joblib.dump(value, f, compress='lz4')
+            elif self.file_type == "json":
+                with open(fd, 'w') as f:
+                    f.write(jsonpickle.dumps(value, indent=4))
+            else:
+                with open(fd, 'w') as f:
+                    f.write(value)
+            os.rename(temp_path, file_name)
+        except:
+            os.remove(temp_path)
+            raise
 
     def _save_to_file(self, file_name:str, value:Any) -> None:
         """Save a value to a file. """
