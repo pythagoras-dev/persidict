@@ -235,11 +235,12 @@ class S3Dict(PersiDict):
                     + f"but it is {type(value)} instead." )
 
         key = SafeStrTuple(key)
+
+        if self.immutable_items and key in self:
+            raise KeyError("Can't modify an immutable item")
+
         file_name = self.local_cache._build_full_path(key, create_subdirs=True)
         obj_name = self._build_full_objectname(key)
-
-        if self.immutable_items and os.path.exists(file_name):
-            raise KeyError("Can't modify an immutable item")
 
         self.local_cache._save_to_file(file_name, value)
         self.s3_client.upload_file(file_name, self.bucket_name, obj_name)
@@ -255,27 +256,6 @@ class S3Dict(PersiDict):
             etag_file_name = file_name + ".__etag__"
             if os.path.exists(etag_file_name):
                 os.remove(etag_file_name)
-
-
-        if self.immutable_items:
-            key_is_present = False
-            if os.path.exists(file_name):
-                key_is_present = True
-            else:
-                try:
-                    self.s3_client.head_object(
-                        Bucket=self.bucket_name, Key=obj_name)
-                    key_is_present = True
-                except:
-                    key_is_present = False
-
-            if key_is_present:
-                raise KeyError("Can't modify an immutable item")
-
-        self.local_cache._save_to_file(file_name, value)
-        self.s3_client.upload_file(file_name, self.bucket_name, obj_name)
-        if not self.immutable_items:
-            os.remove(file_name)
 
 
     def __delitem__(self, key:PersiDictKey):
