@@ -44,6 +44,8 @@ def test_oldest_keys_basic(tmpdir):
         oldest_none = d.oldest_keys(None)
         assert to_str_list(oldest_none) == ['a', 'b', 'c', 'd', 'e']
 
+        d.clear()
+
 
 @mock_aws
 def test_newest_keys_basic(tmpdir):
@@ -70,6 +72,8 @@ def test_newest_keys_basic(tmpdir):
         # Test with max_n=None
         newest_none = d.newest_keys(None)
         assert to_str_list(newest_none) == ['e', 'd', 'c', 'b', 'a']
+
+        d.clear()
 
 
 @mock_aws
@@ -99,6 +103,8 @@ def test_oldest_values_basic(tmpdir):
         oldest_values_none = d.oldest_values(None)
         assert oldest_values_none == ['value_a', 'value_b', 'value_c', 'value_d', 'value_e']
 
+        d.clear()
+
 
 @mock_aws
 def test_newest_values_basic(tmpdir):
@@ -126,6 +132,8 @@ def test_newest_values_basic(tmpdir):
         newest_values_none = d.newest_values(None)
         assert newest_values_none == ['value_e', 'value_d', 'value_c', 'value_b', 'value_a']
 
+        d.clear()
+
 
 @mock_aws
 def test_empty_dict_edge_cases(tmpdir):
@@ -151,6 +159,8 @@ def test_empty_dict_edge_cases(tmpdir):
         assert d.newest_keys(0) == []
         assert d.oldest_values(0) == []
         assert d.newest_values(0) == []
+
+        d.clear()
 
 
 @mock_aws
@@ -180,6 +190,7 @@ def test_single_item_edge_cases(tmpdir):
         assert d.oldest_values(5) == ['value']
         assert d.newest_values(5) == ['value']
 
+        d.clear()
 
 @mock_aws
 def test_zero_max_n_edge_cases(tmpdir):
@@ -199,6 +210,7 @@ def test_zero_max_n_edge_cases(tmpdir):
         assert d.oldest_values(0) == []
         assert d.newest_values(0) == []
 
+        d.clear()
 
 @mock_aws
 def test_ordering_after_deletion(tmpdir):
@@ -233,6 +245,8 @@ def test_ordering_after_deletion(tmpdir):
         assert to_str_list(d.newest_keys(3)) == ['g', 'f', 'd']
         assert d.oldest_values(3) == ['value_a', 'value_b', 'value_d']
         assert d.newest_values(3) == ['value_g', 'value_f', 'value_d']
+
+        d.clear()
 
 
 @mock_aws
@@ -280,6 +294,8 @@ def test_timestamp_verification(tmpdir):
         expected_newest_values = [d[k] for k in newest_keys]
         assert newest_values == expected_newest_values
 
+        d.clear()
+
 
 @mock_aws
 def test_consistency_between_functions(tmpdir):
@@ -311,6 +327,8 @@ def test_consistency_between_functions(tmpdir):
         # Test the relationship mentioned in existing tests
         assert to_str_list(d.newest_keys(100)) == list(reversed(to_str_list(d.oldest_keys(100))))
         assert d.newest_values(100) == list(reversed(d.oldest_values(100)))
+
+        d.clear()
 
 
 @mock_aws
@@ -350,6 +368,8 @@ def test_different_data_types(tmpdir):
         
         for key in newest_keys:
             assert d[key] in [v[1] for v in test_values]
+
+        d.clear()
 
 
 @mock_aws
@@ -396,3 +416,5 @@ def test_multiple_operations_and_updates(tmpdir):
         # Verify the updated value is returned
         assert 'value_a_2' in oldest_values or 'value_a_2' in newest_values
         assert 'value_a_1' not in oldest_values and 'value_a_1' not in newest_values
+
+        d.clear()

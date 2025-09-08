@@ -1,5 +1,3 @@
-import time
-import pytest
 from moto import mock_aws
 from src.persidict import FileDirDict, S3Dict
 from src.persidict.safe_str_tuple import SafeStrTuple
@@ -50,6 +48,8 @@ def test_file_dir_dict_timestamp_functions(tmpdir):
     assert to_str_list(d.newest_keys()) == list(reversed(to_str_list(d.oldest_keys())))
     assert d.newest_values() == list(reversed(d.oldest_values()))
 
+    d.clear()
+
 
 @mock_aws
 def test_s3_dict_timestamp_functions(tmpdir):
@@ -79,6 +79,8 @@ def test_s3_dict_timestamp_functions(tmpdir):
     assert all(isinstance(v, str) for v in oldest_values)
     assert all(isinstance(v, str) for v in newest_values)
 
+    d.clear()
+
 
 def test_empty_dict_edge_cases(tmpdir):
     """Test edge cases with empty dictionaries for both implementations."""
@@ -102,6 +104,8 @@ def test_empty_dict_edge_cases(tmpdir):
         assert d.newest_keys(0) == []
         assert d.oldest_values(0) == []
         assert d.newest_values(0) == []
+
+        d.clear()
 
 
 def test_single_item_edge_cases(tmpdir):
@@ -127,6 +131,8 @@ def test_single_item_edge_cases(tmpdir):
     assert d.oldest_values(5) == ['value']
     assert d.newest_values(5) == ['value']
 
+    d.clear()
+
 
 def test_max_n_zero_edge_cases(tmpdir):
     """Test edge cases with max_n=0."""
@@ -142,6 +148,8 @@ def test_max_n_zero_edge_cases(tmpdir):
     assert d.newest_keys(0) == []
     assert d.oldest_values(0) == []
     assert d.newest_values(0) == []
+
+    d.clear()
 
 
 def test_ordering_after_deletion(tmpdir):
@@ -174,6 +182,8 @@ def test_ordering_after_deletion(tmpdir):
     assert to_str_list(d.newest_keys(3)) == ['g', 'f', 'd']
     assert d.oldest_values(3) == ['value_a', 'value_b', 'value_d']
     assert d.newest_values(3) == ['value_g', 'value_f', 'value_d']
+
+    d.clear()
 
 
 def test_timestamp_verification(tmpdir):
@@ -214,6 +224,8 @@ def test_timestamp_verification(tmpdir):
     expected_newest_values = [d[k] for k in newest_keys]
     assert newest_values == expected_newest_values
 
+    d.clear()
+
 
 def test_consistency_between_functions(tmpdir):
     """Test consistency between keys and values functions."""
@@ -242,6 +254,8 @@ def test_consistency_between_functions(tmpdir):
     # Test the relationship
     assert to_str_list(d.newest_keys(100)) == list(reversed(to_str_list(d.oldest_keys(100))))
     assert d.newest_values(100) == list(reversed(d.oldest_values(100)))
+
+    d.clear()
 
 
 def test_different_data_types(tmpdir):
@@ -279,6 +293,8 @@ def test_different_data_types(tmpdir):
     
     for key in newest_keys:
         assert d[key] in expected_values
+
+    d.clear()
 
 
 def test_multiple_operations_and_updates(tmpdir):
@@ -322,3 +338,5 @@ def test_multiple_operations_and_updates(tmpdir):
     # Verify the updated value is returned
     assert 'value_a_2' in oldest_values or 'value_a_2' in newest_values
     assert 'value_a_1' not in oldest_values and 'value_a_1' not in newest_values
+
+    d.clear()
