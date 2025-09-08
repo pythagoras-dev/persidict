@@ -304,16 +304,17 @@ class FileDirDict(PersiDict):
             raise ValueError("When base_class_for_values is not str,"
                 + " file_type must be pkl or json.")
 
-        n_retries = 3
+        n_retries = 8
         # extra protections to better handle concurrent writes
         for i in range(n_retries):
-            try: # extra protections to better handle concurrent writes
+            try:
                 self._save_to_file_impl(file_name, value)
                 return
-            except:
-                time.sleep(random.random()/random.randint(1, 5))
-
-        self._save_to_file_impl(file_name, value)
+            except Exception as e:
+                if i < n_retries - 1:
+                    time.sleep(random.uniform(0.01, 0.1) * (2 ** i))
+                else:
+                    raise e
 
 
     def __contains__(self, key:PersiDictKey) -> bool:

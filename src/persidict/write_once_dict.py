@@ -116,17 +116,19 @@ class WriteOnceDict(PersiDict):
         """
         check_needed = False
 
-        try: # extra protections to better handle concurrent writes
-            if key in self._wrapped_dict:
-                check_needed = True
-            else:
-                self._wrapped_dict[key] = value
-        except:
-            time.sleep(random.random()/random.randint(1,5))
-            if key in self._wrapped_dict:
-                check_needed = True
-            else:
-                self._wrapped_dict[key] = value
+        n_retries = 8
+        for i in range(n_retries):
+            try:  # extra protections to better handle concurrent writes
+                if key in self._wrapped_dict:
+                    check_needed = True
+                else:
+                    self._wrapped_dict[key] = value
+                break
+            except Exception as e:
+                if i < n_retries - 1:
+                    time.sleep(random.uniform(0.01, 0.1) * (2 ** i))
+                else:
+                    raise e
 
         if not key in self._wrapped_dict:
             raise KeyError(
