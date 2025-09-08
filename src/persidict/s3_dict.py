@@ -163,11 +163,27 @@ class S3Dict(PersiDict):
         if not etag:
             return
         etag_file_name = file_name + ".__etag__"
+        dir_name = os.path.dirname(etag_file_name)
         # Write to a temporary file and then rename for atomicity
-        fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(etag_file_name))
-        with os.fdopen(fd, "w") as f:
-            f.write(etag)
-        os.replace(temp_path, etag_file_name)
+        fd, temp_path = tempfile.mkstemp(dir=dir_name)
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(etag)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_path, etag_file_name)
+            try:
+                if os.name == 'posix':
+                    dir_fd = os.open(dir_name, os.O_RDONLY)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+            except OSError:
+                pass
+        except:
+            os.remove(temp_path)
+            raise
 
 
     def __getitem__(self, key:PersiDictKey) -> Any:
@@ -200,13 +216,27 @@ class S3Dict(PersiDict):
             if cached_etag == s3_etag:
                 return self.local_cache._read_from_file(file_name)
 
-        fd, temp_path = tempfile.mkstemp(dir=self.local_cache.base_dir)
-        os.close(fd)  # download_file needs a path, not an open file descriptor
+        dir_name = os.path.dirname(file_name)
+        fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
+
         try:
-            self.s3_client.download_file(self.bucket_name, obj_name, temp_path)
+            with os.fdopen(fd, 'wb') as f:
+                self.s3_client.download_fileobj(self.bucket_name, obj_name, f)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(temp_path, file_name)
+            try:
+                if os.name == 'posix':
+                    dir_fd = os.open(dir_name, os.O_RDONLY)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+            except OSError:
+                pass
         except:
             os.remove(temp_path)  # Clean up temp file on failure
+            raise
 
         self._write_etag_file(file_name, s3_etag)
 

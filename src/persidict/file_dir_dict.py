@@ -285,13 +285,29 @@ class FileDirDict(PersiDict):
             if self.file_type == "pkl":
                 with open(fd, 'wb') as f:
                     joblib.dump(value, f, compress='lz4')
+                    f.flush()
+                    os.fsync(f.fileno())
             elif self.file_type == "json":
                 with open(fd, 'w') as f:
                     f.write(jsonpickle.dumps(value, indent=4))
+                    f.flush()
+                    os.fsync(f.fileno())
             else:
                 with open(fd, 'w') as f:
                     f.write(value)
+                    f.flush()
+                    os.fsync(f.fileno())
             os.replace(temp_path, file_name)
+            try:
+                if os.name == 'posix':
+                    dir_fd = os.open(dir_name, os.O_RDONLY)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+            except OSError:
+                pass
+
         except:
             os.remove(temp_path)
             raise
