@@ -197,48 +197,61 @@ class S3Dict(PersiDict):
 
         obj_name = self._build_full_objectname(key)
 
+        cached_etag = None
+        etag_file_name = file_name + ".__etag__"
+        if not self.immutable_items and os.path.exists(file_name) and os.path.exists(
+                etag_file_name):
+            with open(etag_file_name, "r") as f:
+                cached_etag = f.read()
 
         try:
-            head = self.s3_client.head_object(
-                Bucket=self.bucket_name, Key=obj_name)
-            s3_etag = head.get("ETag")
+            get_kwargs = {'Bucket': self.bucket_name, 'Key': obj_name}
+            if cached_etag:
+                get_kwargs['IfNoneMatch'] = cached_etag
+
+            response = self.s3_client.get_object(**get_kwargs)
+
+            # 200 OK: object was downloaded, either because it's new or changed.
+            s3_etag = response.get("ETag")
+            body = response['Body']
+
+            dir_name = os.path.dirname(file_name)
+            fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
+
+            try:
+                with os.fdopen(fd, 'wb') as f:
+                    # Stream body to file to avoid loading all in memory
+                    for chunk in body.iter_chunks():
+                        f.write(chunk)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(temp_path, file_name)
+                try:
+                    if os.name == 'posix':
+                        dir_fd = os.open(dir_name, os.O_RDONLY)
+                        try:
+                            os.fsync(dir_fd)
+                        finally:
+                            os.close(dir_fd)
+                except OSError:
+                    pass
+            except:
+                os.remove(temp_path)  # Clean up temp file on failure
+                raise
+
+            self._write_etag_file(file_name, s3_etag)
+
         except ClientError as e:
-            if e.response['Error']['Code'] == '404':
+            error_code = e.response.get("Error", {}).get("Code")
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
+                # 304 Not Modified: our cached version is up-to-date.
+                # The file will be read from cache at the end of the function.
+                pass
+            elif e.response.get("Error", {}).get("Code") == 'NoSuchKey':
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
             else:
                 # Re-raise other client errors (e.g., permissions, throttling)
                 raise
-
-        etag_file_name = file_name + ".__etag__"
-        if not self.immutable_items and os.path.exists(file_name) and os.path.exists(etag_file_name):
-            with open(etag_file_name, "r") as f:
-                cached_etag = f.read()
-            if cached_etag == s3_etag:
-                return self.local_cache._read_from_file(file_name)
-
-        dir_name = os.path.dirname(file_name)
-        fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
-
-        try:
-            with os.fdopen(fd, 'wb') as f:
-                self.s3_client.download_fileobj(self.bucket_name, obj_name, f)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(temp_path, file_name)
-            try:
-                if os.name == 'posix':
-                    dir_fd = os.open(dir_name, os.O_RDONLY)
-                    try:
-                        os.fsync(dir_fd)
-                    finally:
-                        os.close(dir_fd)
-            except OSError:
-                pass
-        except:
-            os.remove(temp_path)  # Clean up temp file on failure
-            raise
-
-        self._write_etag_file(file_name, s3_etag)
 
         return self.local_cache._read_from_file(file_name)
 
