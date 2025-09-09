@@ -36,30 +36,24 @@ it will be automatically converted into SafeStrTuple.
 """
 
 class PersiDict(MutableMapping, ParameterizableClass):
-    """Dict-like durable store that accepts sequences of strings as keys.
+    """Abstract dict-like interface for durable key-value stores.
 
-    An abstract base class for key-value stores. It accepts keys as
-    URL/filename-safe sequences of strings (SafeStrTuple) and stores values in
-    a persistent backend. Implementations may use local files, cloud objects,
-    etc.
-
-    The API resembles Python's built-in dict, with some differences (e.g.,
-    insertion order is not preserved) and additional methods such as
-    timestamp(key).
+    Keys are URL/filename-safe sequences of strings (SafeStrTuple). Concrete
+    subclasses implement storage backends (e.g., filesystem, S3). The API is
+    similar to Python's dict but does not guarantee insertion order and adds
+    persistence-specific helpers (e.g., timestamp()).
 
     Attributes:
         immutable_items (bool):
-            If True, the dictionary is append-only: items cannot be modified
-            or deleted. This can enable distributed cache optimizations for
-            remote storage backends. If False, normal dict-like behavior.
+            If True, items are write-once: existing values cannot be modified or
+            deleted.
         digest_len (int):
-            Length of a hash signature suffix added to each string in a key
-            when mapping keys to underlying storage addresses (e.g., filenames
-            or S3 object names). Helps operate correctly on case-insensitive
-            (even if case-preserving) filesystems.
+            Length of a base32 MD5 digest fragment used to suffix each key
+            component to avoid collisions on case-insensitive filesystems. 0
+            disables suffixing.
         base_class_for_values (Optional[type]):
-            Optional base class for values. If set, values must be instances of
-            this type; otherwise, no type checks are enforced.
+            Optional base class that all values must inherit from. If None, any
+            type is accepted.
     """
 
     digest_len:int
@@ -71,6 +65,20 @@ class PersiDict(MutableMapping, ParameterizableClass):
                  , digest_len:int = 8
                  , base_class_for_values:Optional[type] = None
                  , *args, **kwargs):
+        """Initialize base parameters shared by all persistent dicts.
+
+        Args:
+            immutable_items: If True, items cannot be modified or deleted.
+            digest_len: Number of hash characters to append to key components to
+                avoid case-insensitive collisions. Must be non-negative.
+            base_class_for_values: Optional base class that values must inherit
+                from; if None, values are not type-restricted.
+            *args: Ignored in the base class (reserved for subclasses).
+            **kwargs: Ignored in the base class (reserved for subclasses).
+
+        Raises:
+            ValueError: If digest_len is negative.
+        """
         self.digest_len = int(digest_len)
         if digest_len < 0:
             raise ValueError("digest_len must be non-negative")
@@ -80,10 +88,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def get_params(self):
-        """Return a dictionary of parameters for the PersiDict object.
+        """Return configuration parameters of this dictionary.
 
-        This method is needed to support Parameterizable API.
-        The method is absent in the original dict API.
+        Returns:
+            dict: A sorted dict of parameters used to reconstruct the instance.
+                This supports the Parameterizable API and is absent in the
+                builtin dict.
         """
         params =  dict(
             immutable_items=self.immutable_items
@@ -97,9 +107,13 @@ class PersiDict(MutableMapping, ParameterizableClass):
     @property
     @abstractmethod
     def base_url(self):
-        """Return dictionary's URL
+        """Base URL identifying the storage location.
 
-        This property is absent in the original dict API.
+        Returns:
+            str: A URL-like string (e.g., s3://bucket/prefix or file://...).
+
+        Raises:
+            NotImplementedError: Must be provided by subclasses.
         """
         raise NotImplementedError
 
@@ -107,39 +121,79 @@ class PersiDict(MutableMapping, ParameterizableClass):
     @property
     @abstractmethod
     def base_dir(self):
-        """Return dictionary's base directory in the local filesystem.
+        """Base directory on the local filesystem, if applicable.
 
-        This property is absent in the original dict API.
+        Returns:
+            str: Path to a local base directory used by the store.
+
+        Raises:
+            NotImplementedError: Must be provided by subclasses that use local
+                storage.
         """
         raise NotImplementedError
 
 
     def __repr__(self) -> str:
-        """Return repr(self)"""
+        """Return a reproducible string representation.
+
+        Returns:
+            str: Representation including class name and constructor parameters.
+        """
         params = self.get_params()
         params_str = ', '.join(f'{k}={v!r}' for k, v in params.items())
         return f'{self.__class__.__name__}({params_str})'
 
 
     def __str__(self) -> str:
-        """Return str(self)"""
+        """Return a user-friendly string with all items.
+
+        Returns:
+            str: Stringified dict of items.
+        """
         return str(dict(self.items()))
 
 
     @abstractmethod
     def __contains__(self, key:PersiDictKey) -> bool:
-        """True if the dictionary has the specified key, else False."""
+        """Check whether a key exists in the store.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            bool: True if key exists, False otherwise.
+        """
         raise NotImplementedError
 
 
     @abstractmethod
     def __getitem__(self, key:PersiDictKey) -> Any:
-        """X.__getitem__(y) is an equivalent to X[y]"""
+        """Retrieve the value for a key.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            Any: The stored value.
+        """
         raise NotImplementedError
 
 
     def __setitem__(self, key:PersiDictKey, value:Any):
-        """Set self[key] to value."""
+        """Set the value for a key.
+
+        Special values KEEP_CURRENT and DELETE_CURRENT are interpreted as
+        commands to keep or delete the current value respectively.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+            value: Value to store, or a Joker command.
+
+        Raises:
+            KeyError: If attempting to modify an existing key when
+                immutable_items is True.
+            NotImplementedError: Subclasses must implement actual writing.
+        """
         if value is KEEP_CURRENT:
             return
         elif value is DELETE_CURRENT:
@@ -151,21 +205,42 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def __delitem__(self, key:PersiDictKey):
-        """Delete self[key]."""
-        if self.immutable_items: # TODO: change to exceptions
+        """Delete a key and its value.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Raises:
+            KeyError: If immutable_items is True.
+            NotImplementedError: Subclasses must implement deletion.
+        """
+        if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
         raise NotImplementedError
 
 
     @abstractmethod
     def __len__(self) -> int:
-        """Return len(self)."""
+        """Return the number of stored items.
+
+        Returns:
+            int: Number of key-value pairs.
+        """
         raise NotImplementedError
 
 
     @abstractmethod
     def _generic_iter(self, result_type: set[str]) -> Any:
-        """Underlying implementation for items/keys/values/... iterators"""
+        """Underlying implementation for iterator helpers.
+
+        Args:
+            result_type: A set indicating desired fields among {'keys',
+                'values', 'timestamps'}.
+
+        Returns:
+            Any: An iterator yielding keys, values, and/or timestamps based on
+                result_type.
+        """
         assert isinstance(result_type, set)
         assert 1 <= len(result_type) <= 3
         assert len(result_type | {"keys", "values", "timestamps"}) == 3
@@ -174,44 +249,80 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def __iter__(self):
-        """Implement iter(self)."""
+        """Iterate over keys.
+
+        Returns:
+            Iterator[SafeStrTuple]: Iterator of keys.
+        """
         return self._generic_iter({"keys"})
 
 
     def keys(self):
-        """iterator object that provides access to keys"""
+        """Return an iterator over keys.
+
+        Returns:
+            Iterator[SafeStrTuple]: Keys iterator.
+        """
         return  self._generic_iter({"keys"})
 
 
     def keys_and_timestamps(self):
-        """iterator object that provides access to keys and timestamps"""
+        """Return an iterator over (key, timestamp) pairs.
+
+        Returns:
+            Iterator[tuple[SafeStrTuple, float]]: Keys and POSIX timestamps.
+        """
         return self._generic_iter({"keys", "timestamps"})
 
 
     def values(self):
-        """D.values() -> iterator object that provides access to D's values"""
+        """Return an iterator over values.
+
+        Returns:
+            Iterator[Any]: Values iterator.
+        """
         return self._generic_iter({"values"})
 
 
     def values_and_timestamps(self):
-        """iterator object that provides access to values and timestamps"""
+        """Return an iterator over (value, timestamp) pairs.
+
+        Returns:
+            Iterator[tuple[Any, float]]: Values and POSIX timestamps.
+        """
         return self._generic_iter({"values", "timestamps"})
 
 
     def items(self):
-        """D.items() -> iterator object that provides access to D's items"""
+        """Return an iterator over (key, value) pairs.
+
+        Returns:
+            Iterator[tuple[SafeStrTuple, Any]]: Items iterator.
+        """
         return self._generic_iter({"keys", "values"})
 
 
     def items_and_timestamps(self):
-        """iterator object that provides access to keys, values, and timestamps"""
+        """Return an iterator over (key, value, timestamp) triples.
+
+        Returns:
+            Iterator[tuple[SafeStrTuple, Any, float]]: Items and timestamps.
+        """
         return self._generic_iter({"keys", "values", "timestamps"})
 
 
     def setdefault(self, key:PersiDictKey, default:Any=None) -> Any:
-        """Insert key with a value of default if key is not in the dictionary.
+        """Insert key with default if absent; return the value.
 
-        Return the value for key if key is in the dictionary, else default.
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+            default: Value to insert if the key is not present.
+
+        Returns:
+            Any: Existing value if present; otherwise the provided default.
+
+        Raises:
+            AssertionError: If default is a Joker command.
         """
         # TODO: check edge cases to ensure the same semantics as standard dicts
         key = SafeStrTuple(key)
@@ -224,7 +335,17 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def __eq__(self, other) -> bool:
-        """Return self==other. """
+        """Compare dictionaries for equality.
+
+        If other is a PersiDict, compare portable params. Otherwise, attempt to
+        compare as mapping by keys and values.
+
+        Args:
+            other: Another dictionary-like object.
+
+        Returns:
+            bool: True if considered equal, False otherwise.
+        """
         if isinstance(other, PersiDict):
             return self.get_portable_params() == other.get_portable_params()
         try:
