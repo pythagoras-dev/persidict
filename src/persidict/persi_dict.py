@@ -334,7 +334,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return default
 
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other:PersiDict) -> bool:
         """Compare dictionaries for equality.
 
         If other is a PersiDict, compare portable params. Otherwise, attempt to
