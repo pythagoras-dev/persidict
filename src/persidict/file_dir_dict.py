@@ -460,6 +460,15 @@ class FileDirDict(PersiDict):
 
 
     def random_key(self) -> PersiDictKey | None:
+        """Return a uniformly random key from the dictionary, or None if empty.
+
+        Performs a full directory traversal using reservoir sampling
+        (k=1) to select a random file matching the configured file_type without
+        loading all keys into memory.
+
+        Returns:
+            PersiDictKey | None: A random key if any items exist; otherwise None.
+        """
         # canonicalise extension once
         ext = None
         if self.file_type:

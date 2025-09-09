@@ -48,27 +48,32 @@ class S3Dict(PersiDict):
                  , digest_len:int = 8
                  , base_class_for_values:Optional[type] = None
                  ,*args ,**kwargs):
-        """A constructor defines location of the store and object format to use.
+        """Initialize an S3-backed persistent dictionary.
 
-        bucket_name and region define an S3 location of the storage
-        that will contain all the objects in the S3_Dict.
-        If the bucket does not exist, it will be created.
+        Args:
+            bucket_name (str): Name of the S3 bucket to use. The bucket will be
+                created if it does not already exist.
+            region (str | None): AWS region of the bucket. If None, the default
+                client region is used.
+            root_prefix (str): Common S3 key prefix under which all objects are
+                stored. A trailing slash is added if missing.
+            base_dir (str): Local directory used for temporary files and a
+                small on-disk cache.
+            file_type (str): Extension/format for stored values. "pkl" or
+                "json" store arbitrary Python objects; other values imply plain
+                text and only allow str values.
+            immutable_items (bool): If True, disallow changing existing items.
+            digest_len (int): Number of base32 MD5 characters appended to key
+                elements to avoid case-insensitive collisions. Use 0 to disable.
+            base_class_for_values (type | None): Optional base class that all
+                values must inherit from. If provided and not str, file_type
+                must be "pkl" or "json".
+            *args: Ignored; reserved for compatibility.
+            **kwargs: Ignored; reserved for compatibility.
 
-        root_prefix is a common S3 prefix for all objectnames in a dictionary.
-
-        _base_dir is a local directory that will be used to store tmp files.
-
-        base_class_for_values constraints the type of values that can be
-        stored in the dictionary. If specified, it will be used to
-        check types of values in the dictionary. If not specified,
-        no type checking will be performed and all types will be allowed.
-
-        file_type is an extension, which will be used for all files in the dictionary.
-        If file_type has one of two values: "lz4" or "json", it defines
-        which file format will be used by FileDirDict to store values.
-        For all other values of file_type, the file format will always be plain
-        text. "lz4" or "json" allow storing arbitrary Python objects,
-        while all other file_type-s only work with str objects.
+        Raises:
+            ValueError: If file_type is "__etag__" (reserved) or configuration
+                is inconsistent with base_class_for_values.
         """
 
         super().__init__(immutable_items = immutable_items, digest_len = 0)
@@ -143,7 +148,14 @@ class S3Dict(PersiDict):
 
 
     def __contains__(self, key:PersiDictKey) -> bool:
-        """True if the dictionary has the specified key, else False. """
+        """Return True if the specified key exists in S3.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            bool: True if the object exists (or is cached when immutable), else False.
+        """
         key = SafeStrTuple(key)
         if self.immutable_items:
             file_name = self.local_cache._build_full_path(

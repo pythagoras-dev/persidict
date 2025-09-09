@@ -360,10 +360,20 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def __getstate__(self):
+        """Prevent pickling of PersiDict instances.
+
+        Raises:
+            TypeError: Always raised; PersiDict instances are not pickleable.
+        """
         raise TypeError("PersiDict is not picklable.")
 
 
     def __setstate__(self, state):
+        """Prevent unpickling of PersiDict instances.
+
+        Raises:
+            TypeError: Always raised; PersiDict instances are not pickleable.
+        """
         raise TypeError("PersiDict is not picklable.")
 
 
@@ -380,11 +390,18 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def delete_if_exists(self, key:PersiDictKey) -> bool:
-        """ Delete an item without raising an exception if it doesn't exist.
-
-        Returns True if the item existed and was deleted, False otherwise.
+        """Delete an item without raising an exception if it doesn't exist.
 
         This method is absent in the original dict API.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            bool: True if the item existed and was deleted; False otherwise.
+
+        Raises:
+            KeyError: If items are immutable (immutable_items is True).
         """
 
         if self.immutable_items: # TODO: change to exceptions
@@ -413,9 +430,13 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def subdicts(self) -> dict[str, PersiDict]:
-        """Get a dictionary of sub-dictionaries.
+        """Return a mapping of first-level keys to sub-dictionaries.
 
         This method is absent in the original dict API.
+
+        Returns:
+            dict[str, PersiDict]: A mapping from a top-level key segment to a
+                sub-dictionary restricted to the corresponding keyspace.
         """
         all_keys = {k[0] for k in self.keys()}
         result_subdicts = {k: self.get_subdict(k) for k in all_keys}
@@ -462,9 +483,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def oldest_keys(self, max_n=None):
-        """Return max_n the oldest keys in the dictionary.
+        """Return up to max_n oldest keys in the dictionary.
 
-        If max_n is None, return all keys.
+        Args:
+            max_n (int | None): Maximum number of keys to return. If None,
+                return all keys sorted by age (oldest first). Values <= 0
+                yield an empty list.
+
+        Returns:
+            list[SafeStrTuple]: The oldest keys, oldest first.
 
         This method is absent in the original Python dict API.
         """
@@ -484,9 +511,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def oldest_values(self, max_n=None):
-        """Return max_n the oldest values in the dictionary.
+        """Return up to max_n oldest values in the dictionary.
 
-        If max_n is None, return all values.
+        Args:
+            max_n (int | None): Maximum number of values to return. If None,
+                return values for all keys sorted by age (oldest first). Values
+                <= 0 yield an empty list.
+
+        Returns:
+            list[Any]: Values corresponding to the oldest keys.
 
         This method is absent in the original Python dict API.
         """
@@ -494,9 +527,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def newest_keys(self, max_n=None):
-        """Return max_n the newest keys in the dictionary.
+        """Return up to max_n newest keys in the dictionary.
 
-        If max_n is None, return all keys.
+        Args:
+            max_n (int | None): Maximum number of keys to return. If None,
+                return all keys sorted by age (newest first). Values <= 0
+                yield an empty list.
+
+        Returns:
+            list[SafeStrTuple]: The newest keys, newest first.
 
         This method is absent in the original Python dict API.
         """
@@ -516,9 +555,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def newest_values(self, max_n=None):
-        """Return max_n the newest values in the dictionary.
+        """Return up to max_n newest values in the dictionary.
 
-        If max_n is None, return all values.
+        Args:
+            max_n (int | None): Maximum number of values to return. If None,
+                return values for all keys sorted by age (newest first). Values
+                <= 0 yield an empty list.
+
+        Returns:
+            list[Any]: Values corresponding to the newest keys.
 
         This method is absent in the original Python dict API.
         """
