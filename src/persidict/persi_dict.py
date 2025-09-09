@@ -43,41 +43,28 @@ it will be automatically converted into SafeStrTuple.
 class PersiDict(MutableMapping, ParameterizableClass):
     """Dict-like durable store that accepts sequences of strings as keys.
 
-    An abstract base class for key-value stores. It accepts keys in a form of
-    SafeStrSequence - a URL/filename-safe sequence of strings.
-    It assumes no restrictions on types of values in the key-value pairs,
-    but allows users to impose such restrictions.
+    An abstract base class for key-value stores. It accepts keys as
+    URL/filename-safe sequences of strings (SafeStrTuple) and stores values in
+    a persistent backend. Implementations may use local files, cloud objects,
+    etc.
 
-    The API for the class resembles the API of Python's built-in Dict
-    (see https://docs.python.org/3/library/stdtypes.html#mapping-types-dict)
-    with a few variations (e.g. insertion order is not preserved) and
-    a few additional methods(e.g. .timestamp(key), which returns last
-    modification time for a key).
+    The API resembles Python's built-in dict, with some differences (e.g.,
+    insertion order is not preserved) and additional methods such as
+    timestamp(key).
 
-    Attributes
-    ----------
-    immutable_items : bool
-                      True means an append-only dictionary: items are
-                      not allowed to be modified or deleted from a dictionary.
-                      It enables various distributed cache optimizations
-                      for remote storage.
-                      False means normal dict-like behaviour.
-
-    digest_len : int
-                 Length of a hash signature suffix which PersiDict
-                 automatically adds to each string in a key
-                 while mapping the key to an address of a value
-                 in a persistent storage backend (e.g. a filename
-                 or an S3 objectname). We need it to ensure correct work
-                 of persistent dictionaries with case-insensitive
-                 (even if case-preserving) filesystems, such as MacOS HFS.
-
-    base_class_for_values: Optional[type]
-                    A base class for values stored in the dictionary.
-                    If specified, it will be used to check types of values
-                    in the dictionary. If not specified, no type checking
-                    will be performed and all types will be allowed.
-
+    Attributes:
+        immutable_items (bool):
+            If True, the dictionary is append-only: items cannot be modified
+            or deleted. This can enable distributed cache optimizations for
+            remote storage backends. If False, normal dict-like behavior.
+        digest_len (int):
+            Length of a hash signature suffix added to each string in a key
+            when mapping keys to underlying storage addresses (e.g., filenames
+            or S3 object names). Helps operate correctly on case-insensitive
+            (even if case-preserving) filesystems.
+        base_class_for_values (Optional[type]):
+            Optional base class for values. If set, values must be instances of
+            this type; otherwise, no type checks are enforced.
     """
 
     digest_len:int
