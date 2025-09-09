@@ -123,7 +123,7 @@ class S3Dict(PersiDict):
 
     @property
     def base_url(self):
-        """Return dictionary's URl.
+        """Return dictionary's URL.
 
         This property is absent in the original dict API.
         """
@@ -140,7 +140,14 @@ class S3Dict(PersiDict):
 
 
     def _build_full_objectname(self, key:PersiDictKey) -> str:
-        """ Convert PersiDictKey into an S3 objectname. """
+        """Convert a key into a full S3 object key (object name).
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            str: The full S3 key under root_prefix with file_type suffix applied.
+        """
         key = SafeStrTuple(key)
         key = sign_safe_str_tuple(key, self.digest_len)
         objectname = self.root_prefix +  "/".join(key)+ "." + self.file_type
@@ -199,7 +206,18 @@ class S3Dict(PersiDict):
 
 
     def __getitem__(self, key:PersiDictKey) -> Any:
-        """X.__getitem__(y) is an equivalent to X[y]. """
+        """Retrieve the value stored for a key from S3 or local cache.
+
+        If immutable_items is True and a local cached file exists, that cache is
+        returned. Otherwise, the object is fetched from S3, with conditional
+        requests used when possible.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            Any: The stored value.
+        """
 
         key = SafeStrTuple(key)
         file_name = self.local_cache._build_full_path(key, create_subdirs=True)
@@ -269,7 +287,23 @@ class S3Dict(PersiDict):
 
 
     def __setitem__(self, key:PersiDictKey, value:Any):
-        """Set self[key] to value. """
+        """Store a value for a key in S3 and update the local cache.
+
+        Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
+        Validates a value type if base_class_for_values is set, then writes to the
+        local cache and uploads to S3. If possible, caches the S3 ETag locally to
+        enable conditional GETs later.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            value (Any): Value to store, or a joker command.
+
+        Raises:
+            KeyError: If attempting to modify an existing item when
+                immutable_items is True.
+            TypeError: If value is a PersiDict or does not match
+                base_class_for_values when it is set.
+        """
 
         if value is KEEP_CURRENT:
             return
@@ -314,7 +348,14 @@ class S3Dict(PersiDict):
 
 
     def __delitem__(self, key:PersiDictKey):
-        """Delete self[key]. """
+        """Delete the stored value for a key from S3 and local cache.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Raises:
+            KeyError: If immutable_items is True.
+        """
 
         key = SafeStrTuple(key)
         if self.immutable_items:

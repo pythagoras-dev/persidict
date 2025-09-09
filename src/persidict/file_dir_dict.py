@@ -373,14 +373,36 @@ class FileDirDict(PersiDict):
 
 
     def __contains__(self, key:PersiDictKey) -> bool:
-        """True if the dictionary has the specified key, else False. """
+        """Check whether a key exists in the dictionary.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            bool: True if a file for the key exists; False otherwise.
+        """
         key = SafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.isfile(filename)
 
 
     def __getitem__(self, key:PersiDictKey) -> Any:
-        """ Implementation for x[y] syntax. """
+        """Retrieve the value stored for a key.
+
+        Equivalent to obj[key]. Reads the corresponding file from the disk and
+        deserializes according to file_type.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            Any: The stored value.
+
+        Raises:
+            KeyError: If the file for the key does not exist.
+            TypeError: If the deserialized value does not match base_class_for_values
+                when it is set.
+        """
         key = SafeStrTuple(key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
@@ -395,7 +417,22 @@ class FileDirDict(PersiDict):
 
 
     def __setitem__(self, key:PersiDictKey, value:Any):
-        """Set self[key] to value."""
+        """Store a value for a key on the disk.
+
+        Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
+        Validates value type if base_class_for_values is set, then serializes
+        and writes to a file determined by the key and file_type.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            value (Any): Value to store, or a joker command.
+
+        Raises:
+            KeyError: If attempting to modify an existing item when
+                immutable_items is True.
+            TypeError: If the value is a PersiDict or does not match
+                base_class_for_values when it is set.
+        """
 
         if value is KEEP_CURRENT:
             return
@@ -423,7 +460,14 @@ class FileDirDict(PersiDict):
 
 
     def __delitem__(self, key:PersiDictKey) -> None:
-        """Delete self[key]."""
+        """Delete the stored value for a key.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Raises:
+            KeyError: If immutable_items is True or if the key does not exist.
+        """
         key = SafeStrTuple(key)
         assert not self.immutable_items, "Can't delete immutable items"
         filename = self._build_full_path(key)
