@@ -356,7 +356,24 @@ class S3Dict(PersiDict):
 
 
     def _generic_iter(self, result_type: str):
-        """Underlying implementation for .items()/.keys()/.values() iterators"""
+        """Underlying implementation for .items()/.keys()/.values() iterators.
+
+        Iterates over S3 objects under the configured root_prefix and yields
+        keys, values, and/or timestamps according to the requested result_type.
+        Keys are mapped to SafeStrTuple by removing the file extension and
+        unsigning based on digest_len.
+
+        Args:
+            result_type (set[str]): Any non-empty subset of {"keys", "values",
+                "timestamps"} specifying which fields to yield.
+
+        Returns:
+            Iterator: A generator yielding:
+                - SafeStrTuple if result_type == {"keys"}
+                - Any if result_type == {"values"}
+                - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
+                - tuple[..., float] including POSIX timestamp if "timestamps" is requested.
+        """
 
         assert isinstance(result_type, set)
         assert 1 <= len(result_type) <= 3
@@ -368,11 +385,20 @@ class S3Dict(PersiDict):
         prefix_len = len(self.root_prefix)
 
         def splitter(full_name: str) -> SafeStrTuple:
+            """Convert an S3 object key into a SafeStrTuple without the suffix.
+
+            Args:
+                full_name (str): Full S3 object key (including root_prefix).
+
+            Returns:
+                SafeStrTuple: The parsed key parts, still signed.
+            """
             assert full_name.startswith(self.root_prefix)
             result = full_name[prefix_len:-ext_len].split(sep="/")
             return SafeStrTuple(result)
 
         def step():
+            """Generator that pages through S3 and yields entries based on result_type."""
             paginator = self.s3_client.get_paginator("list_objects_v2")
             page_iterator = paginator.paginate(
                 Bucket=self.bucket_name, Prefix = self.root_prefix)

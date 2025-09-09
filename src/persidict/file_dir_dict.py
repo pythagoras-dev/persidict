@@ -177,7 +177,26 @@ class FileDirDict(PersiDict):
                          , key:SafeStrTuple
                          , create_subdirs:bool=False
                          , is_file_path:bool=True) -> str:
-        """Convert a key into a filesystem path."""
+        """Convert a key into an absolute filesystem path.
+
+        Transforms a SafeStrTuple into either a directory path or a file path
+        inside this dictionary's base directory. When is_file_path is True, the
+        final component is treated as a filename with the configured file_type
+        extension. When create_subdirs is True, missing intermediate directories
+        are created.
+
+        Args:
+            key (SafeStrTuple): The key to convert. It will be temporarily
+                signed according to digest_len to produce collision-safe names.
+            create_subdirs (bool): If True, create any missing intermediate
+                directories.
+            is_file_path (bool): If True, return a file path ending with
+                ".{file_type}"; otherwise return just the directory path for
+                the key prefix.
+
+        Returns:
+            str: An absolute path within base_dir corresponding to the key.
+        """
 
         key = sign_safe_str_tuple(key, self.digest_len)
         key = [self._base_dir] + list(key.strings)
@@ -195,7 +214,22 @@ class FileDirDict(PersiDict):
 
 
     def _build_key_from_full_path(self, full_path:str)->SafeStrTuple:
-        """Convert a filesystem path back into a key."""
+        """Convert an absolute filesystem path back into a SafeStrTuple key.
+
+        This function reverses _build_full_path, stripping base_dir, removing the
+        file_type extension if the path points to a file, and unsigning the key
+        components according to digest_len.
+
+        Args:
+            full_path (str): Absolute path within the dictionary's base
+                directory.
+
+        Returns:
+            SafeStrTuple: The reconstructed (unsigned) key.
+
+        Raises:
+            ValueError: If full_path is not located under base_dir.
+        """
 
         # Ensure we're working with absolute paths
         full_path = os.path.abspath(full_path)
@@ -399,7 +433,23 @@ class FileDirDict(PersiDict):
 
 
     def _generic_iter(self, result_type: set[str]):
-        """Underlying implementation for .items()/.keys()/.values() iterators"""
+        """Underlying implementation for .items()/.keys()/.values() iterators.
+
+        Produces generators over keys, values, and/or timestamps by traversing
+        the directory tree under base_dir. Keys are converted back from paths by
+        removing the file extension and unsigning according to digest_len.
+
+        Args:
+            result_type (set[str]): Any non-empty subset of {"keys", "values",
+                "timestamps"} specifying which fields to yield.
+
+        Returns:
+            Iterator: A generator yielding:
+                - SafeStrTuple if result_type == {"keys"}
+                - Any if result_type == {"values"}
+                - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
+                - tuple[..., float] including POSIX timestamp if "timestamps" is requested.
+        """
         assert isinstance(result_type, set)
         assert 1 <= len(result_type) <= 3
         assert len(result_type | {"keys", "values", "timestamps"}) == 3
@@ -409,12 +459,20 @@ class FileDirDict(PersiDict):
         ext_len = len(self.file_type) + 1
 
         def splitter(dir_path: str):
-            """Transform a dirname into a PersiDictKey key"""
+            """Transform a relative dirname into SafeStrTuple components.
+
+            Args:
+                dir_path (str): Relative path under base_dir (e.g., "a/b").
+
+            Returns:
+                list[str]: List of safe string components (may be empty).
+            """
             if dir_path == ".":
                 return []
             return dir_path.split(os.sep)
 
         def step():
+            """Generator that yields entries based on result_type."""
             suffix = "." + self.file_type
             for dir_name, _, files in walk_results:
                 for f in files:
