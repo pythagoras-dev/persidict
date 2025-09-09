@@ -1,21 +1,16 @@
-"""PersiDict: base class used in persistent dictionaries' hierarchy.
+"""Persistent, dict-like API for durable key-value stores.
 
-PersiDict: a base class in the hierarchy, defines unified interface
-of all persistent dictionaries. The interface is similar to the interface of
-Python's built-in Dict, with a few variations
-(e.g. insertion order is not preserved) and additional methods.
+PersiDict defines a unified interface for persistent dictionaries. The API is
+similar to Python's built-in dict with some differences (e.g., insertion order
+is not guaranteed) and several additional convenience methods.
 
-PersiDict persistently stores key-value pairs.
+Keys are sequences of URL/filename-safe strings represented by SafeStrTuple.
+Plain strings or sequences of strings are accepted and automatically coerced to
+SafeStrTuple. Values can be arbitrary Python objects unless an implementation
+restricts them via ``base_class_for_values``.
 
-A key is a sequence of strings in a form of SafeStrTuple.
-Regular strings and their sequences can also be passed to PersiDict as keys,
-in this case they will be automatically converted to SafeStrTuple.
-
-A value can be (virtually) any Python object.
-
-'Persistently' means that key-value pairs are saved in a durable storage,
-such as a local hard-drive or AWS S3 cloud, and can be retrieved
-even after the Python process that created the dictionary has terminated.
+Persistence means items are stored durably (e.g., in local files or cloud
+objects) and remain accessible across process lifetimes.
 """
 
 from __future__ import annotations

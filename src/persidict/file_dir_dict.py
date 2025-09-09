@@ -1,11 +1,11 @@
-""" Persistent dictionaries that store key-value pairs on local disks.
+"""Persistent dictionary implementation backed by local files.
 
-This functionality is implemented by the class FileDirDict
-(inherited from PersiDict): a dictionary that
-stores key-value pairs as files on a local hard-drive.
-A key is used to compose a filename, while a value is stored in the file
-as a binary, or as a json object, or as a plain text
-(depends on configuration parameters).
+FileDirDict stores each key-value pair in a separate file under a base
+directory. Keys determine directory structure and filename; values are
+serialized depending on ``file_type``.
+
+- file_type="pkl" or "json": arbitrary Python objects via pickle/jsonpickle.
+- any other value: strings are stored as plain text.
 """
 from __future__ import annotations
 
@@ -56,22 +56,27 @@ class FileDirDict(PersiDict):
                  , immutable_items:bool = False
                  , digest_len:int = 8
                  , base_class_for_values: Optional[type] = None):
-        """A constructor defines location of the store and file format to use.
+        """Initialize a filesystem-backed persistent dictionary.
 
-        _base_dir is a directory that will contain all the files in
-        the FileDirDict. If the directory does not exist, it will be created.
+        Args:
+            base_dir (str): Base directory where all files are stored. Created
+                if it does not exist.
+            file_type (str): File extension/format to use for stored values.
+                - "pkl" or "json": arbitrary Python objects are supported.
+                - any other value: only strings are supported and stored as text.
+            immutable_items (bool): If True, existing items cannot be modified
+                or deleted.
+            digest_len (int): Length of a hash suffix appended to each key path
+                element to avoid case-insensitive collisions. Use 0 to disable.
+            base_class_for_values (Optional[type]): Optional base class that all
+                stored values must be instances of. If provided and not ``str``,
+                then file_type must be either "pkl" or "json".
 
-        base_class_for_values constraints the type of values that can be
-        stored in the dictionary. If specified, it will be used to
-        check types of values in the dictionary. If not specified,
-        no type checking will be performed and all types will be allowed.
-
-        file_type is extension, which will be used for all files in the dictionary.
-        If file_type has one of two values: "pkl" or "json", it defines
-        which file format will be used by FileDirDict to store values.
-        For all other values of file_type, the file format will always be plain
-        text. "pkl" and "json" allow to store arbitrary Python objects,
-        while all other file_type-s only work with str objects.
+        Raises:
+            ValueError: If base_dir points to a file; if file_type is "__etag__";
+                or if configuration is inconsistent (e.g., non-str values with
+                unsupported file_type).
+            AssertionError: If file_type contains unsafe characters.
         """
 
         super().__init__(immutable_items = immutable_items
