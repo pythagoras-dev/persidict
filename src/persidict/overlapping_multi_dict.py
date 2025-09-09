@@ -1,24 +1,55 @@
 from .persi_dict import PersiDict
 
 class OverlappingMultiDict:
-    """A class that holds several PersiDict objects with different fyle_type-s.
+    """Container for multiple PersiDict instances sharing the same base and differing by file_type.
 
-    The class is designed to be used as a container for several PersiDict objects
-    that have different file_type-s. All inner PersiDict objects
-    have the same dir_name attribute. Each inner PersiDict object is accessible
-    as an attribute of the OverlappingMultiDict object.
-    The attribute name is the same as the file_type
-    of the inner PersiDict object.
+    This class instantiates several sub-dictionaries (PersiDict subclasses) that
+    share common parameters but differ by their file_type. Each sub-dictionary is
+    exposed as an attribute whose name equals the file_type (e.g., obj.json, obj.csv).
+    All sub-dictionaries typically point to the same underlying base directory or
+    bucket and differ only in how items are materialized by file type.
 
-    OverlappingMultiDict allows to store several PersiDict objects
-    in a single object, which can be useful for managing multiple types of data
-    in a single file directory or in an s3 bucket.
+    Attributes:
+        dict_type (type):
+            A subclass of PersiDict used to create each sub-dictionary.
+        shared_subdicts_params (dict):
+            Parameters applied to every created sub-dictionary (e.g., base_dir,
+            bucket, immutable_items, digest_len).
+        individual_subdicts_params (dict):
+            Mapping from file_type (attribute name) to a dict of parameters that
+            are specific to that sub-dictionary. These override or extend
+            shared_subdicts_params for the given file_type.
+        subdicts_names (list[str]):
+            The list of file_type names (i.e., attribute names) created.
 
+    Raises:
+        TypeError: If pickling is attempted or item access is used on the
+            OverlappingMultiDict itself rather than its sub-dicts.
     """
     def __init__(self
                  , dict_type:type
                  , shared_subdicts_params:dict
                  , **individual_subdicts_params):
+        """Initialize the container and create sub-dictionaries.
+
+        Args:
+            dict_type (type):
+                A subclass of PersiDict that will be instantiated for each
+                file_type provided via individual_subdicts_params.
+            shared_subdicts_params (dict):
+                Parameters shared by all sub-dicts (e.g., base_dir, bucket).
+            **individual_subdicts_params: Dict[str, dict]
+                Keyword arguments where each key is a file_type (also the
+                attribute name to be created) and each value is a dict of
+                parameters specific to that sub-dict. These are merged with
+                shared_subdicts_params when constructing the sub-dict. The
+                resulting dict also receives file_type=<key>.
+
+        Raises:
+            AssertionError: If dict_type is not a PersiDict subclass, or if
+                shared_subdicts_params is not a dict, or if any individual
+                parameter set is not a dict.
+        """
         assert issubclass(dict_type, PersiDict)
         assert isinstance(shared_subdicts_params, dict)
         self.dict_type = dict_type
@@ -32,26 +63,54 @@ class OverlappingMultiDict:
                 ,**individual_subdicts_params[subdict_name]
                 ,"file_type":subdict_name})
 
-        def __getstate__(self):
-            raise TypeError("OverlappingMultiDict cannot be pickled.")
+    def __getstate__(self):
+        """Prevent pickling.
 
-        def __setstate__(self, state):
-            raise TypeError("OverlappingMultiDict cannot be pickled.")
+        Raises:
+            TypeError: Always raised; this object is not pickleable.
+        """
+        raise TypeError("OverlappingMultiDict cannot be pickled.")
 
-        def __getitem__(self, key):
-            raise TypeError(
-                "OverlappingMultiDict does not support item access by key. "
-                "Individual items should be accessed through nested dicts, "
-                f"which are available via attributes {self.subdicts_names}")
+    def __setstate__(self, state):
+        """Prevent unpickling.
 
-        def __setitem__(self, key, value):
-            raise TypeError(
-                "OverlappingMultiDict does not support item assignment by key. "
-                "Individual items should be accessed through nested dicts, "
-                 f"which are available via attributes {self.subdicts_names}")
+        Raises:
+            TypeError: Always raised; this object is not pickleable.
+        """
+        raise TypeError("OverlappingMultiDict cannot be pickled.")
 
-        def __delitem__(self, key):
-            raise TypeError(
-                "OverlappingMultiDict does not support item deletion by key. "
-                "Individual items can be deletedthrough nested dicts, "
-                f"which are available via attributes {self.subdicts_names}")
+    def __getitem__(self, key):
+        """Disallow item access on the container itself.
+
+        Suggest accessing items through the sub-dictionaries exposed as
+        attributes (e.g., obj.json[key]).
+
+        Raises:
+            TypeError: Always raised to indicate unsupported operation.
+        """
+        raise TypeError(
+            "OverlappingMultiDict does not support item access by key. "
+            "Individual items should be accessed through nested dicts, "
+            f"which are available via attributes {self.subdicts_names}")
+
+    def __setitem__(self, key, value):
+        """Disallow item assignment on the container itself.
+
+        Raises:
+            TypeError: Always raised to indicate unsupported operation.
+        """
+        raise TypeError(
+            "OverlappingMultiDict does not support item assignment by key. "
+            "Individual items should be accessed through nested dicts, "
+             f"which are available via attributes {self.subdicts_names}")
+
+    def __delitem__(self, key):
+        """Disallow item deletion on the container itself.
+
+        Raises:
+            TypeError: Always raised to indicate unsupported operation.
+        """
+        raise TypeError(
+            "OverlappingMultiDict does not support item deletion by key. "
+            "Individual items can be deletedthrough nested dicts, "
+            f"which are available via attributes {self.subdicts_names}")
