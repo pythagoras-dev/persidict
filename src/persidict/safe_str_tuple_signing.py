@@ -1,12 +1,19 @@
-"""Functions for signing and unsigning SafeStrTuples.
+"""Sign and unsign SafeStrTuple elements with deterministic suffixes.
 
-Two functions from this module allow to add and remove
-hash signature suffixes to/from all strings in a SafeStrTuple:
-sign_safe_str_tuple() and unsign_safe_str_tuple().
+This module provides helpers to add or remove short, deterministic hash
+suffixes to every string element of a SafeStrTuple. These suffixes are used
+to avoid collisions on case-insensitive filesystems (e.g., macOS HFS) while
+keeping keys stable and portable.
 
-The suffixes are used to ensure correct work of persistent dictionaries
-(which employ SafeStrTuple-s as keys) with case-insensitive filesystems,
-e.g. MacOS HFS.
+Functions:
+    sign_safe_str_tuple(str_seq, digest_len):
+        Return a new SafeStrTuple where each element is suffixed with an
+        underscore and a base32-encoded MD5 digest fragment of length
+        ``digest_len``. If a correct suffix is already present, it is not
+        duplicated.
+    unsign_safe_str_tuple(str_seq, digest_len):
+        Return a new SafeStrTuple where a previously added suffix of length
+        ``digest_len`` is removed from each element, when detected.
 """
 
 import base64
@@ -14,8 +21,20 @@ import hashlib
 from .safe_str_tuple import SafeStrTuple
 
 
-def _create_signature_suffix(input_str:str, digest_len:int) -> str:
-    """ Create a hash signature suffix for a string."""
+def _create_signature_suffix(input_str: str, digest_len: int) -> str:
+    """Create a short, deterministic hash suffix for a string.
+
+    The suffix format is ``_<b32(md5(input))[:digest_len].lower()>``. For
+    ``digest_len == 0`` an empty string is returned.
+
+    Args:
+        input_str: Input string to sign.
+        digest_len: Number of base32 characters from the MD5 digest to include.
+            Must be non-negative. A value of 0 disables suffixing.
+
+    Returns:
+        str: The computed suffix to append (may be an empty string).
+    """
 
     assert isinstance(input_str, str)
     assert isinstance(digest_len, int)
@@ -32,8 +51,20 @@ def _create_signature_suffix(input_str:str, digest_len:int) -> str:
     return suffix
 
 
-def _add_signature_suffix_if_absent(input_str:str, digest_len:int) -> str:
-    """ Add a hash signature suffix to a string if it's not there."""
+def _add_signature_suffix_if_absent(input_str: str, digest_len: int) -> str:
+    """Add the hash signature suffix if it's not already present.
+
+    If the input already ends with the exact suffix calculated from its
+    unsuffixed part, it is returned unchanged.
+
+    Args:
+        input_str: The string to sign.
+        digest_len: Length of the digest fragment to use; 0 leaves the string
+            unchanged.
+
+    Returns:
+        str: The original or suffixed string.
+    """
 
     assert isinstance(input_str, str)
     assert isinstance(digest_len, int)
@@ -52,10 +83,18 @@ def _add_signature_suffix_if_absent(input_str:str, digest_len:int) -> str:
 
 
 def _add_all_suffixes_if_absent(
-        str_seq:SafeStrTuple
-        ,digest_len:int
+        str_seq: SafeStrTuple,
+        digest_len: int,
         ) -> SafeStrTuple:
-    """Add hash signature suffixes to all strings in a SafeStrTuple."""
+    """Return a new SafeStrTuple with suffixes added to each element.
+
+    Args:
+        str_seq: Input sequence convertible to SafeStrTuple.
+        digest_len: Digest fragment length; 0 results in a no-op.
+
+    Returns:
+        SafeStrTuple: The suffixed sequence.
+    """
 
     str_seq = SafeStrTuple(str_seq)
 
@@ -68,8 +107,21 @@ def _add_all_suffixes_if_absent(
     return new_seq
 
 
-def _remove_signature_suffix_if_present(input_str:str, digest_len:int) -> str:
-    """ Remove a hash signature suffix from a string if it's detected."""
+def _remove_signature_suffix_if_present(input_str: str, digest_len: int) -> str:
+    """Remove the hash signature suffix if it is detected.
+
+    Detection is performed by recomputing the expected suffix from the
+    unsuffixed portion and comparing it to the current ending.
+
+    Args:
+        input_str: The possibly suffixed string.
+        digest_len: Digest fragment length used during signing; 0 leaves the
+            string unchanged.
+
+    Returns:
+        str: The original string without the suffix if detected; otherwise the
+        original string.
+    """
 
     assert isinstance(input_str, str)
     assert isinstance(digest_len, int)
@@ -88,10 +140,19 @@ def _remove_signature_suffix_if_present(input_str:str, digest_len:int) -> str:
 
 
 def _remove_all_signature_suffixes_if_present(
-        str_seq:SafeStrTuple
-        , digest_len:int
+        str_seq: SafeStrTuple,
+        digest_len: int,
         ) -> SafeStrTuple:
-    """Remove hash signature suffixes from all strings in a SafeStrTuple."""
+    """Return a new SafeStrTuple with detected suffixes removed from elements.
+
+    Args:
+        str_seq: Input sequence convertible to SafeStrTuple.
+        digest_len: Digest fragment length used during signing; 0 results in a
+            no-op.
+
+    Returns:
+        SafeStrTuple: The unsigned sequence.
+    """
 
     str_seq = SafeStrTuple(str_seq)
 
@@ -108,10 +169,22 @@ def _remove_all_signature_suffixes_if_present(
     return new_seq
 
 
-def sign_safe_str_tuple(str_seq:SafeStrTuple
-                        , digest_len:int
+def sign_safe_str_tuple(
+                        str_seq: SafeStrTuple,
+                        digest_len: int,
                         ) -> SafeStrTuple:
-    """Add hash signature suffixes to all strings in a SafeStrTuple."""
+    """Return a SafeStrTuple with signature suffixes added to all elements.
+
+    This is the public function for signing keys used by persistent dicts.
+
+    Args:
+        str_seq: Input sequence convertible to SafeStrTuple.
+        digest_len: Number of characters from the base32 digest to append. Use
+            0 to disable suffixing.
+
+    Returns:
+        SafeStrTuple: The suffixed sequence.
+    """
 
     str_seq = SafeStrTuple(str_seq)
 
@@ -120,10 +193,20 @@ def sign_safe_str_tuple(str_seq:SafeStrTuple
     return str_seq
 
 
-def unsign_safe_str_tuple(str_seq:SafeStrTuple
-                          , digest_len:int
+def unsign_safe_str_tuple(
+                          str_seq: SafeStrTuple,
+                          digest_len: int,
                           ) -> SafeStrTuple:
-    """Remove hash signature suffixes from all strings in a SafeStrTuple."""
+    """Return a SafeStrTuple with detected signature suffixes removed.
+
+    Args:
+        str_seq: Input sequence convertible to SafeStrTuple.
+        digest_len: Number of characters that were appended during signing. Use
+            0 for a no-op.
+
+    Returns:
+        SafeStrTuple: The unsigned sequence.
+    """
 
     str_seq = SafeStrTuple(str_seq)
 
