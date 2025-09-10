@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any, Dict, Type
+
 from .persi_dict import PersiDict
 
 class OverlappingMultiDict:
@@ -26,10 +30,10 @@ class OverlappingMultiDict:
         TypeError: If pickling is attempted or item access is used on the
             OverlappingMultiDict itself rather than its sub-dicts.
     """
-    def __init__(self
-                 , dict_type:type
-                 , shared_subdicts_params:dict
-                 , **individual_subdicts_params):
+    def __init__(self,
+                 dict_type: type[PersiDict],
+                 shared_subdicts_params: dict[str, Any],
+                 **individual_subdicts_params: dict[str, Any]) -> None:
         """Initialize the container and create sub-dictionaries.
 
         Args:

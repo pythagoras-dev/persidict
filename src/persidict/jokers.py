@@ -32,7 +32,7 @@ class Joker(ParameterizableClass):
     Returns:
         Joker: The singleton instance for the subclass when instantiated.
     """
-    _instances = {}
+    _instances: dict[type, "Joker"] = {}
 
     def get_params(self) -> dict[str, Any]:
         """Return parameters for parameterizable API.
