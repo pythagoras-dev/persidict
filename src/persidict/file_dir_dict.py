@@ -110,8 +110,12 @@ class FileDirDict(PersiDict):
     def get_params(self):
         """Return configuration parameters of the dictionary.
 
-        This method is needed to support Parameterizable API.
-        The method is absent in the original dict API.
+        This method is needed to support the Parameterizable API and is absent
+        in the standard dict API.
+
+        Returns:
+            dict: A mapping of parameter names to values including base_dir and
+                file_type merged with the base PersiDict parameters.
         """
         params = PersiDict.get_params(self)
         additional_params = dict(
@@ -127,6 +131,9 @@ class FileDirDict(PersiDict):
         """Return dictionary's URL.
 
         This property is absent in the original dict API.
+
+        Returns:
+            str: URL of the underlying storage in the form "file://<abs_path>".
         """
         return f"file://{self._base_dir}"
 
@@ -136,16 +143,25 @@ class FileDirDict(PersiDict):
         """Return dictionary's base directory.
 
         This property is absent in the original dict API.
+
+        Returns:
+            str: Absolute path to the base directory used by this dictionary.
         """
         return self._base_dir
 
 
     def __len__(self) -> int:
-        """ Get the number of key-value pairs in the dictionary.
+        """Return the number of key-value pairs in the dictionary.
 
-        WARNING: This operation can be slow on large dictionaries as it
-        needs to recursively walk the entire base directory.
-        Avoid using it in performance-sensitive code.
+        This performs a recursive traversal of the base directory.
+
+        Returns:
+            int: Count of stored items.
+
+        Note:
+            This operation can be slow on large dictionaries as it walks the
+            entire directory tree. Avoid using it in performance-sensitive
+            code paths.
         """
 
         suffix = "." + self.file_type
@@ -154,7 +170,11 @@ class FileDirDict(PersiDict):
 
 
     def clear(self) -> None:
-        """ Remove all elements from the dictionary."""
+        """Remove all elements from the dictionary.
+
+        Raises:
+            KeyError: If immutable_items is True.
+        """
 
         if self.immutable_items:
             raise KeyError("Can't clear a dict that contains immutable items")
@@ -264,8 +284,15 @@ class FileDirDict(PersiDict):
         """Get a subdictionary containing items with the same prefix key.
 
         For non-existing prefix key, an empty sub-dictionary is returned.
-
         This method is absent in the original dict API.
+
+        Args:
+            key (PersiDictKey): Prefix key (string or sequence of strings) that
+                identifies the subdirectory.
+
+        Returns:
+            FileDirDict: A new FileDirDict instance rooted at the specified
+                subdirectory, sharing the same parameters as this dictionary.
         """
         key = SafeStrTuple(key)
         full_dir_path = self._build_full_path(
@@ -279,7 +306,14 @@ class FileDirDict(PersiDict):
 
 
     def _read_from_file_impl(self, file_name:str) -> Any:
-        """Read a value from a file. """
+        """Read a value from a single file without retries.
+
+        Args:
+            file_name (str): Absolute path to the file to read.
+
+        Returns:
+            Any: The deserialized value according to file_type.
+        """
 
         if self.file_type == "pkl":
             with open(file_name, 'rb') as f:
@@ -294,7 +328,22 @@ class FileDirDict(PersiDict):
 
 
     def _read_from_file(self,file_name:str) -> Any:
-        """Read a value from a file. """
+        """Read a value from a file with retry/backoff for concurrency.
+
+        Validates that the configured file_type is compatible with the allowed
+        value types, then attempts to read the file using an exponential backoff
+        to better tolerate concurrent writers.
+
+        Args:
+            file_name (str): Absolute path of the file to read.
+
+        Returns:
+            Any: The deserialized value according to file_type.
+
+        Raises:
+            ValueError: If file_type is incompatible with non-string values.
+            Exception: Propagates the last exception if all retries fail.
+        """
 
         if not (self.file_type in {"pkl", "json"} or issubclass(
             self.base_class_for_values, str)):
@@ -314,7 +363,15 @@ class FileDirDict(PersiDict):
 
 
     def _save_to_file_impl(self, file_name:str, value:Any) -> None:
-        """Save a value to a file. """
+        """Write a single value to a file atomically (no retries).
+
+        Uses a temporary file and atomic rename to avoid partial writes and to
+        reduce the chance of readers observing corrupted data.
+
+        Args:
+            file_name (str): Absolute destination file path.
+            value (Any): Value to serialize and save.
+        """
 
         dir_name = os.path.dirname(file_name)
         # Use a temporary file and atomic rename to prevent data corruption
@@ -352,7 +409,20 @@ class FileDirDict(PersiDict):
             raise
 
     def _save_to_file(self, file_name:str, value:Any) -> None:
-        """Save a value to a file. """
+        """Save a value to a file with retry/backoff.
+
+        Ensures the configured file_type is compatible with value types and then
+        writes the value using an exponential backoff to better tolerate
+        concurrent readers/writers.
+
+        Args:
+            file_name (str): Absolute destination file path.
+            value (Any): Value to serialize and save.
+
+        Raises:
+            ValueError: If file_type is incompatible with non-string values.
+            Exception: Propagates the last exception if all retries fail.
+        """
 
         if not (self.file_type in {"pkl", "json"} or issubclass(
             self.base_class_for_values, str)):
@@ -555,6 +625,15 @@ class FileDirDict(PersiDict):
         """Get last modification time (in seconds, Unix epoch time).
 
         This method is absent in the original dict API.
+
+        Args:
+            key (PersiDictKey): Key whose timestamp to return.
+
+        Returns:
+            float: POSIX timestamp of the underlying file.
+
+        Raises:
+            FileNotFoundError: If the key does not exist.
         """
         key = SafeStrTuple(key)
         filename = self._build_full_path(key)
