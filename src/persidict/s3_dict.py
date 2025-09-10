@@ -112,6 +112,11 @@ class S3Dict(PersiDict):
 
         This method is needed to support Parameterizable API.
         The method is absent in the original dict API.
+
+        Returns:
+            dict: A mapping of parameter names to their configured values,
+            including region, bucket_name, and root_prefix combined with
+            parameters from the local cache.
         """
         params = self.local_cache.get_params()
         params["region"] = self.region
@@ -123,9 +128,12 @@ class S3Dict(PersiDict):
 
     @property
     def base_url(self):
-        """Return dictionary's URL.
+        """Return the S3 URL prefix of this dictionary.
 
         This property is absent in the original dict API.
+
+        Returns:
+            str: The base S3 URL in the form "s3://<bucket>/<root_prefix>".
         """
         return f"s3://{self.bucket_name}/{self.root_prefix}"
 
@@ -135,6 +143,9 @@ class S3Dict(PersiDict):
         """Return dictionary's base directory in the local filesystem.
 
         This property is absent in the original dict API.
+
+        Returns:
+            str: Path to the local on-disk cache directory used by S3Dict.
         """
         return self.local_cache.base_dir
 
@@ -158,7 +169,7 @@ class S3Dict(PersiDict):
         """Return True if the specified key exists in S3.
 
         Args:
-            key: Key (string or sequence of strings) or SafeStrTuple.
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
             bool: True if the object exists (or is cached when immutable), else False.
@@ -178,7 +189,12 @@ class S3Dict(PersiDict):
 
 
     def _write_etag_file(self, file_name: str, etag: str):
-        """Atomically write the ETag to its cache file."""
+        """Atomically write the ETag to its cache file.
+
+        Args:
+            file_name (str): Path to the cached data file (without the ETag suffix).
+            etag (str): The S3 ETag value to persist alongside the cached file.
+        """
         if not etag:
             return
         etag_file_name = file_name + ".__etag__"
@@ -375,6 +391,9 @@ class S3Dict(PersiDict):
         WARNING: This operation can be very slow and costly on large S3 buckets
         as it needs to iterate over all objects in the dictionary's prefix.
         Avoid using it in performance-sensitive code.
+
+        Returns:
+            int: Number of stored items under this dictionary's root_prefix.
         """
 
         num_files = 0
@@ -479,9 +498,16 @@ class S3Dict(PersiDict):
     def get_subdict(self, key:PersiDictKey) -> S3Dict:
         """Get a subdictionary containing items with the same prefix key.
 
-        For non-existing prefix key, an empty sub-dictionary is returned.
-
+        For a non-existing prefix key, an empty sub-dictionary is returned.
         This method is absent in the original dict API.
+
+        Args:
+            key (PersiDictKey): A common prefix (string or sequence of strings)
+                used to scope items stored under this dictionary.
+
+        Returns:
+            S3Dict: A new S3Dict instance rooted at the given prefix, sharing
+            the same bucket, region, serialization, and immutability settings.
         """
 
         key = SafeStrTuple(key)
@@ -509,11 +535,18 @@ class S3Dict(PersiDict):
 
 
     def timestamp(self,key:PersiDictKey) -> float:
-        """Get last modification time (in seconds, Unix epoch time).
+        """Get last modification time (Unix epoch seconds) for a key.
 
         This method is absent in the original dict API.
+
+        Args:
+            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            float: POSIX timestamp (seconds since the Unix epoch) of the last
+            modification time as reported by S3 for the object.
         """
-        #TODO: check work with timezones
+        # TODO: check work with timezones
         key = SafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
         response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
