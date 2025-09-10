@@ -240,11 +240,21 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             Any: An iterator yielding keys, values, and/or timestamps based on
                 result_type.
+
+        Raises:
+            TypeError: If result_type is not a set.
+            ValueError: If result_type contains invalid entries or an invalid number of items.
+            NotImplementedError: Subclasses must implement the concrete iterator.
         """
-        assert isinstance(result_type, set)
-        assert 1 <= len(result_type) <= 3
-        assert len(result_type | {"keys", "values", "timestamps"}) == 3
-        assert 1 <= len(result_type & {"keys", "values", "timestamps"}) <= 3
+        if not isinstance(result_type, set):
+            raise TypeError("result_type must be a set of strings")
+        if not (1 <= len(result_type) <= 3):
+            raise ValueError("result_type must contain between 1 and 3 elements")
+        allowed = {"keys", "values", "timestamps"}
+        if (result_type | allowed) != allowed:
+            raise ValueError("result_type can only contain 'keys', 'values', 'timestamps'")
+        if not (1 <= len(result_type & allowed) <= 3):
+            raise ValueError("result_type must include at least one of 'keys', 'values', 'timestamps'")
         raise NotImplementedError
 
 
@@ -322,11 +332,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
             Any: Existing value if present; otherwise the provided default.
 
         Raises:
-            AssertionError: If default is a Joker command.
+            TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT).
         """
         # TODO: check edge cases to ensure the same semantics as standard dicts
         key = SafeStrTuple(key)
-        assert not isinstance(default, Joker)
+        if isinstance(default, Joker):
+            raise TypeError("default must be a regular value, not a Joker command")
         if key in self:
             return self[key]
         else:
