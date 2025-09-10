@@ -394,7 +394,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             KeyError: If items are immutable (immutable_items is True).
         """
-        if self.immutable_items: # TODO: change to exceptions
+        if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
 
         for k in self.keys():
@@ -419,7 +419,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             KeyError: If items are immutable (immutable_items is True).
         """
 
-        if self.immutable_items: # TODO: change to exceptions
+        if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
 
         key = SafeStrTuple(key)
