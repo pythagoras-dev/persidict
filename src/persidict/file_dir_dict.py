@@ -74,16 +74,17 @@ class FileDirDict(PersiDict):
 
         Raises:
             ValueError: If base_dir points to a file; if file_type is "__etag__";
-                or if configuration is inconsistent (e.g., non-str values with
-                unsupported file_type).
-            AssertionError: If file_type contains unsafe characters.
+                if file_type contains unsafe characters; or if configuration is
+                inconsistent (e.g., non-str values with unsupported file_type).
+            RuntimeError: If base_dir cannot be created or is not a directory.
         """
 
         super().__init__(immutable_items = immutable_items
                 ,digest_len = digest_len
                 ,base_class_for_values = base_class_for_values)
 
-        assert file_type == replace_unsafe_chars(file_type, "")
+        if file_type != replace_unsafe_chars(file_type, ""):
+            raise ValueError("file_type contains unsafe characters")
         self.file_type = file_type
         if self.file_type == "__etag__":
             raise ValueError(
@@ -92,8 +93,8 @@ class FileDirDict(PersiDict):
 
         if (base_class_for_values is None or
                 not issubclass(base_class_for_values,str)):
-            assert file_type in {"json", "pkl"}, ("For non-string values"
-                + " file_type must be either 'pkl' or 'json'.")
+            if file_type not in {"json", "pkl"}:
+                raise ValueError("For non-string values file_type must be either 'pkl' or 'json'.")
 
         base_dir = str(base_dir)
 
@@ -101,7 +102,8 @@ class FileDirDict(PersiDict):
             raise ValueError(f"{base_dir} is a file, not a directory.")
 
         os.makedirs(base_dir, exist_ok=True)
-        assert os.path.isdir(base_dir)
+        if not os.path.isdir(base_dir):
+            raise RuntimeError(f"Failed to create or access directory: {base_dir}")
 
         # self.base_dir_param = _base_dir
         self._base_dir = os.path.abspath(base_dir)
@@ -539,7 +541,8 @@ class FileDirDict(PersiDict):
             KeyError: If immutable_items is True or if the key does not exist.
         """
         key = SafeStrTuple(key)
-        assert not self.immutable_items, "Can't delete immutable items"
+        if self.immutable_items:
+            raise KeyError("Can't delete immutable items")
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -563,11 +566,19 @@ class FileDirDict(PersiDict):
                 - Any if result_type == {"values"}
                 - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
                 - tuple[..., float] including POSIX timestamp if "timestamps" is requested.
+
+        Raises:
+            TypeError: If result_type is not a set.
+            ValueError: If result_type is empty or contains unsupported labels.
         """
-        assert isinstance(result_type, set)
-        assert 1 <= len(result_type) <= 3
-        assert len(result_type | {"keys", "values", "timestamps"}) == 3
-        assert 1 <= len(result_type & {"keys", "values", "timestamps"}) <= 3
+        if not isinstance(result_type, set):
+            raise TypeError("result_type must be a set")
+        if not (1 <= len(result_type) <= 3):
+            raise ValueError("result_type must be a non-empty subset of {'keys','values','timestamps'}")
+        allowed = {"keys", "values", "timestamps"}
+        invalid = result_type - allowed
+        if invalid:
+            raise ValueError(f"Unsupported result_type entries: {sorted(invalid)}; allowed: {sorted(allowed)}")
 
         walk_results = os.walk(self._base_dir)
         ext_len = len(self.file_type) + 1
