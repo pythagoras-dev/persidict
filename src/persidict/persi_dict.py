@@ -378,7 +378,11 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def clear(self) -> None:
-        """Remove all items from the dictionary. """
+        """Remove all items from the dictionary.
+
+        Raises:
+            KeyError: If items are immutable (immutable_items is True).
+        """
         if self.immutable_items: # TODO: change to exceptions
             raise KeyError("Can't delete an immutable key-value pair")
 
@@ -420,11 +424,25 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def get_subdict(self, prefix_key:PersiDictKey) -> PersiDict:
-        """Get a sub-dictionary containing items with the same prefix key.
+        """Get a sub-dictionary containing items with the given prefix key.
 
-        For non-existing prefix key, an empty sub-dictionary is returned.
+        Items whose keys start with the provided prefix are visible through the
+        returned sub-dictionary. If the prefix does not exist, an empty
+        sub-dictionary is returned.
 
         This method is absent in the original Python dict API.
+
+        Args:
+            prefix_key: Key prefix (string, sequence of strings, or SafeStrTuple)
+                identifying the sub-namespace to expose.
+
+        Returns:
+            PersiDict: A dictionary-like view restricted to keys under the
+                provided prefix.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses that support
+                hierarchical key spaces.
         """
         raise NotImplementedError
 
@@ -446,13 +464,14 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def random_key(self) -> PersiDictKey | None:
         """Return a random key from the dictionary.
 
-        Returns a single random key if the dictionary is not empty.
-        Returns None if the dictionary is empty.
-
         This method is absent in the original Python dict API.
 
         Implementation uses reservoir sampling to select a uniformly random key
         in streaming time, without loading all keys into memory or using len().
+
+        Returns:
+            SafeStrTuple | None: A random key if the dictionary is not empty;
+                None if the dictionary is empty.
         """
         iterator = iter(self.keys())
         try:
@@ -475,9 +494,19 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
     @abstractmethod
     def timestamp(self, key:PersiDictKey) -> float:
-        """Get last modification time (in seconds, Unix epoch time).
+        """Return the last modification time of a key.
 
         This method is absent in the original dict API.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            float: POSIX timestamp (seconds since Unix epoch) of the last
+                modification of the item.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
         """
         raise NotImplementedError
 
