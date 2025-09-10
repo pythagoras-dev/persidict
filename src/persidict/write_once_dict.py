@@ -179,7 +179,7 @@ class WriteOnceDict(PersiDict):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key:PersiDictKey, value):
         """Set a value for a key, preserving the first assignment.
 
         If the key is new, the value is stored. If the key already exists,
@@ -188,7 +188,7 @@ class WriteOnceDict(PersiDict):
         the values differ, a ValueError is raised.
 
         Args:
-            key: key.
+            key: key (string or sequence of strings or SafeStrTuple)
             value: Value to store.
 
         Raises:
@@ -231,7 +231,7 @@ class WriteOnceDict(PersiDict):
                         + f"which is not allowed. Details here: {diff_dict} ")
                 self._consistency_checks_passed += 1
 
-    def __contains__(self, item):
+    def __contains__(self, item:PersiDictKey):
         """Check if a key exists in the dictionary.
 
         Args:
@@ -242,7 +242,7 @@ class WriteOnceDict(PersiDict):
         """
         return item in self._wrapped_dict
 
-    def __getitem__(self, key):
+    def __getitem__(self, key:PersiDictKey):
         """Retrieve a value by key.
 
         Args:
