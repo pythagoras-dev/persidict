@@ -433,12 +433,23 @@ class S3Dict(PersiDict):
                 - Any if result_type == {"values"}
                 - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
                 - tuple[..., float] including POSIX timestamp if "timestamps" is requested.
+
+        Raises:
+            ValueError: If result_type is not a set or contains entries other than
+                "keys", "values", and/or "timestamps", or if it is empty.
         """
 
-        assert isinstance(result_type, set)
-        assert 1 <= len(result_type) <= 3
-        assert len(result_type | {"keys", "values", "timestamps"}) == 3
-        assert 1 <= len(result_type & {"keys", "values", "timestamps"}) <= 3
+        if not isinstance(result_type, set):
+            raise ValueError(
+                "result_type must be a set containing one to three of: 'keys', 'values', 'timestamps'"
+            )
+        if not (1 <= len(result_type) <= 3):
+            raise ValueError("result_type must be a non-empty set with at most three elements")
+        allowed = {"keys", "values", "timestamps"}
+        if not result_type.issubset(allowed):
+            invalid = ", ".join(sorted(result_type - allowed))
+            raise ValueError(f"result_type contains invalid entries: {invalid}. Allowed: {sorted(allowed)}")
+        # Intersections/length checks are implied by the above conditions.
 
         suffix = "." + self.file_type
         ext_len = len(self.file_type) + 1
@@ -452,8 +463,14 @@ class S3Dict(PersiDict):
 
             Returns:
                 SafeStrTuple: The parsed key parts, still signed.
+
+            Raises:
+                ValueError: If the provided key does not start with this dictionary's root_prefix.
             """
-            assert full_name.startswith(self.root_prefix)
+            if not full_name.startswith(self.root_prefix):
+                raise ValueError(
+                    f"S3 object key '{full_name}' is outside of root_prefix '{self.root_prefix}'"
+                )
             result = full_name[prefix_len:-ext_len].split(sep="/")
             return SafeStrTuple(result)
 
