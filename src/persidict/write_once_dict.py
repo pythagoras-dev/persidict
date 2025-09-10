@@ -79,13 +79,16 @@ class WriteOnceDict(PersiDict):
                 (disabled).
 
         Raises:
-            AssertionError: If ``wrapped_dict`` is not a PersiDict or does not
-                enforce immutable items.
+            TypeError: If ``wrapped_dict`` is not a PersiDict instance.
+            ValueError: If ``wrapped_dict`` does not enforce immutable items.
         """
         if wrapped_dict is None:
             wrapped_dict = FileDirDict(immutable_items=True)
-        assert isinstance(wrapped_dict, PersiDict)
-        assert wrapped_dict.immutable_items == True
+        if not isinstance(wrapped_dict, PersiDict):
+            raise TypeError("wrapped_dict must be a PersiDict instance")
+        if wrapped_dict.immutable_items is not True:
+            raise ValueError("wrapped_dict must be append-only "
+                             "(immutable_items==True)")
         self.p_consistency_checks = p_consistency_checks
         PersiDict.__init__(self,
             base_class_for_values=wrapped_dict.base_class_for_values,

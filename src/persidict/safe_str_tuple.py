@@ -71,26 +71,33 @@ class SafeStrTuple(Sequence, Hashable):
             **kwargs: Not supported.
 
         Raises:
-            AssertionError: If kwargs are provided; if no args are provided; if
-                any string is empty, too long, or contains disallowed chars; or
-                if an argument has an invalid type.
+            TypeError: If unexpected keyword arguments are provided, if no args
+                are provided, or if an argument has an invalid type.
+            ValueError: If a string is empty, too long, or contains disallowed
+                characters.
         """
-        assert len(kwargs) == 0
-        assert len(args) > 0
+        if len(kwargs) != 0:
+            raise TypeError(f"Unexpected keyword arguments: {list(kwargs.keys())}")
+        if len(args) == 0:
+            raise TypeError("At least one argument is required")
         candidate_strings = []
         for a in args:
             if isinstance(a, SafeStrTuple):
                 candidate_strings.extend(a.strings)
             elif isinstance(a, str):
-                assert len(a) > 0
-                assert len(a) < SAFE_STRING_MAX_LENGTH
-                assert all(c in SAFE_CHARS_SET for c in a)
+                if len(a) == 0:
+                    raise ValueError("Strings must be non-empty")
+                if len(a) >= SAFE_STRING_MAX_LENGTH:
+                    raise ValueError(
+                        f"String length must be < {SAFE_STRING_MAX_LENGTH}, got {len(a)}")
+                if not all(c in SAFE_CHARS_SET for c in a):
+                    raise ValueError("String contains disallowed characters")
                 candidate_strings.append(a)
             elif _is_sequence_not_mapping(a):
                 if len(a) > 0:
                     candidate_strings.extend(SafeStrTuple(*a).strings)
             else:
-                assert False, f"Invalid argument type: {type(a)}"
+                raise TypeError(f"Invalid argument type: {type(a)}")
         self.strings = tuple(candidate_strings)
 
     @property

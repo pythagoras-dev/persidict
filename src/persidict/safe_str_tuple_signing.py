@@ -34,11 +34,18 @@ def _create_signature_suffix(input_str: str, digest_len: int) -> str:
 
     Returns:
         str: The computed suffix to append (may be an empty string).
+
+    Raises:
+        TypeError: If input_str is not a str or digest_len is not an int.
+        ValueError: If digest_len is negative.
     """
 
-    assert isinstance(input_str, str)
-    assert isinstance(digest_len, int)
-    assert digest_len >= 0
+    if not isinstance(input_str, str):
+        raise TypeError(f"input_str must be str, got {type(input_str)!r}")
+    if not isinstance(digest_len, int):
+        raise TypeError(f"digest_len must be int, got {type(digest_len)!r}")
+    if digest_len < 0:
+        raise ValueError(f"digest_len must be >= 0, got {digest_len}")
 
     if digest_len == 0:
         return ""
@@ -64,11 +71,18 @@ def _add_signature_suffix_if_absent(input_str: str, digest_len: int) -> str:
 
     Returns:
         str: The original or suffixed string.
+
+    Raises:
+        TypeError: If input_str is not a str or digest_len is not an int.
+        ValueError: If digest_len is negative.
     """
 
-    assert isinstance(input_str, str)
-    assert isinstance(digest_len, int)
-    assert digest_len >= 0
+    if not isinstance(input_str, str):
+        raise TypeError(f"input_str must be str, got {type(input_str)!r}")
+    if not isinstance(digest_len, int):
+        raise TypeError(f"digest_len must be int, got {type(digest_len)!r}")
+    if digest_len < 0:
+        raise ValueError(f"digest_len must be >= 0, got {digest_len}")
 
     if digest_len == 0:
         return input_str
@@ -121,11 +135,18 @@ def _remove_signature_suffix_if_present(input_str: str, digest_len: int) -> str:
     Returns:
         str: The original string without the suffix if detected; otherwise the
         original string.
+
+    Raises:
+        TypeError: If input_str is not a str or digest_len is not an int.
+        ValueError: If digest_len is negative.
     """
 
-    assert isinstance(input_str, str)
-    assert isinstance(digest_len, int)
-    assert digest_len >= 0
+    if not isinstance(input_str, str):
+        raise TypeError(f"input_str must be str, got {type(input_str)!r}")
+    if not isinstance(digest_len, int):
+        raise TypeError(f"digest_len must be int, got {type(digest_len)!r}")
+    if digest_len < 0:
+        raise ValueError(f"digest_len must be >= 0, got {digest_len}")
 
     if digest_len == 0:
         return input_str

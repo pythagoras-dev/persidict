@@ -46,18 +46,22 @@ class OverlappingMultiDict:
                 resulting dict also receives file_type=<key>.
 
         Raises:
-            AssertionError: If dict_type is not a PersiDict subclass, or if
+            TypeError: If dict_type is not a PersiDict subclass, or if
                 shared_subdicts_params is not a dict, or if any individual
                 parameter set is not a dict.
         """
-        assert issubclass(dict_type, PersiDict)
-        assert isinstance(shared_subdicts_params, dict)
+        if not issubclass(dict_type, PersiDict):
+            raise TypeError("dict_type must be a subclass of PersiDict")
+        if not isinstance(shared_subdicts_params, dict):
+            raise TypeError("shared_subdicts_params must be a dict")
         self.dict_type = dict_type
         self.shared_subdicts_params = shared_subdicts_params
         self.individual_subdicts_params = individual_subdicts_params
         self.subdicts_names = list(individual_subdicts_params.keys())
         for subdict_name in individual_subdicts_params:
-            assert isinstance(individual_subdicts_params[subdict_name], dict)
+            if not isinstance(individual_subdicts_params[subdict_name], dict):
+                raise TypeError(
+                    f"Params for subdict {subdict_name!r} must be a dict")
             self.__dict__[subdict_name] = dict_type(
                 **{**shared_subdicts_params
                 ,**individual_subdicts_params[subdict_name]
