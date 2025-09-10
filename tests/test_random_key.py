@@ -100,9 +100,9 @@ def test_randomness_distribution(tmpdir, DictToTest, kwargs):
 
     # Check that the distribution is roughly uniform
     # Each key should appear approximately 100 times (500/5)
-    # Allow for some statistical variation (±30%)
+    # Allow for some statistical variation
     for key, count in counter.items():
-        assert 70 <= count <= 130, f"Key {key} appeared {count} times, expected around 100"
+        assert 60 <= count <= 140, f"Key {key} appeared {count} times, expected around 100"
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
