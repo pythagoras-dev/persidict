@@ -1,7 +1,7 @@
 from moto import mock_aws
-from src.persidict import FileDirDict, S3Dict
-from src.persidict.safe_str_tuple import SafeStrTuple
-from tests.minimum_sleep import min_sleep
+from persidict import FileDirDict, S3Dict
+from persidict.safe_str_tuple import SafeStrTuple
+from minimum_sleep import min_sleep
 
 
 def to_str_list(safe_tuple_list):

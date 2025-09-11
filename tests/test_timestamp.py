@@ -1,7 +1,7 @@
 import time
 
 from moto import mock_aws
-from src.persidict import FileDirDict, S3Dict
+from persidict import FileDirDict, S3Dict
 
 
 @mock_aws

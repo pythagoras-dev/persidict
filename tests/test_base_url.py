@@ -2,7 +2,7 @@ import pytest
 from moto import mock_aws
 
 from data_for_mutable_tests import mutable_tests
-from src.persidict import FileDirDict, S3Dict
+from persidict import FileDirDict, S3Dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

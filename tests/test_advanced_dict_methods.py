@@ -1,7 +1,7 @@
 import pytest
 from moto import mock_aws
 
-from src.persidict import SafeStrTuple
+from persidict import SafeStrTuple
 
 from data_for_mutable_tests import mutable_tests
 

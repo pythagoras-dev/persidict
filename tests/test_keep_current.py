@@ -2,7 +2,7 @@ import pytest
 from moto import mock_aws
 
 from data_for_mutable_tests import mutable_tests
-from src.persidict import KEEP_CURRENT
+from persidict import KEEP_CURRENT
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

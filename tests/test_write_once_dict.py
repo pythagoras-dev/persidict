@@ -1,5 +1,5 @@
 from parameterizable import smoketest_parameterizable_class, is_parameterizable
-from src.persidict import FileDirDict, WriteOnceDict
+from persidict import FileDirDict, WriteOnceDict
 
 import pytest
 

@@ -1,6 +1,6 @@
 import time
 
-from src.persidict import FileDirDict, S3Dict
+from persidict import FileDirDict, S3Dict
 
 def min_sleep(dct: FileDirDict | S3Dict) -> None:
     """ Sleep for a minimum time to ensure different timestamps. """

@@ -1,6 +1,6 @@
-from src.persidict.safe_chars import SAFE_CHARS_SET, get_safe_chars
-from src.persidict import SafeStrTuple
-from src.persidict.safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
+from persidict.safe_chars import SAFE_CHARS_SET, get_safe_chars
+from persidict import SafeStrTuple
+from persidict.safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 
 def test_add():
     """Test if SafeStrTuple concatenates correctly."""

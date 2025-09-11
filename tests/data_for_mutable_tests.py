@@ -1,4 +1,4 @@
-from src.persidict import FileDirDict, S3Dict
+from persidict import FileDirDict, S3Dict
 
 mutable_tests = [
 

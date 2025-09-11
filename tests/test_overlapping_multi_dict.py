@@ -1,4 +1,4 @@
-from src.persidict import FileDirDict, OverlappingMultiDict
+from persidict import FileDirDict, OverlappingMultiDict
 
 
 def test_single_filedirdict_pkl(tmpdir):
