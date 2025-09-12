@@ -26,7 +26,7 @@ def test_concurrency(tmpdir):
     for p in processes:
         p.join()
     d = FileDirDict(dir_name)
-    assert len(d) == 1
+    assert len(d) == 1, f"Expected 1 item, found {len(d)} items: {list(d.keys())}"
     assert "a" in d
     assert isinstance(d["a"], float)
 
