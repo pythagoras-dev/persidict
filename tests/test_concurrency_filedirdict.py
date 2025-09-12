@@ -13,8 +13,8 @@ def many_operations(dir_name:str, process_n:int):
                     d["a"] = random.random()
                 else:
                     _ = d["a"]
-        except:
-            d[f"error_in_process_{i}"] = True
+        except Exception as e:
+            d[f"error_in_process_{i}_{e.__class__.__name__}"] = True
 
 def test_concurrency(tmpdir):
     dir_name = str(tmpdir)
