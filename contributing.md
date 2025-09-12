@@ -1,4 +1,4 @@
-# Contributing to parameterizable
+# Contributing to persidict
 
 Thank you for your interest in contributing to `persidict`! 
 Your help is greatly appreciated. These guidelines will help you get started.
