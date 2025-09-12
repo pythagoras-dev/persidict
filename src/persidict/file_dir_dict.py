@@ -10,6 +10,7 @@ serialized depending on ``file_type``.
 from __future__ import annotations
 
 import os
+import pathlib
 import random
 import tempfile
 import time
@@ -137,7 +138,8 @@ class FileDirDict(PersiDict):
         Returns:
             str: URL of the underlying storage in the form "file://<abs_path>".
         """
-        return f"file://{self._base_dir}"
+        return pathlib.Path(self._base_dir).as_uri()
+
 
 
     @property
