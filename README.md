@@ -4,7 +4,7 @@ Simple persistent dictionaries for distributed applications in Python.
 
 ## 1. What Is It?
 
-**`persidict`** offers a simple persistent key-value store for Python. 
+`persidict` offers a simple persistent key-value store for Python. 
 It saves the content of the dictionary in a folder on a disk 
 or in an S3 bucket on AWS. Each value is stored as a separate file / S3 object.
 Only text strings or sequences of strings are allowed as keys.
@@ -14,11 +14,26 @@ Unlike other persistent dictionaries (e.g. Python's native `shelve`),
 where multiple instances of a program run concurrently across many machines,
 accessing the same dictionary via a shared storage.
 
-## 2. Usage
+## 2. Features
+* **Persistent Storage**: Save dictionaries to the local filesystem 
+(`FileDirDict`) or AWS S3 (`S3Dict`).
+* **Standard Dictionary API**: Use persidict objects like standard 
+Python dictionaries with methods like `__getitem__`, `__setitem__`, 
+`__delitem__`, `keys`, `values`, `items`, etc.
+* **Distributed Computing Ready**: Designed for concurrent access 
+in distributed environments.
+* **Flexible Serialization**: Store values as pickles (`pkl`), 
+JSON (`json`), or plain text.
+* **Type Safety**: Optionally enforce that all values in a dictionary are 
+instances of a specific class.
+* **Advanced Functionality**: Includes features like write-once dictionaries, 
+timestamping of entries, and tools for handling file-system-safe keys.
 
-### 2.1 Storing Data on a Local Disk
+## 3. Usage
 
-The **`FileDirDict`** class saves your dictionary to a local folder. 
+### 3.1 Storing Data on a Local Disk
+
+The `FileDirDict` class saves your dictionary to a local folder. 
 Each key-value pair is stored as a separate file.
 
 ```python
@@ -50,7 +65,7 @@ print(f"Number of settings: {len(reloaded_settings)}")
 print("username" in reloaded_settings)
 # >>> True
 ```
-### 2.2 Storing Data in the Cloud (AWS S3)
+### 3.2 Storing Data in the Cloud (AWS S3)
 
 For distributed applications, you can use **`S3Dict`** to store data in 
 an AWS S3 bucket. The usage is identical, allowing you to switch 
@@ -71,10 +86,9 @@ print(f"API Key: {cloud_config['api_key']}")
 # >>> API Key: ABC-123-XYZ
 ```
 
+## 4. Glossary
 
-## 3. Glossary
-
-### 3.1 Core Concepts
+### 4.1 Core Concepts
 
 * **`PersiDict`**: The abstract base class that defines the common interface 
 for all persistent dictionaries in the package. It's the foundation 
@@ -86,7 +100,7 @@ a single string, or a sequence of strings.
 flat tuple of non-empty, URL/filename-safe strings, ensuring that 
 keys are consistent and safe for various storage backends.
 
-### 3.2 Main Implementations
+### 4.2 Main Implementations
 
 * **`FileDirDict`**: A primary, concrete implementation of `PersiDict` 
 that stores each key-value pair as a separate file in a local directory.
@@ -94,7 +108,7 @@ that stores each key-value pair as a separate file in a local directory.
 which stores each key-value pair as an object in an AWS S3 bucket, 
 suitable for distributed environments.
 
-### 3.3 Key Parameters
+### 4.3 Key Parameters
 
 * **`file_type`**: A key parameter for `FileDirDict` and `S3Dict` that 
 determines the serialization format for values. 
@@ -107,16 +121,23 @@ instances of a specific class.
 "write-once," preventing any modification or deletion of existing items.
 * **`digest_len`**: An integer that specifies the length of a hash suffix 
 added to key components to prevent collisions on case-insensitive file systems.
+* **`base_dir`**: A string specifying the directory path where a `FileDirDict`
+stores its files. For `S3Dict`, this directory is used to cache files locally.
+* **`bucket_name`**: A string specifying the name of the S3 bucket where
+an `S3Dict` stores its objects.
+* **`region`**: An optional string specifying the AWS region for the S3 bucket.
 
-### 3.4 Advanced Classes
+### 4.4 Advanced Classes
 
 * **`WriteOnceDict`**: A wrapper that enforces write-once behavior 
-on any `PersiDict`, ignoring subsequent writes to the same key.
+on any `PersiDict`, ignoring subsequent writes to the same key. 
+It also allows for random consistency checks to ensure subsequent 
+writes to the same key always match the original value.
 * **`OverlappingMultiDict`**: An advanced container that holds 
 multiple `PersiDict` instances sharing the same storage 
 but with different `file_type`s.
 
-### 3.5 Special "Joker" Values
+### 4.5 Special "Joker" Values
 
 * **`Joker`**: The base class for special command-like values that 
 can be assigned to a key to trigger an action instead of storing a value.
@@ -125,41 +146,33 @@ ensures the existing value is not changed.
 * **`DELETE_CURRENT`**: A "joker" value that deletes the key-value pair 
 from the dictionary when assigned to a key.
 
-## 4. Comparison With Python Built-in Dictionaries
+## 5. Comparison With Python Built-in Dictionaries
 
-### 4.1 Similarities 
+### 5.1 Similarities 
 
-`PersiDict` and its subclasses can be used as regular Python dictionaries. 
+`PersiDict` subclasses can be used like regular Python dictionaries, supporting: 
 
-* You can use square brackets to get, set, or delete values. 
-* You can iterate over keys, values, or items. 
-* You can check if a key is in the dictionary. 
-* You can check whether two dicts are equal
-(meaning they contain the same key-value pairs).
-* You can get the length of the dictionary.
-* Methods `keys()`, `values()`, `items()`, `get()`, `clear()`
-, `setdefault()`, `update()` etc. work as expected.
+* Get, set, and delete operations with square brackets (`[]`).
+* Iteration over keys, values, and items.
+* Membership testing with `in`.
+* Length checking with `len()`.
+* Standard methods like `keys()`, `values()`, `items()`, `get()`, `clear()`
+, `setdefault()`, and `update()`.
 
-### 4.2 Differences 
+### 5.2 Differences 
 
-**`PersiDict`** and its subclasses persist values between program executions, 
-as well as make it possible to concurrently run programs 
-that simultaneously work with the same instance of a dictionary.
+* **Persistence**: Data is saved between program executions.
+* **Keys**: Keys must be strings or sequences of URL/filename-safe strings.
+* **Values**: Values must be pickleable. 
+You can also constrain values to a specific class.
+* **Order**: Insertion order is not preserved.
+* **Additional Methods**: `PersiDict` provides extra methods not in the standard 
+dict API, such as `timestamp()`, `random_key()`, `newest_keys()`, `subdicts()`
+, `delete_if_exists()`, `get_params()` and more.
+* **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
+and `DELETE_CURRENT` to delete a value during an assignment.
 
-* Keys must be sequences of URL/filename-safe non-empty strings.
-* Values must be pickleable Python objects.
-* You can constrain values to be an instance of a specific class.
-* Insertion order is not preserved.
-* You cannot assign initial key-value pairs to a dictionary in its constructor.
-* **`PersiDict`** API has additional methods `delete_if_exists()`, `timestamp()`,
-`get_subdict()`, `subdicts()`, `random_key()`, `newest_keys()`, 
-`oldest_keys()`, `newest_values()`, `oldest_values()`, and
-`get_params()`, which are not available in native Python dicts.
-* You can use `KEEP_CURRENT` constant as a fake new value 
-to avoid actually setting/updating a value. Or `DELETE_CURRENT` as 
-a fake new value to delete the previous value from a dictionary.
-
-## 5. How To Get It?
+## 6. Installation
 
 The source code is hosted on GitHub at:
 [https://github.com/pythagoras-dev/persidict](https://github.com/pythagoras-dev/persidict) 
@@ -167,27 +180,50 @@ The source code is hosted on GitHub at:
 Binary installers for the latest released version are available at the Python package index at:
 [https://pypi.org/project/persidict](https://pypi.org/project/persidict)
 
-### 5.1 Using uv :
-```
-uv add persidict
-```
+You can install `persidict` using `pip` or your favorite package manager:
 
-### 5.2 Using pip (legacy alternative to uv):
-```
+```bash
 pip install persidict
 ```
 
-## 6. Dependencies
+To include the AWS S3 extra dependencies:
 
+```bash
+pip install persidict[aws]
+```
+
+For development, including test dependencies:
+
+```bash
+pip install persidict[dev]
+```
+
+## 7. Dependencies
+
+`persidict` has the following core dependencies:
+
+* [parameterizable](https://pypi.org/project/parameterizable/)
 * [jsonpickle](https://jsonpickle.github.io)
 * [joblib](https://joblib.readthedocs.io)
 * [lz4](https://python-lz4.readthedocs.io)
 * [pandas](https://pandas.pydata.org)
 * [numpy](https://numpy.org)
+* [deepdiff](https://zepworks.com/deepdiff)
+
+For AWS S3 support (S3Dict), you will also need:
 * [boto3](https://boto3.readthedocs.io)
+
+For development and testing, the following packages are used:
 * [pytest](https://pytest.org)
 * [moto](http://getmoto.org)
 
-## 7. Key Contacts
+## 8. Contributing
+Contributions are welcome! Please see the contributing [guide](https://github.com/pythagoras-dev/persidict?tab=contributing-ov-file) for more details 
+on how to get started, run tests, and submit pull requests.
+
+## 9. License
+`persidict` is licensed under the MIT License. See the [LICENSE](https://github.com/pythagoras-dev/persidict?tab=MIT-1-ov-file) file for more details.
+
+## 10. Key Contacts
 
 * [Vlad (Volodymyr) Pavlov](https://www.linkedin.com/in/vlpavlov/)
