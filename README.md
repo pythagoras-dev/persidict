@@ -4,15 +4,14 @@ Simple persistent dictionaries for distributed applications in Python.
 
 ## 1. What Is It?
 
-`persidict` offers a simple persistent key-value store for Python. 
-It saves the content of the dictionary in a folder on a disk 
-or in an S3 bucket on AWS. Each value is stored as a separate file / S3 object.
-Only text strings or sequences of strings are allowed as keys.
+`persidict` is a lightweight persistent key-value store for Python. 
+It saves a dictionary to either a local directory or an AWS S3 bucket, 
+storing each value as its own file or S3 object. Keys are limited to 
+text strings or sequences of strings.
 
-Unlike other persistent dictionaries (e.g. Python's native `shelve`), 
-`persidict` is designed for use in highly **distributed environments**, 
-where multiple instances of a program run concurrently across many machines,
-accessing the same dictionary via a shared storage.
+In contrast to traditional persistent dictionaries (e.g., Python’s `shelve)`, 
+`persidict` is designed for distributed environments where multiple processes 
+on different machines concurrently work with the same store.
 
 ## 2. Features
 * **Persistent Storage**: Save dictionaries to the local filesystem 
@@ -172,7 +171,24 @@ dict API, such as `timestamp()`, `random_key()`, `newest_keys()`, `subdicts()`
 * **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
 and `DELETE_CURRENT` to delete a value during an assignment.
 
-## 6. Installation
+## 6. API Highlights
+
+`PersiDict` subclasses support the standard Python dictionary API, plus these additional methods for advanced functionality:
+
+| Method | Return Type | Description |
+| :--- | :--- | :--- |
+| `timestamp(key)` | `float` | Returns the POSIX timestamp (seconds since epoch) of a key's last modification. |
+| `random_key()` | `SafeStrTuple \| None` | Selects and returns a single random key, useful for sampling from the dataset. |
+| `oldest_keys(max_n=None)` | `list[SafeStrTuple]` | Returns a list of keys sorted by their modification time, from oldest to newest. |
+| `newest_keys(max_n=None)` | `list[SafeStrTuple]` | Returns a list of keys sorted by their modification time, from newest to oldest. |
+| `oldest_values(max_n=None)` | `list[Any]` | Returns a list of values corresponding to the oldest keys. |
+| `newest_values(max_n=None)` | `list[Any]` | Returns a list of values corresponding to the newest keys. |
+| `get_subdict(prefix_key)` | `PersiDict` | Returns a new `PersiDict` instance that provides a view into a subset of keys sharing a common prefix. |
+| `subdicts()` | `dict[str, PersiDict]` | Returns a dictionary mapping all first-level key prefixes to their corresponding sub-dictionary views. |
+| `delete_if_exists(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
+| `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `parameterizable` API. |
+
+## 7. Installation
 
 The source code is hosted on GitHub at:
 [https://github.com/pythagoras-dev/persidict](https://github.com/pythagoras-dev/persidict) 
@@ -198,7 +214,7 @@ For development, including test dependencies:
 pip install persidict[dev]
 ```
 
-## 7. Dependencies
+## 8. Dependencies
 
 `persidict` has the following core dependencies:
 
@@ -217,13 +233,13 @@ For development and testing, the following packages are used:
 * [pytest](https://pytest.org)
 * [moto](http://getmoto.org)
 
-## 8. Contributing
+## 9. Contributing
 Contributions are welcome! Please see the contributing [guide](https://github.com/pythagoras-dev/persidict?tab=contributing-ov-file) for more details 
 on how to get started, run tests, and submit pull requests.
 
-## 9. License
+## 10. License
 `persidict` is licensed under the MIT License. See the [LICENSE](https://github.com/pythagoras-dev/persidict?tab=MIT-1-ov-file) file for more details.
 
-## 10. Key Contacts
+## 11. Key Contacts
 
 * [Vlad (Volodymyr) Pavlov](https://www.linkedin.com/in/vlpavlov/)
