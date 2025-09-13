@@ -210,7 +210,7 @@ pip install persidict[dev]
 * [numpy](https://numpy.org)
 * [deepdiff](https://zepworks.com/deepdiff)
 
-For AWS S3 support (S3Dict), you will also need:
+For AWS S3 support (`S3Dict`), you will also need:
 * [boto3](https://boto3.readthedocs.io)
 
 For development and testing, the following packages are used:
