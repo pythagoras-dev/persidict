@@ -101,10 +101,10 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 This supports the Parameterizable API and is absent in the
                 built-in dict.
         """
-        params =  dict(
-            immutable_items=self.immutable_items
-            , digest_len=self.digest_len
-            , base_class_for_values=self.base_class_for_values
+        params = dict(
+            immutable_items=self.immutable_items,
+            digest_len=self.digest_len,
+            base_class_for_values=self.base_class_for_values
         )
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
@@ -215,7 +215,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if self.base_class_for_values is not None:
             if not isinstance(value, self.base_class_for_values):
                 raise TypeError(f"Value must be an instance of"
-                                " {self.base_class_for_values.__name__}")
+                                f" {self.base_class_for_values.__name__}")
 
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
@@ -300,7 +300,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             Iterator[SafeStrTuple]: Keys iterator.
         """
-        return  self._generic_iter({"keys"})
+        return self._generic_iter({"keys"})
 
 
     def keys_and_timestamps(self):
@@ -583,9 +583,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return []
         else:
             # Use heapq.nsmallest for efficient partial sorting without loading all keys into memory
-            smallest_pairs = heapq.nsmallest(max_n
-                                             , self.keys_and_timestamps()
-                                             , key=lambda x: x[1])
+            smallest_pairs = heapq.nsmallest(max_n,
+                                             self.keys_and_timestamps(),
+                                             key=lambda x: x[1])
             return [key for key,_ in smallest_pairs]
 
 
@@ -621,15 +621,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if max_n is None:
             # If we need all keys, sort them all by timestamp in reverse order
             key_timestamp_pairs = list(self.keys_and_timestamps())
-            key_timestamp_pairs.sort(key=lambda x:x[1], reverse=True)
+            key_timestamp_pairs.sort(key=lambda x: x[1], reverse=True)
             return [key for key,_ in key_timestamp_pairs]
         elif max_n <= 0:
             return []
         else:
             # Use heapq.nlargest for efficient partial sorting without loading all keys into memory
-            largest_pairs = heapq.nlargest(max_n
-                                            , self.keys_and_timestamps()
-                                            , key=lambda item: item[1])
+            largest_pairs = heapq.nlargest(max_n,
+                                           self.keys_and_timestamps(),
+                                           key=lambda item: item[1])
             return [key for key,_ in largest_pairs]
 
 

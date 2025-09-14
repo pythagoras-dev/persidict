@@ -22,19 +22,23 @@ from .overlapping_multi_dict import OverlappingMultiDict
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
 
 class S3Dict(PersiDict):
-    """ A persistent dictionary that stores key-value pairs as S3 objects.
-
-    A new object is created for each key-value pair.
-
-    A key is either an objectname (a 'filename' without an extension),
-    or a sequence of folder names (object name prefixes) that ends
-    with an objectname. A value can be an instance of any Python type,
-    and will be stored as an S3-object.
-
-    S3Dict can store objects in binary objects (as pickles)
-    or in human-readable texts objects (using jsonpickles).
-
-    Unlike in native Python dictionaries, insertion order is not preserved.
+    """A persistent dictionary that stores key-value pairs as S3 objects.
+    
+    Each key-value pair is stored as a separate S3 object in the specified bucket.
+    
+    A key can be either a string (object name without file extension) or a sequence
+    of strings representing a hierarchical path (folder structure ending with an
+    object name). Values can be instances of any Python type and are serialized
+    to S3 objects.
+    
+    S3Dict supports multiple serialization formats:
+    - Binary storage using pickle ('pkl' format)  
+    - Human-readable text using jsonpickle ('json' format)
+    - Plain text for string values (other formats)
+    
+    Note:
+        Unlike native Python dictionaries, insertion order is not preserved.
+        Operations may incur S3 API costs and network latency.
     """
     region: str
     bucket_name: str
@@ -42,37 +46,42 @@ class S3Dict(PersiDict):
     file_type: str
     _base_dir: str
 
-    def __init__(self, bucket_name:str = "my_bucket"
-                 , region:str = None
-                 , root_prefix:str = ""
-                 , base_dir:str = S3DICT_DEFAULT_BASE_DIR
-                 , file_type:str = "pkl"
-                 , immutable_items:bool = False
-                 , digest_len:int = 8
-                 , base_class_for_values:Optional[type] = None
-                 ,*args ,**kwargs):
+    def __init__(self, bucket_name: str = "my_bucket",
+                 region: str = None,
+                 root_prefix: str = "",
+                 base_dir: str = S3DICT_DEFAULT_BASE_DIR,
+                 file_type: str = "pkl",
+                 immutable_items: bool = False,
+                 digest_len: int = 8,
+                 base_class_for_values: Optional[type] = None,
+                 *args, **kwargs):
         """Initialize an S3-backed persistent dictionary.
 
         Args:
-            bucket_name (str): Name of the S3 bucket to use. The bucket will be
-                created if it does not already exist.
-            region (str | None): AWS region of the bucket. If None, the default
-                client region is used.
-            root_prefix (str): Common S3 key prefix under which all objects are
-                stored. A trailing slash is added if missing.
-            base_dir (str): Local directory used for temporary files and a
-                small on-disk cache.
-            file_type (str): Extension/format for stored values. "pkl" or
-                "json" store arbitrary Python objects; other values imply plain
-                text and only allow str values.
-            immutable_items (bool): If True, disallow changing existing items.
-            digest_len (int): Number of base32 MD5 characters appended to key
-                elements to avoid case-insensitive collisions. Use 0 to disable.
-            base_class_for_values (type | None): Optional base class that all
-                values must inherit from. If provided and not str, file_type
-                must be "pkl" or "json".
-            *args: Ignored; reserved for compatibility.
-            **kwargs: Ignored; reserved for compatibility.
+            bucket_name: Name of the S3 bucket to use. The bucket will be
+                created automatically if it does not exist and permissions allow.
+            region: AWS region for the bucket. If None, uses the default
+                client region from AWS configuration.
+            root_prefix: Common S3 key prefix under which all objects are
+                stored. A trailing slash is automatically added if missing.
+            base_dir: Local directory path used for temporary files and
+                local caching of S3 objects.
+            file_type: File extension/format for stored values. Supported formats:
+                'pkl' (pickle), 'json' (jsonpickle), or custom text formats.
+            immutable_items: If True, prevents modification of existing items
+                after they are initially stored.
+            digest_len: Number of base32 MD5 hash characters appended to key
+                elements to prevent case-insensitive filename collisions. 
+                Set to 0 to disable collision prevention.
+            base_class_for_values: Optional base class that all stored values
+                must inherit from. When specified (and not str), file_type
+                must be 'pkl' or 'json' for proper serialization.
+            *args: Additional positional arguments (ignored, reserved for compatibility).
+            **kwargs: Additional keyword arguments (ignored, reserved for compatibility).
+            
+        Note:
+            The S3 bucket will be created if it doesn't exist and AWS permissions
+            allow. Network connectivity and valid AWS credentials are required.
         """
 
         super().__init__(immutable_items = immutable_items
@@ -109,24 +118,25 @@ class S3Dict(PersiDict):
         except ClientError as e:
             error_code = e.response['Error']['Code']
             if error_code == '404' or error_code == 'NotFound':
-                # The bucket does not exist, so attempt to create it.
+                # Bucket does not exist, attempt to create it
                 try:
                     self.s3_client.create_bucket(Bucket=bucket_name)
                 except ClientError as create_e:
                     create_error_code = create_e.response['Error']['Code']
-                    # Handles the race condition and the bucket-is-taken error
+                    # Handle race condition where bucket was created by another process
+                    # or the bucket name is already taken by another AWS account
                     if ( create_error_code == 'BucketAlreadyOwnedByYou'
                         or create_error_code == 'BucketAlreadyExists'):
                         pass
                     else:
-                        raise create_e  # Re-raise other unexpected creation errors.
+                        raise create_e  # Re-raise other unexpected creation errors
             elif error_code == '403' or error_code == 'Forbidden':
-                # The bucket exists, but access is forbidden.
-                # This is likely a cross-account bucket with a policy that grants
-                # access to you. Subsequent calls will fail if permissions are not granted.
+                # Bucket exists but access is forbidden - likely a cross-account
+                # bucket with policy granting limited access. Operations may still
+                # work if the policy allows the required S3 permissions.
                 pass
             else:
-                raise e  # Re-raise other unexpected ClientErrors on head_bucket.
+                raise e  # Re-raise other unexpected head_bucket errors
 
         self.bucket_name = bucket_name
 
@@ -136,15 +146,15 @@ class S3Dict(PersiDict):
 
 
     def get_params(self):
-        """Return configuration parameters of the object as a dictionary.
+        """Return configuration parameters as a dictionary.
 
-        This method is needed to support Parameterizable API.
-        The method is absent in the original dict API.
+        This method supports the Parameterizable API and is not part of
+        the standard Python dictionary interface.
 
         Returns:
             dict: A mapping of parameter names to their configured values,
-            including region, bucket_name, and root_prefix combined with
-            parameters from the local cache.
+            including S3-specific parameters (region, bucket_name, root_prefix)
+            combined with parameters from the local cache, sorted by key names.
         """
         params = self.main_cache.get_params()
         params["region"] = self.region
@@ -158,34 +168,36 @@ class S3Dict(PersiDict):
     def base_url(self):
         """Return the S3 URL prefix of this dictionary.
 
-        This property is absent in the original dict API.
+        This property is not part of the standard Python dictionary interface.
 
         Returns:
-            str: The base S3 URL in the form "s3://<bucket>/<root_prefix>".
+            str: The base S3 URL in the format "s3://<bucket>/<root_prefix>".
         """
         return f"s3://{self.bucket_name}/{self.root_prefix}"
 
 
     @property
     def base_dir(self) -> str:
-        """Return dictionary's base directory in the local filesystem.
+        """Return the dictionary's base directory in the local filesystem.
 
-        This property is absent in the original dict API.
+        This property is not part of the standard Python dictionary interface.
 
         Returns:
-            str: Path to the local on-disk cache directory used by S3Dict.
+            str: Path to the local cache directory used for temporary files
+            and caching S3 objects.
         """
         return self.main_cache.base_dir
 
 
-    def _build_full_objectname(self, key:PersiDictKey) -> str:
-        """Convert a key into a full S3 object key (object name).
+    def _build_full_objectname(self, key: PersiDictKey) -> str:
+        """Convert a key into a full S3 object key.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            str: The full S3 key under root_prefix with file_type suffix applied.
+            str: The complete S3 object key including root_prefix and file_type
+            extension, with digest-based collision prevention applied if enabled.
         """
         key = SafeStrTuple(key)
         key = sign_safe_str_tuple(key, self.digest_len)
@@ -193,14 +205,18 @@ class S3Dict(PersiDict):
         return objectname
 
 
-    def __contains__(self, key:PersiDictKey) -> bool:
-        """Return True if the specified key exists in S3.
+    def __contains__(self, key: PersiDictKey) -> bool:
+        """Check if the specified key exists in the dictionary.
+
+        For immutable dictionaries, checks the local cache first. Otherwise,
+        performs a HEAD request to S3 to verify object existence.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            bool: True if the object exists (or is cached when immutable), else False.
+            bool: True if the key exists in S3 (or local cache for immutable
+            items), False otherwise.
         """
         key = SafeStrTuple(key)
         if self.immutable_items and key in self.main_cache:
@@ -218,18 +234,21 @@ class S3Dict(PersiDict):
                 raise
 
 
-    def __getitem__(self, key:PersiDictKey) -> Any:
-        """Retrieve the value stored for a key from S3 or local cache.
+    def __getitem__(self, key: PersiDictKey) -> Any:
+        """Retrieve the value stored for a key.
 
-        If immutable_items is True and a local cached file exists, that cache is
-        returned. Otherwise, the object is fetched from S3, with conditional
-        requests used when possible.
+        For immutable dictionaries with cached values, returns the cached copy.
+        Otherwise, fetches from S3 using conditional requests (ETags) when
+        available to minimize unnecessary downloads.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            Any: The stored value.
+            Any: The deserialized value stored for the key.
+
+        Raises:
+            KeyError: If the key does not exist in S3.
         """
 
         key = SafeStrTuple(key)
@@ -254,8 +273,7 @@ class S3Dict(PersiDict):
             s3_etag = response.get("ETag")
             body = response['Body']
 
-            # Read all data into memory and store in cache
-
+            # Deserialize and cache the S3 object content
             if self.file_type == 'json':
                 deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
             elif self.file_type == 'pkl':
@@ -268,42 +286,41 @@ class S3Dict(PersiDict):
 
         except ClientError as e:
             if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
-                # 304 Not Modified: our cached version is up-to-date.
-                # The value will be read from cache at the end of the function.
+                # HTTP 304 Not Modified: cached version is current, no download needed
                 pass
             elif e.response.get("Error", {}).get("Code") == 'NoSuchKey':
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
             else:
-                # Re-raise other client errors (e.g., permissions, throttling)
+                # Re-raise other client errors (permissions, throttling, etc.)
                 raise
 
         return self.main_cache[key]
 
 
-    def __setitem__(self, key:PersiDictKey, value:Any):
-        """Store a value for a key in S3 and update the local cache.
+    def __setitem__(self, key: PersiDictKey, value: Any):
+        """Store a value for a key in both S3 and local cache.
 
-        Interprets special joker values: KEEP_CURRENT (no-op) and DELETE_CURRENT 
-        (deletes the key). Validates value type if base_class_for_values is set, 
-        then writes to the local cache and uploads to S3. If possible, caches the 
-        S3 ETag locally to enable conditional GETs later.
+        Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
+        conditional operations. Validates value types against base_class_for_values
+        if specified, then stores locally and uploads to S3. Attempts to cache
+        the S3 ETag for efficient future retrievals.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
-            value (Any): Value to store, or a joker command (KEEP_CURRENT or 
+            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            value: Value to store, or a joker command (KEEP_CURRENT or 
                 DELETE_CURRENT from the jokers module).
 
         Raises:
             KeyError: If attempting to modify an existing item when
                 immutable_items is True.
-            TypeError: If value is a PersiDict or does not match
-                base_class_for_values when it is set.
+            TypeError: If value is a PersiDict instance or does not match
+                the required base_class_for_values when specified.
         """
 
         key = SafeStrTuple(key)
         PersiDict.__setitem__(self, key, value)
         if isinstance(value, Joker):
-            # processed by base class
+            # Joker values (KEEP_CURRENT, DELETE_CURRENT) are handled by base class
             return
 
         obj_name = self._build_full_objectname(key)
@@ -311,28 +328,28 @@ class S3Dict(PersiDict):
         # Store in local cache first
         self.main_cache[key] = value
         
-        # Get the file path from the cache to upload to S3
+        # Upload the serialized file from local cache to S3
         file_path = self.main_cache._build_full_path(key)
         self.s3_client.upload_file(file_path, self.bucket_name, obj_name)
 
         try:
+            # Cache the S3 ETag for efficient conditional requests on future reads
             head = self.s3_client.head_object(
                 Bucket=self.bucket_name, Key=obj_name)
             self.etag_cache[key] = head.get("ETag")
         except ClientError:
-            # If we can't get ETag, we should remove any existing etag
-            # to force a re-download on the next __getitem__ call.
+            # Remove stale ETag on failure to force fresh downloads later
             self.etag_cache.delete_if_exists(key)
 
 
-    def __delitem__(self, key:PersiDictKey):
-        """Delete the stored value for a key from S3 and local cache.
+    def __delitem__(self, key: PersiDictKey):
+        """Delete the stored value for a key from both S3 and local cache.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
 
         Raises:
-            KeyError: If immutable_items is True, or if the key does not exist in S3.
+            KeyError: If immutable_items is True, or if the key does not exist.
         """
         key = SafeStrTuple(key)
         PersiDict.__delitem__(self, key)
@@ -343,11 +360,12 @@ class S3Dict(PersiDict):
 
 
     def __len__(self) -> int:
-        """Return len(self).
+        """Return the number of key-value pairs in the dictionary.
 
-        WARNING: This operation can be very slow and costly on large S3 buckets
-        as it needs to iterate over all objects in the dictionary's prefix.
-        Avoid using it in performance-sensitive code.
+        Warning:
+            This operation can be very slow and expensive on large S3 buckets
+            as it must paginate through all objects under the dictionary's prefix.
+            Avoid using in performance-critical code.
 
         Returns:
             int: Number of stored items under this dictionary's root_prefix.
@@ -373,27 +391,27 @@ class S3Dict(PersiDict):
 
 
     def _generic_iter(self, result_type: set[str]):
-        """Underlying implementation for .items()/.keys()/.values() iterators.
+        """Underlying implementation for items(), keys(), and values() iterators.
 
-        Iterates over S3 objects under the configured root_prefix and yields
+        Paginates through S3 objects under the configured root_prefix and yields
         keys, values, and/or timestamps according to the requested result_type.
-        Keys are mapped to SafeStrTuple by removing the file extension and
-        unsigning based on digest_len.
+        S3 object keys are converted to SafeStrTuple instances by removing the
+        file extension and reversing digest-based signing if enabled.
 
         Args:
-            result_type (set[str]): Any non-empty subset of {"keys", "values",
-                "timestamps"} specifying which fields to yield.
+            result_type: Non-empty subset of {"keys", "values", "timestamps"}
+                specifying which fields to yield from each dictionary entry.
 
         Returns:
-            Iterator: A generator yielding:
+            Iterator: A generator that yields:
                 - SafeStrTuple if result_type == {"keys"}
-                - Any if result_type == {"values"}
+                - Any if result_type == {"values"}  
                 - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
-                - tuple[..., float] including POSIX timestamp if "timestamps" is requested.
+                - tuple including float timestamp if "timestamps" requested
 
         Raises:
-            ValueError: If result_type is not a set or contains entries other than
-                "keys", "values", and/or "timestamps", or if it is empty.
+            ValueError: If result_type is invalid (empty, not a set, or contains
+                unsupported field names).
         """
 
         PersiDict._generic_iter(self, result_type)
@@ -403,16 +421,17 @@ class S3Dict(PersiDict):
         prefix_len = len(self.root_prefix)
 
         def splitter(full_name: str) -> SafeStrTuple:
-            """Convert an S3 object key into a SafeStrTuple without the suffix.
+            """Convert an S3 object key into a SafeStrTuple without the file extension.
 
             Args:
-                full_name (str): Full S3 object key (including root_prefix).
+                full_name: Complete S3 object key including root_prefix and extension.
 
             Returns:
-                SafeStrTuple: The parsed key parts, still signed.
+                SafeStrTuple: The parsed key components with digest signatures intact.
 
             Raises:
-                ValueError: If the provided key does not start with this dictionary's root_prefix.
+                ValueError: If the object key does not start with this dictionary's
+                    root_prefix (indicating it's outside the dictionary's scope).
             """
             if not full_name.startswith(self.root_prefix):
                 raise ValueError(
@@ -422,7 +441,11 @@ class S3Dict(PersiDict):
             return SafeStrTuple(result)
 
         def step():
-            """Generator that pages through S3 and yields entries based on result_type."""
+            """Generator that paginates through S3 objects and yields requested data.
+            
+            Yields dictionary entries (keys, values, timestamps) according to the
+            result_type specification from the parent _generic_iter method.
+            """
             paginator = self.s3_client.get_paginator("list_objects_v2")
             page_iterator = paginator.paginate(
                 Bucket=self.bucket_name, Prefix = self.root_prefix)
@@ -459,19 +482,20 @@ class S3Dict(PersiDict):
         return step()
 
 
-    def get_subdict(self, key:PersiDictKey) -> S3Dict:
-        """Get a subdictionary containing items with the same prefix key.
+    def get_subdict(self, key: PersiDictKey) -> S3Dict:
+        """Create a subdictionary scoped to items with the specified prefix.
 
-        For a non-existing prefix key, an empty sub-dictionary is returned.
-        This method is absent in the original dict API.
+        Returns an empty subdictionary if no items exist under the prefix.
+        This method is not part of the standard Python dictionary interface.
 
         Args:
             key (PersiDictKey): A common prefix (string or sequence of strings)
                 used to scope items stored under this dictionary.
 
         Returns:
-            S3Dict: A new S3Dict instance rooted at the given prefix, sharing
-            the same bucket, region, serialization, and immutability settings.
+            S3Dict: A new S3Dict instance with root_prefix extended by the given
+            key, sharing the parent's bucket, region, file_type, and other
+            configuration settings.
         """
 
         key = SafeStrTuple(key)
@@ -497,18 +521,18 @@ class S3Dict(PersiDict):
         return new_dict
 
 
-    def timestamp(self,key:PersiDictKey) -> float:
-        """Get last modification time (Unix epoch seconds) for a key.
+    def timestamp(self, key: PersiDictKey) -> float:
+        """Get the last modification timestamp for a key.
 
-        This method is absent in the original dict API.
+        This method is not part of the standard Python dictionary interface.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            float: POSIX timestamp (seconds since the Unix epoch) of the last
-            modification time as reported by S3 for the object. The timestamp
-            is timezone-aware and converted to UTC.
+            float: POSIX timestamp (seconds since Unix epoch) of the last
+            modification time as reported by S3. The timestamp is timezone-aware
+            and converted to UTC.
 
         Raises:
             KeyError: If the key does not exist in S3.
