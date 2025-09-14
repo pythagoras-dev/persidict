@@ -268,7 +268,7 @@ class WriteOnceDict(PersiDict):
         """Delegate iteration to the wrapped dict.
 
         Args:
-            iter_type: tType of iterator: 'items' and/or 'keys' and/or 'timestamps'.
+            iter_type: Type of iterator: 'items' and/or 'keys' and/or 'timestamps'.
 
         Returns:
             Any: Iterator from the wrapped dictionary.
@@ -299,13 +299,21 @@ class WriteOnceDict(PersiDict):
         return getattr(self._wrapped_dict, name)
 
     @property
-    def base_dir(self):
-        """Base directory of the wrapped dict (if applicable)."""
+    def base_dir(self) -> str|None:
+        """Base directory of the wrapped dict (if applicable).
+        
+        Returns:
+            str | None: The base directory path, or None if not applicable.
+        """
         return self._wrapped_dict.base_dir
 
     @property
-    def base_url(self):
-        """Base URL of the wrapped dict (if applicable)."""
+    def base_url(self) -> str|None:
+        """Base URL of the wrapped dict (if applicable).
+        
+        Returns:
+            str | None: The base URL, or None if not applicable.
+        """
         return self._wrapped_dict.base_url
 
     def get_subdict(self, prefix_key: PersiDictKey) -> WriteOnceDict:

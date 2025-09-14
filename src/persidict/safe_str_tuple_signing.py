@@ -114,7 +114,7 @@ def _add_all_suffixes_if_absent(
 
     new_seq = []
     for s in str_seq:
-        new_seq.append(_add_signature_suffix_if_absent(s,digest_len))
+        new_seq.append(_add_signature_suffix_if_absent(s, digest_len))
 
     new_seq = SafeStrTuple(*new_seq)
 

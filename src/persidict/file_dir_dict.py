@@ -45,7 +45,7 @@ class FileDirDict(PersiDict):
     Insertion order is not preserved.
 
     FileDirDict can store objects in binary files or in human-readable
-    text files (either in jason format or as a plain text).
+    text files (either in JSON format or as plain text).
     """
 
     _base_dir:str

@@ -1,6 +1,17 @@
+"""Safe character handling utilities for URL and filesystem compatibility.
+
+This module defines character sets and length constraints for building strings
+that are safe for use in URLs, filenames, and other contexts where character
+restrictions apply.
+"""
 import string
 
+# Set of characters considered safe for filenames and URL components.
+# Includes ASCII letters (a-z, A-Z), digits (0-9), and special chars: ()_-~.=
 SAFE_CHARS_SET = set(string.ascii_letters + string.digits + "()_-~.=")
+
+# Maximum length for safe strings to ensure compatibility with various filesystems
+# and URL length limitations. Set to 254 to stay well under most system limits.
 SAFE_STRING_MAX_LENGTH = 254
 
 def get_safe_chars() -> set[str]:

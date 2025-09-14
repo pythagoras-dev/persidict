@@ -26,9 +26,9 @@ from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
 from .safe_str_tuple import SafeStrTuple
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
-""" A value which can be used as a key for PersiDict. 
+"""A value which can be used as a key for PersiDict.
 
-PersiDict-s accept keys on a form of SafeStrTuple,
+PersiDict instances accept keys in the form of SafeStrTuple,
 or a string, or a sequence of strings.
 The characters within strings must be URL/filename-safe.
 If a string (or a sequence of strings) is passed to a PersiDict as a key,
@@ -60,21 +60,26 @@ class PersiDict(MutableMapping, ParameterizableClass):
     immutable_items:bool
     base_class_for_values:Optional[type]
 
-    def __init__(self
-                 , immutable_items:bool = False
-                 , digest_len:int = 8
-                 , base_class_for_values:Optional[type] = None
-                 , *args, **kwargs):
-        """Initialize base parameters shared by all persistent dicts.
+    def __init__(self,
+                 immutable_items: bool = False,
+                 digest_len: int = 8,
+                 base_class_for_values: Optional[type] = None,
+                 *args, **kwargs):
+        """Initialize base parameters shared by all persistent dictionaries.
 
         Args:
-            immutable_items: If True, items cannot be modified or deleted.
-            digest_len: Number of hash characters to append to key components to
-                avoid case-insensitive collisions. Must be non-negative.
-            base_class_for_values: Optional base class that values must inherit
-                from; if None, values are not type-restricted.
-            *args: Ignored in the base class (reserved for subclasses).
-            **kwargs: Ignored in the base class (reserved for subclasses).
+            immutable_items (bool): If True, items cannot be modified or deleted.
+                Defaults to False.
+            digest_len (int): Number of hash characters to append to key components
+                to avoid case-insensitive collisions. Must be non-negative.
+                Defaults to 8.
+            base_class_for_values (Optional[type]): Optional base class that values
+                must inherit from. If None, values are not type-restricted.
+                Defaults to None.
+            *args: Additional positional arguments (ignored in base class, reserved
+                for subclasses).
+            **kwargs: Additional keyword arguments (ignored in base class, reserved
+                for subclasses).
 
         Raises:
             ValueError: If digest_len is negative.
@@ -91,9 +96,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """Return configuration parameters of this dictionary.
 
         Returns:
-            dict: A sorted dict of parameters used to reconstruct the instance.
+            dict: A sorted dictionary of parameters used to reconstruct the instance.
                 This supports the Parameterizable API and is absent in the
-                builtin dict.
+                built-in dict.
         """
         params =  dict(
             immutable_items=self.immutable_items
@@ -321,20 +326,23 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return self._generic_iter({"keys", "values", "timestamps"})
 
 
-    def setdefault(self, key:PersiDictKey, default:Any=None) -> Any:
-        """Insert key with default if absent; return the value.
+    def setdefault(self, key: PersiDictKey, default: Any = None) -> Any:
+        """Insert key with default value if absent; return the current value.
+
+        Behaves like the built-in dict.setdefault() method: if the key exists,
+        return its current value; otherwise, set the key to the default value
+        and return that default.
 
         Args:
-            key: Key (string or sequence of strings) or SafeStrTuple.
-            default: Value to insert if the key is not present.
+            key (PersiDictKey): Key (string, sequence of strings, or SafeStrTuple).
+            default (Any): Value to insert if the key is not present. Defaults to None.
 
         Returns:
-            Any: Existing value if present; otherwise the provided default.
+            Any: Existing value if key is present; otherwise the provided default value.
 
         Raises:
             TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT).
         """
-        # TODO: check edge cases to ensure the same semantics as standard dicts
         key = SafeStrTuple(key)
         if isinstance(default, Joker):
             raise TypeError("default must be a regular value, not a Joker command")
@@ -345,19 +353,20 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return default
 
 
-    def __eq__(self, other:PersiDict) -> bool:
+    def __eq__(self, other: PersiDict) -> bool:
         """Compare dictionaries for equality.
 
-        If other is a PersiDict, compare portable params. Otherwise, attempt to
-        compare as mapping by keys and values.
+        If other is a PersiDict instance, compares portable parameters for equality.
+        Otherwise, attempts to compare as a mapping by comparing all keys and values.
 
         Args:
-            other: Another dictionary-like object.
+            other (PersiDict): Another dictionary-like object to compare against.
 
         Returns:
-            bool: True if considered equal, False otherwise.
+            bool: True if the dictionaries are considered equal, False otherwise.
         """
         if isinstance(other, PersiDict):
+            #TODO: decide whether to keep this semantics
             return self.get_portable_params() == other.get_portable_params()
         try:
             if len(self) != len(other):
@@ -525,15 +534,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def oldest_keys(self, max_n=None):
         """Return up to max_n oldest keys in the dictionary.
 
+        This method is absent in the original Python dict API.
+
         Args:
             max_n (int | None): Maximum number of keys to return. If None,
                 return all keys sorted by age (oldest first). Values <= 0
-                yield an empty list.
+                yield an empty list. Defaults to None.
 
         Returns:
             list[SafeStrTuple]: The oldest keys, oldest first.
-
-        This method is absent in the original Python dict API.
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp
@@ -553,6 +562,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def oldest_values(self, max_n=None):
         """Return up to max_n oldest values in the dictionary.
 
+        This method is absent in the original Python dict API.
+
         Args:
             max_n (int | None): Maximum number of values to return. If None,
                 return values for all keys sorted by age (oldest first). Values
@@ -560,8 +571,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         Returns:
             list[Any]: Values corresponding to the oldest keys.
-
-        This method is absent in the original Python dict API.
         """
         return [self[k] for k in self.oldest_keys(max_n)]
 
@@ -569,15 +578,15 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def newest_keys(self, max_n=None):
         """Return up to max_n newest keys in the dictionary.
 
+        This method is absent in the original Python dict API.
+
         Args:
             max_n (int | None): Maximum number of keys to return. If None,
                 return all keys sorted by age (newest first). Values <= 0
-                yield an empty list.
+                yield an empty list. Defaults to None.
 
         Returns:
             list[SafeStrTuple]: The newest keys, newest first.
-
-        This method is absent in the original Python dict API.
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp in reverse order
@@ -597,6 +606,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def newest_values(self, max_n=None):
         """Return up to max_n newest values in the dictionary.
 
+        This method is absent in the original Python dict API.
+
         Args:
             max_n (int | None): Maximum number of values to return. If None,
                 return values for all keys sorted by age (newest first). Values
@@ -604,7 +615,5 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         Returns:
             list[Any]: Values corresponding to the newest keys.
-
-        This method is absent in the original Python dict API.
         """
         return [self[k] for k in self.newest_keys(max_n)]

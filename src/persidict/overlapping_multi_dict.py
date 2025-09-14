@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Type
 
 from .persi_dict import PersiDict
 
@@ -14,17 +14,17 @@ class OverlappingMultiDict:
     bucket and differ only in how items are materialized by file type.
 
     Attributes:
-        dict_type (type):
-            A subclass of PersiDict used to create each sub-dictionary.
-        shared_subdicts_params (dict):
-            Parameters applied to every created sub-dictionary (e.g., base_dir,
-            bucket, immutable_items, digest_len).
-        individual_subdicts_params (dict):
-            Mapping from file_type (attribute name) to a dict of parameters that
-            are specific to that sub-dictionary. These override or extend
-            shared_subdicts_params for the given file_type.
-        subdicts_names (list[str]):
-            The list of file_type names (i.e., attribute names) created.
+        dict_type (Type[PersiDict]): A subclass of PersiDict used to create each 
+            sub-dictionary.
+        shared_subdicts_params (Dict[str, Any]): Parameters applied to every 
+            created sub-dictionary (e.g., base_dir, bucket, immutable_items, 
+            digest_len).
+        individual_subdicts_params (Dict[str, Dict[str, Any]]): Mapping from 
+            file_type (attribute name) to a dict of parameters that are specific 
+            to that sub-dictionary. These override or extend shared_subdicts_params 
+            for the given file_type.
+        subdicts_names (List[str]): The list of file_type names (i.e., attribute 
+            names) created.
 
     Raises:
         TypeError: If pickling is attempted or item access is used on the
@@ -37,17 +37,16 @@ class OverlappingMultiDict:
         """Initialize the container and create sub-dictionaries.
 
         Args:
-            dict_type (type):
-                A subclass of PersiDict that will be instantiated for each
-                file_type provided via individual_subdicts_params.
-            shared_subdicts_params (dict):
-                Parameters shared by all sub-dicts (e.g., base_dir, bucket).
-            **individual_subdicts_params: Dict[str, dict]
-                Keyword arguments where each key is a file_type (also the
-                attribute name to be created) and each value is a dict of
-                parameters specific to that sub-dict. These are merged with
-                shared_subdicts_params when constructing the sub-dict. The
-                resulting dict also receives file_type=<key>.
+            dict_type (Type[PersiDict]): A subclass of PersiDict that will be 
+                instantiated for each file_type provided via individual_subdicts_params.
+            shared_subdicts_params (Dict[str, Any]): Parameters shared by all 
+                sub-dicts (e.g., base_dir, bucket).
+            **individual_subdicts_params (Dict[str, Dict[str, Any]]): Keyword 
+                arguments where each key is a file_type (also the attribute name 
+                to be created) and each value is a dict of parameters specific to 
+                that sub-dict. These are merged with shared_subdicts_params when 
+                constructing the sub-dict. The resulting dict also receives 
+                file_type=<key>.
 
         Raises:
             TypeError: If dict_type is not a PersiDict subclass, or if
@@ -67,9 +66,9 @@ class OverlappingMultiDict:
                 raise TypeError(
                     f"Params for subdict {subdict_name!r} must be a dict")
             self.__dict__[subdict_name] = dict_type(
-                **{**shared_subdicts_params
-                ,**individual_subdicts_params[subdict_name]
-                ,"file_type":subdict_name})
+                **{**shared_subdicts_params,
+                   **individual_subdicts_params[subdict_name],
+                   "file_type": subdict_name})
 
     def __getstate__(self):
         """Prevent pickling.
@@ -82,6 +81,9 @@ class OverlappingMultiDict:
     def __setstate__(self, state):
         """Prevent unpickling.
 
+        Args:
+            state: The state dictionary that would be used for unpickling (ignored).
+
         Raises:
             TypeError: Always raised; this object is not pickleable.
         """
@@ -92,6 +94,9 @@ class OverlappingMultiDict:
 
         Suggest accessing items through the sub-dictionaries exposed as
         attributes (e.g., obj.json[key]).
+
+        Args:
+            key: The key that would be accessed (ignored).
 
         Raises:
             TypeError: Always raised to indicate unsupported operation.
@@ -104,6 +109,10 @@ class OverlappingMultiDict:
     def __setitem__(self, key, value):
         """Disallow item assignment on the container itself.
 
+        Args:
+            key: The key that would be assigned (ignored).
+            value: The value that would be assigned (ignored).
+
         Raises:
             TypeError: Always raised to indicate unsupported operation.
         """
@@ -115,10 +124,13 @@ class OverlappingMultiDict:
     def __delitem__(self, key):
         """Disallow item deletion on the container itself.
 
+        Args:
+            key: The key that would be deleted (ignored).
+
         Raises:
             TypeError: Always raised to indicate unsupported operation.
         """
         raise TypeError(
             "OverlappingMultiDict does not support item deletion by key. "
-            "Individual items can be deletedthrough nested dicts, "
+            "Individual items can be deleted through nested dicts, "
             f"which are available via attributes {self.subdicts_names}")
