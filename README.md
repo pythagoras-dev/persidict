@@ -121,7 +121,7 @@ print(f"API Key: {cloud_config['api_key']}")
 ### 4.2 Differences 
 
 * **Persistence**: Data is saved between program executions.
-* **Keys**: Keys must be strings or sequences of URL/filename-safe strings.
+* **Keys**: Keys must be URL/filename-safe strings or their sequences.
 * **Values**: Values must be pickleable. 
 You can also constrain values to a specific class.
 * **Order**: Insertion order is not preserved.
