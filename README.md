@@ -120,7 +120,7 @@ for all persistent dictionaries in the package. It's the foundation
 upon which everything else is built.
 * **`PersiDictKey`**: A type hint that specifies what can be used
 as a key in any `PersiDict`. It can be a `SafeStrTuple`, a single string, 
-* or a sequence of strings. When a `PesiDict` method requires a key as an input,
+or a sequence of strings. When a `PesiDict` method requires a key as an input,
 it will accept any of these types and convert them to a `SafeStrTuple` internally.
 * **`SafeStrTuple`**: The core data structure for keys. It's an immutable, 
 flat tuple of non-empty, URL/filename-safe strings, ensuring that 
