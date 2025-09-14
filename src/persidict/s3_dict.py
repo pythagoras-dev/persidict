@@ -103,9 +103,28 @@ class S3Dict(PersiDict):
             self.s3_client = boto3.client('s3', region_name=region)
 
         try:
-            self.s3_client.create_bucket(Bucket=bucket_name)
-        except:
-            pass
+            self.s3_client.head_bucket(Bucket=bucket_name)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == '404' or error_code == 'NotFound':
+                # The bucket does not exist, so attempt to create it.
+                try:
+                    self.s3_client.create_bucket(Bucket=bucket_name)
+                except ClientError as create_e:
+                    create_error_code = create_e.response['Error']['Code']
+                    # Handles the race condition and the bucket-is-taken error
+                    if ( create_error_code == 'BucketAlreadyOwnedByYou'
+                        or create_error_code == 'BucketAlreadyExists'):
+                        pass
+                    else:
+                        raise create_e  # Re-raise other unexpected creation errors.
+            elif error_code == '403' or error_code == 'Forbidden':
+                # The bucket exists, but access is forbidden.
+                # This is likely a cross-account bucket with a policy that grants
+                # access to you. Subsequent calls will fail if permissions are not granted.
+                pass
+            else:
+                raise e  # Re-raise other unexpected ClientErrors on head_bucket.
 
         self.bucket_name = bucket_name
 
@@ -246,7 +265,6 @@ class S3Dict(PersiDict):
             self.etag_cache[key] = s3_etag
 
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
             if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
                 # 304 Not Modified: our cached version is up-to-date.
                 # The value will be read from cache at the end of the function.
@@ -335,6 +353,9 @@ class S3Dict(PersiDict):
         key = SafeStrTuple(key)
         if self.immutable_items:
             raise KeyError("Can't delete an immutable item")
+
+        if key not in self:
+            raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
 
         obj_name = self._build_full_objectname(key)
         
