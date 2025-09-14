@@ -36,6 +36,24 @@ If a string (or a sequence of strings) is passed to a PersiDict as a key,
 it will be automatically converted into SafeStrTuple.
 """
 
+
+def non_empty_persidict_key(*args) -> SafeStrTuple:
+    """Create a non-empty SafeStrTuple from the given arguments.
+    This is a convenience function that ensures the resulting SafeStrTuple is
+    not empty, raising a KeyError if it is.
+    Args:
+        *args: Arguments to pass to SafeStrTuple constructor.
+    Returns:
+        SafeStrTuple: A non-empty SafeStrTuple instance.
+    Raises:
+        KeyError: If the resulting SafeStrTuple is empty.
+    """
+    result = SafeStrTuple(*args)
+    if len(result) == 0:
+        raise KeyError("Key cannot be empty")
+    return result
+
+
 class PersiDict(MutableMapping, ParameterizableClass):
     """Abstract dict-like interface for durable key-value stores.
 
@@ -209,8 +227,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
         elif self.immutable_items:
             if key in self:
                 raise KeyError("Can't modify an immutable key-value pair")
-        elif value is DELETE_CURRENT:
+
+        key = non_empty_persidict_key(key)
+
+        if value is DELETE_CURRENT:
             self.delete_if_exists(key)
+            return
 
         if self.base_class_for_values is not None:
             if not isinstance(value, self.base_class_for_values):
@@ -237,7 +259,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
                                       " and cannot delete items directly")
-        key = SafeStrTuple(key)
+
+        key = non_empty_persidict_key(key)
+
         if key not in self:
             raise KeyError(f"Key {key} not found")
 
@@ -457,7 +481,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
 
-        key = SafeStrTuple(key)
+        key = non_empty_persidict_key(key)
 
         if key in self:
             try:
