@@ -92,8 +92,8 @@ class DeleteCurrentFlag(Joker):
 register_parameterizable_class(KeepCurrentFlag)
 register_parameterizable_class(DeleteCurrentFlag)
 
-KeepCurrent = KeepCurrentFlag()
+_KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT = KeepCurrentFlag()
 
-DeleteCurrent = DeleteCurrentFlag()
+_DeleteCurrent = DeleteCurrentFlag()
 DELETE_CURRENT = DeleteCurrentFlag()

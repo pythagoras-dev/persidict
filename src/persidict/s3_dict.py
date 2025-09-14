@@ -15,7 +15,7 @@ from parameterizable.dict_sorter import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict
-from .jokers import KEEP_CURRENT, DELETE_CURRENT
+from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
 from .file_dir_dict import FileDirDict, PersiDictKey
 from .overlapping_multi_dict import OverlappingMultiDict
 
@@ -300,28 +300,11 @@ class S3Dict(PersiDict):
                 base_class_for_values when it is set.
         """
 
-        if value is KEEP_CURRENT:
-            return
-
-        if value is DELETE_CURRENT:
-            self.delete_if_exists(key)
-            return
-
-        if isinstance(value, PersiDict):
-            raise TypeError(
-                f"You are not allowed to store a PersiDict "
-                + f"inside another PersiDict.")
-
-        if self.base_class_for_values is not None:
-            if not isinstance(value, self.base_class_for_values):
-                raise TypeError(
-                    f"Value must be of type {self.base_class_for_values},"
-                    + f"but it is {type(value)} instead." )
-
         key = SafeStrTuple(key)
-
-        if self.immutable_items and key in self:
-            raise KeyError("Can't modify an immutable item")
+        PersiDict.__setitem__(self, key, value)
+        if isinstance(value, Joker):
+            # processed by base class
+            return
 
         obj_name = self._build_full_objectname(key)
 
@@ -351,16 +334,9 @@ class S3Dict(PersiDict):
         Raises:
             KeyError: If immutable_items is True, or if the key does not exist in S3.
         """
-
         key = SafeStrTuple(key)
-        if self.immutable_items:
-            raise KeyError("Can't delete an immutable item")
-
-        if key not in self:
-            raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
-
+        PersiDict.__delitem__(self, key)
         obj_name = self._build_full_objectname(key)
-        
         self.s3_client.delete_object(Bucket = self.bucket_name, Key = obj_name)
         self.etag_cache.delete_if_exists(key)
         self.main_cache.delete_if_exists(key)
@@ -420,17 +396,7 @@ class S3Dict(PersiDict):
                 "keys", "values", and/or "timestamps", or if it is empty.
         """
 
-        if not isinstance(result_type, set):
-            raise ValueError(
-                "result_type must be a set containing one to three of: 'keys', 'values', 'timestamps'"
-            )
-        if not (1 <= len(result_type) <= 3):
-            raise ValueError("result_type must be a non-empty set with at most three elements")
-        allowed = {"keys", "values", "timestamps"}
-        if not result_type.issubset(allowed):
-            invalid = ", ".join(sorted(result_type - allowed))
-            raise ValueError(f"result_type contains invalid entries: {invalid}. Allowed: {sorted(allowed)}")
-        # Intersections/length checks are implied by the above conditions.
+        PersiDict._generic_iter(self, result_type)
 
         suffix = "." + self.file_type
         ext_len = len(self.file_type) + 1

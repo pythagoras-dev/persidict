@@ -69,6 +69,7 @@ class FileDirDict(PersiDict):
                 or deleted.
             digest_len (int): Length of a hash suffix appended to each key path
                 element to avoid case-insensitive collisions. Use 0 to disable.
+                If you decide to enable it (not 0), we recommend at least 4.
             base_class_for_values (Optional[type]): Optional base class that all
                 stored values must be instances of. If provided and not ``str``,
                 then file_type must be either "pkl" or "json".
@@ -509,28 +510,13 @@ class FileDirDict(PersiDict):
                 base_class_for_values when it is set.
         """
 
-        if value is KEEP_CURRENT:
-            return
-
-        if value is DELETE_CURRENT:
-            self.delete_if_exists(key)
-            return
-
-        if isinstance(value, PersiDict):
-            raise TypeError(
-                f"You are not allowed to store a PersiDict "
-                + f"inside another PersiDict.")
-
-        if self.base_class_for_values is not None:
-            if not isinstance(value, self.base_class_for_values):
-                raise TypeError(
-                    f"Value must be of type {self.base_class_for_values},"
-                    + f"but it is {type(value)} instead.")
-
         key = SafeStrTuple(key)
+        PersiDict.__setitem__(self, key, value)
+        if isinstance(value, Joker):
+            # processed by base class
+            return
+
         filename = self._build_full_path(key, create_subdirs=True)
-        if self.immutable_items and os.path.exists(filename):
-            raise KeyError("Can't modify an immutable item")
         self._save_to_file(filename, value)
 
 
@@ -544,8 +530,7 @@ class FileDirDict(PersiDict):
             KeyError: If immutable_items is True or if the key does not exist.
         """
         key = SafeStrTuple(key)
-        if self.immutable_items:
-            raise KeyError("Can't delete immutable items")
+        PersiDict.__delitem__(self, key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -574,15 +559,8 @@ class FileDirDict(PersiDict):
             TypeError: If result_type is not a set.
             ValueError: If result_type is empty or contains unsupported labels.
         """
-        if not isinstance(result_type, set):
-            raise TypeError("result_type must be a set")
-        if not (1 <= len(result_type) <= 3):
-            raise ValueError("result_type must be a non-empty subset of {'keys','values','timestamps'}")
-        allowed = {"keys", "values", "timestamps"}
-        invalid = result_type - allowed
-        if invalid:
-            raise ValueError(f"Unsupported result_type entries: {sorted(invalid)}; allowed: {sorted(allowed)}")
 
+        PersiDict._generic_iter(self, result_type)
         walk_results = os.walk(self._base_dir)
         ext_len = len(self.file_type) + 1
 

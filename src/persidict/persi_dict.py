@@ -4,10 +4,11 @@ PersiDict defines a unified interface for persistent dictionaries. The API is
 similar to Python's built-in dict with some differences (e.g., insertion order
 is not guaranteed) and several additional convenience methods.
 
-Keys are sequences of URL/filename-safe strings represented by SafeStrTuple.
-Plain strings or sequences of strings are accepted and automatically coerced to
-SafeStrTuple. Values can be arbitrary Python objects unless an implementation
-restricts them via ``base_class_for_values``.
+Keys are non-empty sequences of URL/filename-safe strings
+represented by SafeStrTuple. Plain strings or sequences of strings are accepted
+and automatically coerced to SafeStrTuple. Values can be
+arbitrary Python objects unless an implementation restricts them
+via `base_class_for_values`.
 
 Persistence means items are stored durably (e.g., in local files or cloud
 objects) and remain accessible across process lifetimes.
@@ -168,7 +169,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             bool: True if key exists, False otherwise.
         """
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                        " and cannot check items directly")
 
 
     @abstractmethod
@@ -181,7 +184,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             Any: The stored value.
         """
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                        " and cannot retrieve items directly")
 
 
     def __setitem__(self, key:PersiDictKey, value:Any):
@@ -201,12 +206,20 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         if value is KEEP_CURRENT:
             return
-        elif value is DELETE_CURRENT:
-            self.delete_if_exists(key)
         elif self.immutable_items:
             if key in self:
                 raise KeyError("Can't modify an immutable key-value pair")
-        raise NotImplementedError
+        elif value is DELETE_CURRENT:
+            self.delete_if_exists(key)
+
+        if self.base_class_for_values is not None:
+            if not isinstance(value, self.base_class_for_values):
+                raise TypeError(f"Value must be an instance of"
+                                " {self.base_class_for_values.__name__}")
+
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                      " and cannot store items directly")
 
 
     def __delitem__(self, key:PersiDictKey):
@@ -221,7 +234,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                      " and cannot delete items directly")
+        key = SafeStrTuple(key)
+        if key not in self:
+            raise KeyError(f"Key {key} not found")
 
 
     @abstractmethod
@@ -231,7 +249,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             int: Number of key-value pairs.
         """
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                        " and cannot count items directly")
 
 
     @abstractmethod
@@ -260,7 +280,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
             raise ValueError("result_type can only contain 'keys', 'values', 'timestamps'")
         if not (1 <= len(result_type & allowed) <= 3):
             raise ValueError("result_type must include at least one of 'keys', 'values', 'timestamps'")
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                        " and cannot iterate items directly")
 
 
     def __iter__(self):
@@ -385,7 +407,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             TypeError: Always raised; PersiDict instances are not pickleable.
         """
-        raise TypeError("PersiDict is not picklable.")
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                      " and cannot be pickled directly")
 
 
     def __setstate__(self, state):
@@ -394,7 +418,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             TypeError: Always raised; PersiDict instances are not pickleable.
         """
-        raise TypeError("PersiDict is not picklable.")
+        if type(self) is PersiDict:
+            raise TypeError("PersiDict is an abstract base class"
+                            " and cannot be unpickled directly")
 
 
     def clear(self) -> None:
@@ -409,7 +435,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         for k in self.keys():
             try:
                 del self[k]
-            except:
+            except KeyError:
                 pass
 
 
@@ -464,7 +490,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
             NotImplementedError: Must be implemented by subclasses that support
                 hierarchical key spaces.
         """
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                " and cannot create sub-dictionaries directly")
 
 
     def subdicts(self) -> dict[str, PersiDict]:
@@ -528,7 +556,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             NotImplementedError: Must be implemented by subclasses.
         """
-        raise NotImplementedError
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                      " and cannot provide timestamps directly")
 
 
     def oldest_keys(self, max_n=None):
