@@ -23,7 +23,7 @@ def test_oldest_keys_basic(tmpdir):
     """Test basic functionality of oldest_keys()."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with time delays to ensure different timestamps
         for i, v in enumerate("abcde"):
@@ -52,7 +52,7 @@ def test_newest_keys_basic(tmpdir):
     """Test basic functionality of newest_keys()."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with time delays
         for i, v in enumerate("abcde"):
@@ -81,7 +81,7 @@ def test_oldest_values_basic(tmpdir):
     """Test basic functionality of oldest_values()."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with time delays
         for i, v in enumerate("abcde"):
@@ -111,7 +111,7 @@ def test_newest_values_basic(tmpdir):
     """Test basic functionality of newest_values()."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with time delays
         for i, v in enumerate("abcde"):
@@ -140,7 +140,7 @@ def test_empty_dict_edge_cases(tmpdir):
     """Test edge cases with empty dictionaries."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Test all functions on empty dict
         assert d.oldest_keys() == []
@@ -168,7 +168,7 @@ def test_single_item_edge_cases(tmpdir):
     """Test edge cases with single item in dictionary."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         d['single'] = 'value'
         
@@ -197,7 +197,7 @@ def test_zero_max_n_edge_cases(tmpdir):
     """Test edge cases with max_n=0."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add some items
         for v in "abc":
@@ -217,7 +217,7 @@ def test_ordering_after_deletion(tmpdir):
     """Test that ordering is maintained correctly after deletions."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with delays to ensure different timestamps
         for v in "abcdefg":
@@ -254,7 +254,7 @@ def test_timestamp_verification(tmpdir):
     """Test that functions actually return items in timestamp order."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with significant delays
         keys_order = []
@@ -302,7 +302,7 @@ def test_consistency_between_functions(tmpdir):
     """Test consistency between keys and values functions."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items
         for v in "abcdef":
@@ -336,7 +336,7 @@ def test_different_data_types(tmpdir):
     """Test functions with different value data types."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Add items with different value types
         test_values = [
@@ -377,7 +377,7 @@ def test_multiple_operations_and_updates(tmpdir):
     """Test behavior after multiple operations including updates."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
-        S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+        S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     ]:
         # Initial setup
         d['a'] = 'value_a_1'

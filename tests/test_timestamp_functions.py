@@ -54,7 +54,7 @@ def test_file_dir_dict_timestamp_functions(tmpdir):
 @mock_aws
 def test_s3_dict_timestamp_functions(tmpdir):
     """Test timestamp functions specifically for S3Dict with longer delays."""
-    d = S3Dict(dir_name=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+    d = S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     
     # Add items with longer delays for S3Dict timestamp precision
     for i, v in enumerate("abc"):  # Use fewer items to reduce test time

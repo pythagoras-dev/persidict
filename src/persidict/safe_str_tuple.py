@@ -98,6 +98,8 @@ class SafeStrTuple(Sequence, Hashable):
                     candidate_strings.extend(SafeStrTuple(*a).strings)
             else:
                 raise TypeError(f"Invalid argument type: {type(a)}")
+        if len(candidate_strings) == 0:
+            raise ValueError("At least one non-empty valid string is required")
         self.strings = tuple(candidate_strings)
 
     @property

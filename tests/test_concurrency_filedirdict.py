@@ -2,8 +2,8 @@ import random, time, multiprocessing
 
 from persidict import FileDirDict
 
-def many_operations(dir_name:str, process_n:int):
-    d = FileDirDict(dir_name)
+def many_operations(base_dir:str, process_n:int):
+    d = FileDirDict(base_dir)
     d["a"] = random.random()
     for i in range(50):
         try:
@@ -17,15 +17,15 @@ def many_operations(dir_name:str, process_n:int):
             d[f"error_in_process_{i}_{e.__class__.__name__}"] = True
 
 def test_concurrency(tmpdir):
-    dir_name = str(tmpdir)
+    base_dir = str(tmpdir)
     processes = []
     for i in range(25):
-        p = multiprocessing.Process(target=many_operations, args=(dir_name,i,))
+        p = multiprocessing.Process(target=many_operations, args=(base_dir,i,))
         p.start()
         processes.append(p)
     for p in processes:
         p.join()
-    d = FileDirDict(dir_name)
+    d = FileDirDict(base_dir=base_dir)
     assert len(d) == 1, f"Expected 1 item, found {len(d)} items: {list(d.keys())}"
     assert "a" in d
     assert isinstance(d["a"], float)

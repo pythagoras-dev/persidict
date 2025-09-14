@@ -75,7 +75,9 @@ class S3Dict(PersiDict):
             **kwargs: Ignored; reserved for compatibility.
         """
 
-        super().__init__(immutable_items = immutable_items, digest_len = digest_len)
+        super().__init__(immutable_items = immutable_items
+                         , digest_len = digest_len
+                         , base_class_for_values=base_class_for_values)
         self.file_type = file_type
         self.etag_file_type = f"{file_type}_etag"
 

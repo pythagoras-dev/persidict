@@ -9,7 +9,7 @@ def test_timestamp(tmpdir):
     """test timestamp methods."""
     for d in [
         FileDirDict(base_dir= tmpdir.mkdir("LOCAL"))
-        ,S3Dict(dir_name = tmpdir.mkdir("AWS"), bucket_name ="mybucket")
+        ,S3Dict(base_dir = tmpdir.mkdir("AWS"), bucket_name ="mybucket")
         ]:
         for v in "abcdefg":
             d[v] = 5*v
