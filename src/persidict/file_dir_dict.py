@@ -74,9 +74,9 @@ class FileDirDict(PersiDict):
                 then file_type must be either "pkl" or "json".
 
         Raises:
-            ValueError: If base_dir points to a file; if file_type is "__etag__";
-                if file_type contains unsafe characters; or if configuration is
-                inconsistent (e.g., non-str values with unsupported file_type).
+            ValueError: If file_type contains unsafe characters; or
+                if configuration is inconsistent (e.g., non-str values
+                with unsupported file_type).
             RuntimeError: If base_dir cannot be created or is not a directory.
         """
 
@@ -87,10 +87,6 @@ class FileDirDict(PersiDict):
         if file_type != replace_unsafe_chars(file_type, ""):
             raise ValueError("file_type contains unsafe characters")
         self.file_type = file_type
-        if self.file_type == "__etag__":
-            raise ValueError(
-                "file_type cannot be 'etag' as it is a reserved"
-                " extension for S3 caching.")
 
         if (base_class_for_values is None or
                 not issubclass(base_class_for_values,str)):

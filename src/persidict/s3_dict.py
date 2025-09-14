@@ -5,6 +5,8 @@ import tempfile
 from typing import Any, Optional
 
 import boto3
+import joblib
+import jsonpickle
 from botocore.exceptions import ClientError
 
 import parameterizable
@@ -15,6 +17,7 @@ from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict
 from .jokers import KEEP_CURRENT, DELETE_CURRENT
 from .file_dir_dict import FileDirDict, PersiDictKey
+from .overlapping_multi_dict import OverlappingMultiDict
 
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
 
@@ -70,24 +73,28 @@ class S3Dict(PersiDict):
                 must be "pkl" or "json".
             *args: Ignored; reserved for compatibility.
             **kwargs: Ignored; reserved for compatibility.
-
-        Raises:
-            ValueError: If file_type is "__etag__" (reserved) or configuration
-                is inconsistent with base_class_for_values.
         """
 
-        super().__init__(immutable_items = immutable_items, digest_len = 0)
+        super().__init__(immutable_items = immutable_items, digest_len = digest_len)
         self.file_type = file_type
-        if self.file_type == "__etag__":
-            raise ValueError(
-                "file_type cannot be 'etag' as it is a reserved extension for caching.")
+        self.etag_file_type = f"{file_type}_etag"
 
-        self.local_cache = FileDirDict(
-            base_dir= base_dir
-            , file_type = file_type
-            , immutable_items = immutable_items
-            , base_class_for_values=base_class_for_values
-            , digest_len = digest_len)
+        self.local_cache = OverlappingMultiDict(
+            dict_type=FileDirDict,
+            shared_subdicts_params={
+                "base_dir": base_dir,
+                "immutable_items": immutable_items,
+                "base_class_for_values": base_class_for_values,
+                "digest_len": digest_len
+            },
+            **{
+                self.file_type: {},
+                self.etag_file_type: {"base_class_for_values": str}
+            }
+        )
+
+        self.main_cache = getattr(self.local_cache, self.file_type)
+        self.etag_cache = getattr(self.local_cache, self.etag_file_type)
 
         self.region = region
         if region is None:
@@ -118,7 +125,7 @@ class S3Dict(PersiDict):
             including region, bucket_name, and root_prefix combined with
             parameters from the local cache.
         """
-        params = self.local_cache.get_params()
+        params = self.main_cache.get_params()
         params["region"] = self.region
         params["bucket_name"] = self.bucket_name
         params["root_prefix"] = self.root_prefix
@@ -147,7 +154,7 @@ class S3Dict(PersiDict):
         Returns:
             str: Path to the local on-disk cache directory used by S3Dict.
         """
-        return self.local_cache.base_dir
+        return self.main_cache.base_dir
 
 
     def _build_full_objectname(self, key:PersiDictKey) -> str:
@@ -175,50 +182,19 @@ class S3Dict(PersiDict):
             bool: True if the object exists (or is cached when immutable), else False.
         """
         key = SafeStrTuple(key)
-        if self.immutable_items:
-            file_name = self.local_cache._build_full_path(
-                key, create_subdirs=True)
-            if os.path.exists(file_name):
+        if self.immutable_items and key in self.main_cache:
                 return True
         try:
             obj_name = self._build_full_objectname(key)
             self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
             return True
-        except:
-            return False
-
-
-    def _write_etag_file(self, file_name: str, etag: str):
-        """Atomically write the ETag to its cache file.
-
-        Args:
-            file_name (str): Path to the cached data file (without the ETag suffix).
-            etag (str): The S3 ETag value to persist alongside the cached file.
-        """
-        if not etag:
-            return
-        etag_file_name = file_name + ".__etag__"
-        dir_name = os.path.dirname(etag_file_name)
-        # Write to a temporary file and then rename for atomicity
-        fd, temp_path = tempfile.mkstemp(dir=dir_name)
-        try:
-            with os.fdopen(fd, "w") as f:
-                f.write(etag)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(temp_path, etag_file_name)
-            try:
-                if os.name == 'posix':
-                    dir_fd = os.open(dir_name, os.O_RDONLY)
-                    try:
-                        os.fsync(dir_fd)
-                    finally:
-                        os.close(dir_fd)
-            except OSError:
-                pass
-        except:
-            os.remove(temp_path)
-            raise
+        except ClientError as e:
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+                self.main_cache.delete_if_exists(key)
+                self.etag_cache.delete_if_exists(key)
+                return False
+            else:
+                raise
 
 
     def __getitem__(self, key:PersiDictKey) -> Any:
@@ -236,19 +212,15 @@ class S3Dict(PersiDict):
         """
 
         key = SafeStrTuple(key)
-        file_name = self.local_cache._build_full_path(key, create_subdirs=True)
 
-        if self.immutable_items and os.path.exists(file_name):
-            return self.local_cache._read_from_file(file_name)
+        if self.immutable_items and key in self.main_cache:
+            return self.main_cache[key]
 
         obj_name = self._build_full_objectname(key)
 
         cached_etag = None
-        etag_file_name = file_name + ".__etag__"
-        if not self.immutable_items and os.path.exists(file_name) and os.path.exists(
-                etag_file_name):
-            with open(etag_file_name, "r") as f:
-                cached_etag = f.read()
+        if not self.immutable_items and key in self.main_cache and key in self.etag_cache:
+            cached_etag = self.etag_cache[key]
 
         try:
             get_kwargs = {'Bucket': self.bucket_name, 'Key': obj_name}
@@ -261,37 +233,23 @@ class S3Dict(PersiDict):
             s3_etag = response.get("ETag")
             body = response['Body']
 
-            dir_name = os.path.dirname(file_name)
-            fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
+            # Read all data into memory and store in cache
 
-            try:
-                with os.fdopen(fd, 'wb') as f:
-                    # Stream body to file to avoid loading all in memory
-                    for chunk in body.iter_chunks():
-                        f.write(chunk)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(temp_path, file_name)
-                try:
-                    if os.name == 'posix':
-                        dir_fd = os.open(dir_name, os.O_RDONLY)
-                        try:
-                            os.fsync(dir_fd)
-                        finally:
-                            os.close(dir_fd)
-                except OSError:
-                    pass
-            except:
-                os.remove(temp_path)  # Clean up temp file on failure
-                raise
+            if self.file_type == 'json':
+                deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
+            elif self.file_type == 'pkl':
+                deserialized_value = joblib.load(body)
+            else:
+                deserialized_value = body.read().decode('utf-8')
 
-            self._write_etag_file(file_name, s3_etag)
+            self.main_cache[key] = deserialized_value
+            self.etag_cache[key] = s3_etag
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
                 # 304 Not Modified: our cached version is up-to-date.
-                # The file will be read from cache at the end of the function.
+                # The value will be read from cache at the end of the function.
                 pass
             elif e.response.get("Error", {}).get("Code") == 'NoSuchKey':
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
@@ -299,20 +257,21 @@ class S3Dict(PersiDict):
                 # Re-raise other client errors (e.g., permissions, throttling)
                 raise
 
-        return self.local_cache._read_from_file(file_name)
+        return self.main_cache[key]
 
 
     def __setitem__(self, key:PersiDictKey, value:Any):
         """Store a value for a key in S3 and update the local cache.
 
-        Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
-        Validates a value type if base_class_for_values is set, then writes to the
-        local cache and uploads to S3. If possible, caches the S3 ETag locally to
-        enable conditional GETs later.
+        Interprets special joker values: KEEP_CURRENT (no-op) and DELETE_CURRENT 
+        (deletes the key). Validates value type if base_class_for_values is set, 
+        then writes to the local cache and uploads to S3. If possible, caches the 
+        S3 ETag locally to enable conditional GETs later.
 
         Args:
             key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
-            value (Any): Value to store, or a joker command.
+            value (Any): Value to store, or a joker command (KEEP_CURRENT or 
+                DELETE_CURRENT from the jokers module).
 
         Raises:
             KeyError: If attempting to modify an existing item when
@@ -344,23 +303,23 @@ class S3Dict(PersiDict):
         if self.immutable_items and key in self:
             raise KeyError("Can't modify an immutable item")
 
-        file_name = self.local_cache._build_full_path(key, create_subdirs=True)
         obj_name = self._build_full_objectname(key)
 
-        self.local_cache._save_to_file(file_name, value)
-        self.s3_client.upload_file(file_name, self.bucket_name, obj_name)
+        # Store in local cache first
+        self.main_cache[key] = value
+        
+        # Get the file path from the cache to upload to S3
+        file_path = self.main_cache._build_full_path(key)
+        self.s3_client.upload_file(file_path, self.bucket_name, obj_name)
 
         try:
             head = self.s3_client.head_object(
                 Bucket=self.bucket_name, Key=obj_name)
-            s3_etag = head.get("ETag")
-            self._write_etag_file(file_name, s3_etag)
+            self.etag_cache[key] = head.get("ETag")
         except ClientError:
-            # If we can't get ETag, we should remove any existing etag file
+            # If we can't get ETag, we should remove any existing etag
             # to force a re-download on the next __getitem__ call.
-            etag_file_name = file_name + ".__etag__"
-            if os.path.exists(etag_file_name):
-                os.remove(etag_file_name)
+            self.etag_cache.delete_if_exists(key)
 
 
     def __delitem__(self, key:PersiDictKey):
@@ -370,20 +329,19 @@ class S3Dict(PersiDict):
             key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
 
         Raises:
-            KeyError: If immutable_items is True.
+            KeyError: If immutable_items is True, or if the key does not exist in S3.
         """
 
         key = SafeStrTuple(key)
         if self.immutable_items:
             raise KeyError("Can't delete an immutable item")
+
         obj_name = self._build_full_objectname(key)
+        
         self.s3_client.delete_object(Bucket = self.bucket_name, Key = obj_name)
-        file_name = self.local_cache._build_full_path(key)
-        if os.path.isfile(file_name):
-            os.remove(file_name)
-        etag_file_name = file_name + ".__etag__"
-        if os.path.isfile(etag_file_name):
-            os.remove(etag_file_name)
+        self.etag_cache.delete_if_exists(key)
+        self.main_cache.delete_if_exists(key)
+
 
     def __len__(self) -> int:
         """Return len(self).
@@ -415,7 +373,7 @@ class S3Dict(PersiDict):
         return num_files
 
 
-    def _generic_iter(self, result_type: str):
+    def _generic_iter(self, result_type: set[str]):
         """Underlying implementation for .items()/.keys()/.values() iterators.
 
         Iterates over S3 objects under the configured root_prefix and yields
@@ -529,13 +487,12 @@ class S3Dict(PersiDict):
 
         key = SafeStrTuple(key)
         if len(key):
-            key = SafeStrTuple(key)
             key = sign_safe_str_tuple(key, self.digest_len)
             full_root_prefix = self.root_prefix +  "/".join(key)
         else:
             full_root_prefix = self.root_prefix
 
-        new_dir_path = self.local_cache._build_full_path(
+        new_dir_path = self.main_cache._build_full_path(
             key, create_subdirs = True, is_file_path = False)
 
         new_dict = S3Dict(
@@ -561,9 +518,12 @@ class S3Dict(PersiDict):
 
         Returns:
             float: POSIX timestamp (seconds since the Unix epoch) of the last
-            modification time as reported by S3 for the object.
+            modification time as reported by S3 for the object. The timestamp
+            is timezone-aware and converted to UTC.
+
+        Raises:
+            KeyError: If the key does not exist in S3.
         """
-        # TODO: check work with timezones
         key = SafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
         response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
