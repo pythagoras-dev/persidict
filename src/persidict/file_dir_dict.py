@@ -190,7 +190,12 @@ class FileDirDict(PersiDict):
                     os.remove(os.path.join(subdir_name, f))
             if (subdir_name != self._base_dir) and (
                     len(os.listdir(subdir_name)) == 0 ):
-                os.rmdir(subdir_name)
+                try:
+                    os.rmdir(subdir_name)
+                except OSError:
+                    # Directory is not empty, likely due to a race condition.
+                    # Continue without raising an error.
+                    pass
 
 
     def _build_full_path(self
