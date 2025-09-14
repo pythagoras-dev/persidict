@@ -29,6 +29,26 @@ from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, non_empty_persidict_key
 
+
+if os.name == 'nt':
+    import msvcrt
+    import ctypes
+    from ctypes import wintypes
+
+    GENERIC_READ = 0x80000000
+    FILE_SHARE_READ = 0x00000001
+    FILE_SHARE_DELETE = 0x00000004
+    OPEN_EXISTING = 3
+    INVALID_HANDLE_VALUE = -1
+
+    CreateFileW = ctypes.windll.kernel32.CreateFileW
+    CreateFileW.argtypes = [wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    CreateFileW.restype = wintypes.HANDLE
+
+    CloseHandle = ctypes.windll.kernel32.CloseHandle
+    CloseHandle.argtypes = [wintypes.HANDLE]
+    CloseHandle.restype = wintypes.BOOL
+
 jsonpickle_numpy.register_handlers()
 jsonpickle_pandas.register_handlers()
 
@@ -319,17 +339,35 @@ class FileDirDict(PersiDict):
         Returns:
             Any: The deserialized value according to file_type.
         """
+        file_open_mode = 'rb' if self.file_type == "pkl" else 'r'
+        if os.name == 'nt':
+            handle = CreateFileW(file_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE, None,
+                                 OPEN_EXISTING, 0, None)
+            if handle == INVALID_HANDLE_VALUE:
+                raise ctypes.WinError()
 
-        if self.file_type == "pkl":
-            with open(file_name, 'rb') as f:
-                result = joblib.load(f)
-        elif self.file_type == "json":
-            with open(file_name, 'r') as f:
-                result = jsonpickle.loads(f.read())
+            try:
+                fd = msvcrt.open_osfhandle(handle,
+                    os.O_RDONLY | os.O_BINARY if self.file_type == "pkl" else os.O_RDONLY)
+                with os.fdopen(fd, file_open_mode) as f:
+                    if self.file_type == "pkl":
+                        result = joblib.load(f)
+                    elif self.file_type == "json":
+                        result = jsonpickle.loads(f.read())
+                    else:
+                        result = f.read()
+            finally:
+                CloseHandle(handle)
+            return result
         else:
-            with open(file_name, 'r') as f:
-                result = f.read()
-        return result
+            with open(file_name, file_open_mode) as f:
+                if self.file_type == "pkl":
+                    result = joblib.load(f)
+                elif self.file_type == "json":
+                    result = jsonpickle.loads(f.read())
+                else:
+                    result = f.read()
+                return result
 
 
     def _read_from_file(self,file_name:str) -> Any:
