@@ -13,7 +13,10 @@ In contrast to traditional persistent dictionaries (e.g., Python’s `shelve)`,
 `persidict` is designed for distributed environments where multiple processes 
 on different machines concurrently work with the same store.
 
-## 2. Features
+## 2. Why Use It?
+
+## 2.1 Features
+
 * **Persistent Storage**: Save dictionaries to the local filesystem 
 (`FileDirDict`) or AWS S3 (`S3Dict`).
 * **Standard Dictionary API**: Use persidict objects like standard 
@@ -27,6 +30,23 @@ JSON (`json`), or plain text.
 instances of a specific class.
 * **Advanced Functionality**: Includes features like write-once dictionaries, 
 timestamping of entries, and tools for handling file-system-safe keys.
+* **Hierarchical Keys**: Keys can be sequences of strings, 
+creating a directory-like structure within the storage backend.
+
+## 2.2 Use Cases
+
+`persidict` is well-suited for a variety of applications, including:
+
+* **Caching**: Store results of expensive computations and retrieve them later, 
+even across different machines.
+* **Configuration Management**: Manage application settings 
+in a distributed environment, allowing for easy updates and access.
+* **Data Pipelines**: Share data between different stages 
+of a data processing pipeline.
+* **Distributed Task Queues**: Store task definitions and results 
+in a shared location.
+* **Memoization**: Cache function call results 
+in a persistent and distributed manner.
 
 ## 3. Usage
 
