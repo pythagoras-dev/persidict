@@ -2,6 +2,9 @@ import random, time, multiprocessing
 
 from persidict import FileDirDict
 
+# Protect multiprocessing code on Windows from infinite recursion
+multiprocessing.freeze_support()
+
 def many_operations(base_dir:str, process_n:int):
     d = FileDirDict(base_dir)
     d["a"] = random.random()
