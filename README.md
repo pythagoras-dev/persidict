@@ -85,21 +85,49 @@ print(f"API Key: {cloud_config['api_key']}")
 # >>> API Key: ABC-123-XYZ
 ```
 
-## 4. Glossary
+## 4. Comparison With Python Built-in Dictionaries
 
-### 4.1 Core Concepts
+### 4.1 Similarities 
+
+`PersiDict` subclasses can be used like regular Python dictionaries, supporting: 
+
+* Get, set, and delete operations with square brackets (`[]`).
+* Iteration over keys, values, and items.
+* Membership testing with `in`.
+* Length checking with `len()`.
+* Standard methods like `keys()`, `values()`, `items()`, `get()`, `clear()`
+, `setdefault()`, and `update()`.
+
+### 4.2 Differences 
+
+* **Persistence**: Data is saved between program executions.
+* **Keys**: Keys must be strings or sequences of URL/filename-safe strings.
+* **Values**: Values must be pickleable. 
+You can also constrain values to a specific class.
+* **Order**: Insertion order is not preserved.
+* **Additional Methods**: `PersiDict` provides extra methods not in the standard 
+dict API, such as `timestamp()`, `random_key()`, `newest_keys()`, `subdicts()`
+, `delete_if_exists()`, `get_params()` and more.
+* **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
+and `DELETE_CURRENT` to delete a value during an assignment.
+
+## 5. Glossary
+
+### 5.1 Core Concepts
 
 * **`PersiDict`**: The abstract base class that defines the common interface 
 for all persistent dictionaries in the package. It's the foundation 
 upon which everything else is built.
 * **`PersiDictKey`**: A type hint that specifies what can be used
-as a key in any `PersiDict`. It can be a `SafeStrTuple`, 
-a single string, or a sequence of strings.
+as a key in any `PersiDict`. It can be a `SafeStrTuple`, a single string, 
+* or a sequence of strings. When a `PesiDict` method requires a key as an input,
+it will accept any of these types and convert them to a `SafeStrTuple` internally.
 * **`SafeStrTuple`**: The core data structure for keys. It's an immutable, 
 flat tuple of non-empty, URL/filename-safe strings, ensuring that 
-keys are consistent and safe for various storage backends.
+keys are consistent and safe for various storage backends. 
+When a `PersiDict` method returns a key, it will always be in this format.
 
-### 4.2 Main Implementations
+### 5.2 Main Implementations
 
 * **`FileDirDict`**: A primary, concrete implementation of `PersiDict` 
 that stores each key-value pair as a separate file in a local directory.
@@ -107,7 +135,7 @@ that stores each key-value pair as a separate file in a local directory.
 which stores each key-value pair as an object in an AWS S3 bucket, 
 suitable for distributed environments.
 
-### 4.3 Key Parameters
+### 5.3 Key Parameters
 
 * **`file_type`**: A key parameter for `FileDirDict` and `S3Dict` that 
 determines the serialization format for values. 
@@ -126,7 +154,7 @@ stores its files. For `S3Dict`, this directory is used to cache files locally.
 an `S3Dict` stores its objects.
 * **`region`**: An optional string specifying the AWS region for the S3 bucket.
 
-### 4.4 Advanced Classes
+### 5.4 Advanced Classes
 
 * **`WriteOnceDict`**: A wrapper that enforces write-once behavior 
 on any `PersiDict`, ignoring subsequent writes to the same key. 
@@ -136,7 +164,7 @@ writes to the same key always match the original value.
 multiple `PersiDict` instances sharing the same storage 
 but with different `file_type`s.
 
-### 4.5 Special "Joker" Values
+### 5.5 Special "Joker" Values
 
 * **`Joker`**: The base class for special command-like values that 
 can be assigned to a key to trigger an action instead of storing a value.
@@ -144,32 +172,6 @@ can be assigned to a key to trigger an action instead of storing a value.
 ensures the existing value is not changed.
 * **`DELETE_CURRENT`**: A "joker" value that deletes the key-value pair 
 from the dictionary when assigned to a key.
-
-## 5. Comparison With Python Built-in Dictionaries
-
-### 5.1 Similarities 
-
-`PersiDict` subclasses can be used like regular Python dictionaries, supporting: 
-
-* Get, set, and delete operations with square brackets (`[]`).
-* Iteration over keys, values, and items.
-* Membership testing with `in`.
-* Length checking with `len()`.
-* Standard methods like `keys()`, `values()`, `items()`, `get()`, `clear()`
-, `setdefault()`, and `update()`.
-
-### 5.2 Differences 
-
-* **Persistence**: Data is saved between program executions.
-* **Keys**: Keys must be strings or sequences of URL/filename-safe strings.
-* **Values**: Values must be pickleable. 
-You can also constrain values to a specific class.
-* **Order**: Insertion order is not preserved.
-* **Additional Methods**: `PersiDict` provides extra methods not in the standard 
-dict API, such as `timestamp()`, `random_key()`, `newest_keys()`, `subdicts()`
-, `delete_if_exists()`, `get_params()` and more.
-* **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
-and `DELETE_CURRENT` to delete a value during an assignment.
 
 ## 6. API Highlights
 
