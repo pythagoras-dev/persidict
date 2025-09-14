@@ -23,7 +23,7 @@ import jsonpickle.ext.pandas as jsonpickle_pandas
 import parameterizable
 from parameterizable import sort_dict_by_keys
 
-from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
+from .jokers import Joker
 from .safe_chars import replace_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
@@ -37,6 +37,7 @@ if os.name == 'nt':
 
     GENERIC_READ = 0x80000000
     FILE_SHARE_READ = 0x00000001
+    FILE_SHARE_WRITE = 0x00000002
     FILE_SHARE_DELETE = 0x00000004
     OPEN_EXISTING = 3
     INVALID_HANDLE_VALUE = -1
@@ -48,6 +49,43 @@ if os.name == 'nt':
     CloseHandle = ctypes.windll.kernel32.CloseHandle
     CloseHandle.argtypes = [wintypes.HANDLE]
     CloseHandle.restype = wintypes.BOOL
+
+    def add_long_path_prefix(path: str) -> str:
+        """Add the '\\\\?\\' prefix to a path on Windows to support long paths.
+
+        Args:
+            path (str): The original file or directory path.
+
+        Returns:
+            str: The modified path with the '\\\\?\\' prefix if on Windows
+                and not already present; otherwise, the original path.
+        """
+        if  not path.startswith('\\\\?\\'):
+            return f'\\\\?\\{path}'
+        else:
+            return path
+
+    def drop_long_path_prefix(path: str) -> str:
+        """Remove the '\\\\?\\' prefix from a path on Windows if present.
+
+        Args:
+            path (str): The file or directory path, possibly with the '\\\\?\\' prefix.
+
+        Returns:
+            str: The path without the '\\\\?\\' prefix if it was present; otherwise,
+                the original path.
+        """
+        if path.startswith('\\\\?\\'):
+            return path[4:]
+        else:
+            return path
+
+else:
+    def add_long_path_prefix(path: str) -> str:
+        return path
+
+    def drop_long_path_prefix(path: str) -> str:
+        return path
 
 jsonpickle_numpy.register_handlers()
 jsonpickle_pandas.register_handlers()
@@ -114,16 +152,15 @@ class FileDirDict(PersiDict):
                 raise ValueError("For non-string values file_type must be either 'pkl' or 'json'.")
 
         base_dir = str(base_dir)
+        self._base_dir = os.path.abspath(base_dir)
+        self._base_dir = add_long_path_prefix(self._base_dir)
 
-        if os.path.isfile(base_dir):
+        if os.path.isfile(self._base_dir):
             raise ValueError(f"{base_dir} is a file, not a directory.")
 
-        os.makedirs(base_dir, exist_ok=True)
-        if not os.path.isdir(base_dir):
+        os.makedirs(self._base_dir, exist_ok=True)
+        if not os.path.isdir(self._base_dir):
             raise RuntimeError(f"Failed to create or access directory: {base_dir}")
-
-        # self.base_dir_param = _base_dir
-        self._base_dir = os.path.abspath(base_dir)
 
 
     def get_params(self):
@@ -154,8 +191,7 @@ class FileDirDict(PersiDict):
         Returns:
             str: URL of the underlying storage in the form "file://<abs_path>".
         """
-        return pathlib.Path(self._base_dir).as_uri()
-
+        return pathlib.Path(drop_long_path_prefix(self._base_dir)).as_uri()
 
 
     @property
@@ -167,7 +203,7 @@ class FileDirDict(PersiDict):
         Returns:
             str: Absolute path to the base directory used by this dictionary.
         """
-        return self._base_dir
+        return drop_long_path_prefix(self._base_dir)
 
 
     def __len__(self) -> int:
@@ -240,69 +276,77 @@ class FileDirDict(PersiDict):
                 the key prefix.
 
         Returns:
-            str: An absolute path within base_dir corresponding to the key.
+            str: An absolute path within base_dir corresponding to the key. On
+                Windows, this path is prefixed with '\\\\?\\' to support paths
+                longer than 260 characters.
         """
 
         key = sign_safe_str_tuple(key, self.digest_len)
-        key = [self._base_dir] + list(key.strings)
-        dir_names = key[:-1] if is_file_path else key
+        key_components = [self._base_dir] + list(key.strings)
+        dir_names = key_components[:-1] if is_file_path else key_components
+
+        dir_path = str(os.path.join(*dir_names))
 
         if create_subdirs:
-            dir_path = os.path.join(*dir_names)
-            os.makedirs(dir_path, exist_ok=True)
+            path_for_makedirs = dir_path
+            path_for_makedirs = add_long_path_prefix(path_for_makedirs)
+            os.makedirs(path_for_makedirs, exist_ok=True)
 
         if is_file_path:
-            file_name = key[-1] + "." + self.file_type
-            return os.path.join(*dir_names, file_name)
+            file_name = key_components[-1] + "." + self.file_type
+            final_path = os.path.join(dir_path, file_name)
         else:
-            return str(os.path.join(*dir_names))
+            final_path = dir_path
+
+        return add_long_path_prefix(final_path)
 
 
     def _build_key_from_full_path(self, full_path:str)->SafeStrTuple:
-        """Convert an absolute filesystem path back into a SafeStrTuple key.
+            """Convert an absolute filesystem path back into a SafeStrTuple key.
 
-        This function reverses _build_full_path, stripping base_dir, removing the
-        file_type extension if the path points to a file, and unsigning the key
-        components according to digest_len.
+            This function reverses _build_full_path, stripping base_dir, removing the
+            file_type extension if the path points to a file, and unsigning the key
+            components according to digest_len.
 
-        Args:
-            full_path (str): Absolute path within the dictionary's base
-                directory.
+            Args:
+                full_path (str): Absolute path within the dictionary's base
+                    directory.
 
-        Returns:
-            SafeStrTuple: The reconstructed (unsigned) key.
+            Returns:
+                SafeStrTuple: The reconstructed (unsigned) key.
 
-        Raises:
-            ValueError: If full_path is not located under base_dir.
-        """
+            Raises:
+                ValueError: If full_path is not located under base_dir.
+            """
 
-        # Ensure we're working with absolute paths
-        full_path = os.path.abspath(full_path)
+            # Remove the base directory from the path
+            if not full_path.startswith(self._base_dir):
+                raise ValueError(f"Path {full_path} is not within base directory {self._base_dir}")
 
-        # Remove the base directory from the path
-        if not full_path.startswith(self._base_dir):
-            raise ValueError(f"Path {full_path} is not within base directory {self._base_dir}")
+            # Get the relative path
+            rel_path = os.path.relpath(
+                drop_long_path_prefix(full_path),
+                drop_long_path_prefix(self._base_dir))
+            rel_path = os.path.normpath(rel_path)
 
-        # Get the relative path
-        rel_path = full_path[len(self._base_dir):].lstrip(os.sep)
+            if not rel_path or rel_path == ".":
+                return SafeStrTuple()
 
-        if not rel_path:
-            return SafeStrTuple()
+            # Split the path into components
+            path_components = rel_path.split(os.sep)
 
-        # Split the path into components
-        path_components = rel_path.split(os.sep)
+            # If it's a file path, remove the file extension from the last component
+            suffix = "." + self.file_type
+            if path_components[-1].endswith(suffix):
+                path_components[-1] = path_components[-1][:-len(suffix)]
 
-        # If it's a file path, remove the file extension from the last component
-        if os.path.isfile(full_path) and path_components[-1].endswith("." + self.file_type):
-            path_components[-1] = path_components[-1][:-len("." + self.file_type)]
+            # Create a SafeStrTuple from the path components
+            key = SafeStrTuple(*path_components)
 
-        # Create a SafeStrTuple from the path components
-        key = SafeStrTuple(*path_components)
+            # Unsign the key
+            key = unsign_safe_str_tuple(key, self.digest_len)
 
-        # Unsign the key
-        key = unsign_safe_str_tuple(key, self.digest_len)
-
-        return key
+            return key
 
 
     def get_subdict(self, key:PersiDictKey) -> FileDirDict:
@@ -321,7 +365,9 @@ class FileDirDict(PersiDict):
         """
         key = SafeStrTuple(key)
         full_dir_path = self._build_full_path(
-            key, create_subdirs = True, is_file_path = False)
+            key,
+            create_subdirs = True,
+            is_file_path = False)
         return FileDirDict(
             base_dir= full_dir_path
             , file_type=self.file_type
@@ -341,23 +387,38 @@ class FileDirDict(PersiDict):
         """
         file_open_mode = 'rb' if self.file_type == "pkl" else 'r'
         if os.name == 'nt':
-            handle = CreateFileW(file_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE, None,
-                                 OPEN_EXISTING, 0, None)
-            if handle == INVALID_HANDLE_VALUE:
-                raise ctypes.WinError()
+            handle = CreateFileW(file_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, None, OPEN_EXISTING, 0, None)
+            if int(handle) == INVALID_HANDLE_VALUE:
+                error_code = ctypes.GetLastError()
+                raise ctypes.WinError(error_code)
+
+            fd = None
+            try:
+                if self.file_type == "pkl":
+                    fd_open_mode = os.O_RDONLY | os.O_BINARY
+                else:
+                    fd_open_mode = os.O_RDONLY
+                fd = msvcrt.open_osfhandle(int(handle),fd_open_mode)
+            except Exception:
+                CloseHandle(handle)
+                raise
 
             try:
-                fd = msvcrt.open_osfhandle(handle,
-                    os.O_RDONLY | os.O_BINARY if self.file_type == "pkl" else os.O_RDONLY)
-                with os.fdopen(fd, file_open_mode) as f:
-                    if self.file_type == "pkl":
-                        result = joblib.load(f)
-                    elif self.file_type == "json":
-                        result = jsonpickle.loads(f.read())
-                    else:
-                        result = f.read()
-            finally:
-                CloseHandle(handle)
+                f = os.fdopen(fd, file_open_mode)
+                fd = None
+            except Exception:
+                if fd is not None:
+                    os.close(fd)
+                raise
+
+            with f:
+                if self.file_type == "pkl":
+                    result = joblib.load(f)
+                elif self.file_type == "json":
+                    result = jsonpickle.loads(f.read())
+                else:
+                    result = f.read()
+
             return result
         else:
             with open(file_name, file_open_mode) as f:
@@ -444,12 +505,36 @@ class FileDirDict(PersiDict):
                         os.fsync(dir_fd)
                     finally:
                         os.close(dir_fd)
+                elif os.name == 'nt':
+                # On Windows, try to flush directory metadata
+                # This is less reliable than on POSIX systems
+                    try:
+                        handle = CreateFileW(
+                            dir_name,
+                            GENERIC_READ,
+                            FILE_SHARE_READ | FILE_SHARE_WRITE,
+                            None,
+                            OPEN_EXISTING,
+                            0x02000000,  # FILE_FLAG_BACKUP_SEMANTICS (needed for directories)
+                            None
+                        )
+                        if int(handle) != INVALID_HANDLE_VALUE:
+                            try:
+                                kernel32 = ctypes.windll.kernel32
+                                kernel32.FlushFileBuffers(handle)
+                            finally:
+                                CloseHandle(handle)
+                    except:
+                        pass
+
             except OSError:
                 pass
 
         except:
-            os.remove(temp_path)
-            raise
+            try:
+                os.remove(temp_path)
+            finally:
+                raise
 
     def _save_to_file(self, file_name:str, value:Any) -> None:
         """Save a value to a file with retry/backoff.
@@ -620,7 +705,8 @@ class FileDirDict(PersiDict):
                 for f in files:
                     if f.endswith(suffix):
                         prefix_key = os.path.relpath(
-                            dir_name, start=self._base_dir)
+                            drop_long_path_prefix(dir_name),
+                            start=drop_long_path_prefix(self._base_dir))
 
                         result_key = (*splitter(prefix_key), f[:-ext_len])
                         result_key = SafeStrTuple(result_key)
@@ -681,7 +767,7 @@ class FileDirDict(PersiDict):
         # canonicalise extension once
         ext = None
         if self.file_type:
-            ext = self.file_type.lower()
+            ext = self.file_type
             if not ext.startswith("."):
                 ext = "." + ext
 
@@ -699,7 +785,7 @@ class FileDirDict(PersiDict):
                             continue
 
                         # cheap name test before stat()
-                        if ext and not ent.name.lower().endswith(ext):
+                        if ext and not ent.name.endswith(ext):
                             continue
 
                         if ent.is_file(follow_symlinks=False):
@@ -712,7 +798,8 @@ class FileDirDict(PersiDict):
         if winner is None:
             return None
         else:
-            return self._build_key_from_full_path(os.path.abspath(winner))
-
+            winner = os.path.abspath(winner)
+            winner = add_long_path_prefix(winner)
+            return self._build_key_from_full_path(winner)
 
 parameterizable.register_parameterizable_class(FileDirDict)
