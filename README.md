@@ -244,14 +244,14 @@ pip install persidict[dev]
 * [jsonpickle](https://jsonpickle.github.io)
 * [joblib](https://joblib.readthedocs.io)
 * [lz4](https://python-lz4.readthedocs.io)
-* [pandas](https://pandas.pydata.org)
-* [numpy](https://numpy.org)
 * [deepdiff](https://zepworks.com/deepdiff)
 
 For AWS S3 support (`S3Dict`), you will also need:
 * [boto3](https://boto3.readthedocs.io)
 
 For development and testing, the following packages are used:
+* [pandas](https://pandas.pydata.org)
+* [numpy](https://numpy.org)
 * [pytest](https://pytest.org)
 * [moto](http://getmoto.org)
 

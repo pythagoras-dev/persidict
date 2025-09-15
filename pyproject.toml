@@ -28,8 +28,6 @@ dependencies = [
     "parameterizable",
     "lz4",
     "joblib",
-    "numpy",
-    "pandas",
     "jsonpickle",
     "deepdiff"
 ]
@@ -39,6 +37,8 @@ Homepage = "https://github.com/pythagoras-dev/persidict"
 
 [project.optional-dependencies]
 dev = [
+    "numpy",
+    "pandas",
     "boto3",
     "moto",
     "pytest"
