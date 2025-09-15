@@ -18,7 +18,7 @@ def test_base_url(tmpdir, DictToTest, kwargs):
 
     if isinstance(dict_to_test, FileDirDict):
         expected_uri = pathlib.Path(str(dict_to_test._base_dir)).resolve().as_uri()
-        assert dict_to_test.base_url == expected_uri
+        assert str(dict_to_test.base_url) == str(expected_uri)
 
     if isinstance(dict_to_test, S3Dict):
         assert dict_to_test.base_url.startswith("s3://")
