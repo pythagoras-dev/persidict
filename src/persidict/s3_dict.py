@@ -14,7 +14,7 @@ from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict
 from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
-from .file_dir_dict import FileDirDict, PersiDictKey, non_empty_persidict_key
+from .file_dir_dict import FileDirDict, PersiDictKey, _non_empty_persidict_key
 from .overlapping_multi_dict import OverlappingMultiDict
 
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
@@ -197,7 +197,7 @@ class S3Dict(PersiDict):
             str: The complete S3 object key including root_prefix and file_type
             extension, with digest-based collision prevention applied if enabled.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         key = sign_safe_str_tuple(key, self.digest_len)
         objectname = self.root_prefix +  "/".join(key)+ "." + self.file_type
         return objectname
@@ -216,7 +216,7 @@ class S3Dict(PersiDict):
             bool: True if the key exists in S3 (or local cache for immutable
             items), False otherwise.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         if self.immutable_items and key in self.main_cache:
                 return True
         try:
@@ -249,7 +249,7 @@ class S3Dict(PersiDict):
             KeyError: If the key does not exist in S3.
         """
 
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
 
         if self.immutable_items and key in self.main_cache:
             return self.main_cache[key]
@@ -315,7 +315,7 @@ class S3Dict(PersiDict):
                 the required base_class_for_values when specified.
         """
 
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         PersiDict.__setitem__(self, key, value)
         if isinstance(value, Joker):
             # Joker values (KEEP_CURRENT, DELETE_CURRENT) are handled by base class
@@ -349,7 +349,7 @@ class S3Dict(PersiDict):
         Raises:
             KeyError: If immutable_items is True, or if the key does not exist.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         PersiDict.__delitem__(self, key)
         obj_name = self._build_full_objectname(key)
         self.s3_client.delete_object(Bucket = self.bucket_name, Key = obj_name)
@@ -535,7 +535,7 @@ class S3Dict(PersiDict):
         Raises:
             KeyError: If the key does not exist in S3.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         obj_name = self._build_full_objectname(key)
         response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
         return response["LastModified"].timestamp()

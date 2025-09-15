@@ -27,7 +27,7 @@ from .jokers import Joker
 from .safe_chars import replace_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
-from .persi_dict import PersiDict, PersiDictKey, non_empty_persidict_key
+from .persi_dict import PersiDict, PersiDictKey, _non_empty_persidict_key
 
 
 if os.name == 'nt':
@@ -591,7 +591,7 @@ class FileDirDict(PersiDict):
         Returns:
             bool: True if a file for the key exists; False otherwise.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         filename = self._build_full_path(key)
         return os.path.isfile(filename)
 
@@ -613,7 +613,7 @@ class FileDirDict(PersiDict):
             TypeError: If the deserialized value does not match base_class_for_values
                 when it is set.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -644,7 +644,7 @@ class FileDirDict(PersiDict):
                 base_class_for_values when it is set.
         """
 
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         PersiDict.__setitem__(self, key, value)
         if isinstance(value, Joker):
             # processed by base class
@@ -663,7 +663,7 @@ class FileDirDict(PersiDict):
         Raises:
             KeyError: If immutable_items is True or if the key does not exist.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -761,7 +761,7 @@ class FileDirDict(PersiDict):
         Raises:
             FileNotFoundError: If the key does not exist.
         """
-        key = non_empty_persidict_key(key)
+        key = _non_empty_persidict_key(key)
         filename = self._build_full_path(key)
         return os.path.getmtime(filename)
 
