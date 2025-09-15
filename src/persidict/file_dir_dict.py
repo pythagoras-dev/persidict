@@ -411,14 +411,14 @@ class FileDirDict(PersiDict):
                 else:
                     fd_open_mode = os.O_RDONLY
                 fd = msvcrt.open_osfhandle(int(handle),fd_open_mode)
-            except Exception:
+            except:
                 CloseHandle(handle)
                 raise
 
             try:
                 f = os.fdopen(fd, file_open_mode)
                 fd = None
-            except Exception:
+            except:
                 if fd is not None:
                     os.close(fd)
                 raise
@@ -473,7 +473,7 @@ class FileDirDict(PersiDict):
                 return self._read_from_file_impl(file_name)
             except Exception as e:
                 if i < n_retries - 1:
-                    time.sleep(random.uniform(0.01, 0.2) * (1.5 ** i))
+                    time.sleep(random.uniform(0.01, 0.2) * (1.75 ** i))
                 else:
                     raise e
 
@@ -577,7 +577,7 @@ class FileDirDict(PersiDict):
                 return
             except Exception as e:
                 if i < n_retries - 1:
-                    time.sleep(random.uniform(0.01, 0.2) * (1.5 ** i))
+                    time.sleep(random.uniform(0.01, 0.2) * (1.75 ** i))
                 else:
                     raise e
 
