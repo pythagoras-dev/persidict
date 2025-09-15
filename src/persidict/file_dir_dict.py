@@ -52,30 +52,42 @@ if os.name == 'nt':
 
     def add_long_path_prefix(path: str) -> str:
         """Add the '\\\\?\\' prefix to a path on Windows to support long paths.
+        
+        Handles both regular paths and UNC paths correctly.
 
         Args:
             path (str): The original file or directory path.
 
         Returns:
-            str: The modified path with the '\\\\?\\' prefix if on Windows
+            str: The modified path with the appropriate prefix if on Windows
                 and not already present; otherwise, the original path.
+                UNC paths get '\\\\?\\UNC\\' prefix, regular paths get '\\\\?\\'.
         """
-        if  not path.startswith('\\\\?\\'):
-            return f'\\\\?\\{path}'
-        else:
+        if path.startswith('\\\\?\\'):
             return path
+        elif path.startswith('\\\\'):
+            # UNC path: \\server\share -> \\?\UNC\server\share
+            return f'\\\\?\\UNC\\{path[2:]}'
+        else:
+            return f'\\\\?\\{path}'
 
     def drop_long_path_prefix(path: str) -> str:
         """Remove the '\\\\?\\' prefix from a path on Windows if present.
+        
+        Handles both regular paths and UNC paths correctly.
 
         Args:
             path (str): The file or directory path, possibly with the '\\\\?\\' prefix.
 
         Returns:
             str: The path without the '\\\\?\\' prefix if it was present; otherwise,
-                the original path.
+                the original path. UNC paths are converted back from '\\\\?\\UNC\\' 
+                format to '\\\\' format.
         """
-        if path.startswith('\\\\?\\'):
+        if path.startswith('\\\\?\\UNC\\'):
+            # UNC path: \\?\UNC\server\share -> \\server\share
+            return f'\\\\{path[8:]}'
+        elif path.startswith('\\\\?\\'):
             return path[4:]
         else:
             return path
