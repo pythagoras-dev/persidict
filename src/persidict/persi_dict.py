@@ -127,6 +127,21 @@ class PersiDict(MutableMapping, ParameterizableClass):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
+    def copy(self) -> 'PersiDict':
+        """Return a shallow copy of the dictionary.
+
+        This creates a new PersiDict instance with the same parameters, pointing
+        to the same underlying storage. This is analogous to `dict.copy()`.
+
+        Returns:
+            PersiDict: A new PersiDict instance that is a shallow copy of this one.
+        """
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                      " and cannot be copied directly")
+        params = self.get_params()
+        return self.__class__(**params)
+
 
     @property
     @abstractmethod
