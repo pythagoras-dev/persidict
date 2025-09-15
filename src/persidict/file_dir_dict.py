@@ -191,7 +191,7 @@ class FileDirDict(PersiDict):
         Returns:
             str: URL of the underlying storage in the form "file://<abs_path>".
         """
-        return pathlib.Path(drop_long_path_prefix(self._base_dir)).as_uri()
+        return pathlib.Path(self._base_dir).resolve().as_uri()
 
 
     @property
