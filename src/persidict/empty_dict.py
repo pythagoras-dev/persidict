@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, Iterator
-from parameterizable import register_parameterizable_class
 
 from .persi_dict import PersiDict, PersiDictKey
 
@@ -13,12 +12,18 @@ class EmptyDict(PersiDict):
     
     This class is useful for testing, debugging, or as a placeholder when you want to
     disable persistent storage without changing the interface.
+
+    Key characteristics:
+    - All write operations are accepted, but data is discarded
+    - All read operations behave as if the dict is empty
+    - Length is always 0
+    - Iteration always yields no results
+    - Subdict operations return new EmptyDict instances
+    - All timestamp operations raise KeyError (no data exists)
+
+    Performance note: If validation is not needed, consider overriding __setitem__
+    to simply pass for better performance.
     """
-    
-    def __init__(self, *args, **kwargs):
-        """Initialize an EmptyDict that behaves like a null device."""
-        # Call parent constructor but ignore most parameters since we don't store anything
-        super().__init__(*args, **kwargs)
     
     def __contains__(self, key: PersiDictKey) -> bool:
         """Always returns False as EmptyDict contains nothing."""
@@ -29,9 +34,11 @@ class EmptyDict(PersiDict):
         raise KeyError(key)
     
     def __setitem__(self, key: PersiDictKey, value: Any) -> None:
-        """Accepts any write operation but discards the data (null device behavior)."""
+        """Accepts any write operation, discards the data (like /dev/null)."""
+        # Run base validations (immutable checks, key normalization,
+        # type checks, jokers) to ensure API consistency, then discard.
+        super().__setitem__(key, value)
         # Do nothing - discard the write like /dev/null
-        pass
     
     def __delitem__(self, key: PersiDictKey) -> None:
         """Always raises KeyError as there's nothing to delete."""
@@ -42,12 +49,12 @@ class EmptyDict(PersiDict):
         return 0
     
     def __iter__(self) -> Iterator[PersiDictKey]:
-        """Returns empty iterator as EmptyDict contains no keys."""
-        return iter([])
+        """Returns an empty iterator as EmptyDict contains no keys."""
+        return iter(())
     
     def _generic_iter(self, result_type: set[str]) -> Iterator[tuple]:
         """Returns empty iterator for any generic iteration."""
-        return iter([])
+        return iter(())
     
     def clear(self) -> None:
         """No-op since EmptyDict is always empty."""
@@ -69,9 +76,9 @@ class EmptyDict(PersiDict):
         """Always returns False as the key never exists."""
         return False
     
-    def random_key(self) -> PersiDictKey:
-        """Always raises KeyError as EmptyDict contains no keys."""
-        raise KeyError("EmptyDict contains no keys")
+    def random_key(self) -> PersiDictKey|None:
+        """Returns None as EmptyDict contains no keys."""
+        return None
     
     def get_params(self) -> dict[str, Any]:
         """Return parameters for this EmptyDict."""
