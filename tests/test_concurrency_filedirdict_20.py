@@ -19,10 +19,10 @@ def many_operations(base_dir:str, process_n:int):
         except Exception as e:
             d[f"error_in_process_{i}_{e.__class__.__name__}"] = True
 
-def test_concurrency(tmpdir):
+def test_concurrency_20(tmpdir):
     base_dir = str(tmpdir)
     processes = []
-    for i in range(25):
+    for i in range(20):
         p = multiprocessing.Process(target=many_operations, args=(base_dir,i,))
         p.start()
         processes.append(p)
