@@ -154,6 +154,10 @@ that stores each key-value pair as a separate file in a local directory.
 * **`S3Dict`**: The other primary implementation of `PersiDict`, 
 which stores each key-value pair as an object in an AWS S3 bucket, 
 suitable for distributed environments.
+* **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  
+like a null device in OS - accepts all writes but discards them, 
+returns nothing on reads. Always appears empty 
+regardless of operations performed on it.
 
 ### 5.3 Key Parameters
 
