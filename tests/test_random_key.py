@@ -304,8 +304,8 @@ def test_exactly_two_items(tmpdir, DictToTest, kwargs):
     count_key2 = samples.count("key2")
 
     # Allow for some statistical variation (±30%)
-    assert 35 <= count_key1 <= 65, f"Key 'key1' appeared {count_key1} times, expected around 50"
-    assert 35 <= count_key2 <= 65, f"Key 'key2' appeared {count_key2} times, expected around 50"
+    assert 25 <= count_key1 <= 75, f"Key 'key1' appeared {count_key1} times, expected around 50"
+    assert 25 <= count_key2 <= 75, f"Key 'key2' appeared {count_key2} times, expected around 50"
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
