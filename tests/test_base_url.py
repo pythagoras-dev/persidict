@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 import pytest
 from moto import mock_aws
@@ -16,16 +17,10 @@ def test_base_url(tmpdir, DictToTest, kwargs):
     assert isinstance(dict_to_test.base_url, str)
 
     if isinstance(dict_to_test, FileDirDict):
-        assert dict_to_test.base_url.startswith("file:///")
-        assert dict_to_test.base_url.endswith(
-            dict_to_test._base_dir.replace(os.path.sep, '/'))
-
+        expected_uri = pathlib.Path(str(dict_to_test._base_dir)).resolve().as_uri()
+        assert dict_to_test.base_url == expected_uri
 
     if isinstance(dict_to_test, S3Dict):
-            assert dict_to_test.base_url.startswith("s3://")
-            assert dict_to_test.bucket_name in dict_to_test.base_url
-            dict_to_test.base_url.endswith(dict_to_test.root_prefix)
-
-
-
-
+        assert dict_to_test.base_url.startswith("s3://")
+        assert dict_to_test.bucket_name in dict_to_test.base_url
+        assert dict_to_test.base_url.endswith(dict_to_test.root_prefix)
