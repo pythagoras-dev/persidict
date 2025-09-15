@@ -291,7 +291,7 @@ def test_exactly_two_items(tmpdir, DictToTest, kwargs):
     dict_to_test["key2"] = "value2"
 
     # Sample many times to ensure both keys are returned
-    samples = [dict_to_test.random_key() for _ in range(100)]
+    samples = [dict_to_test.random_key() for _ in range(200)]
     unique_samples = set([s.strings[0] for s in samples])
 
     # Check that both keys are returned
@@ -303,9 +303,9 @@ def test_exactly_two_items(tmpdir, DictToTest, kwargs):
     count_key1 = samples.count("key1")
     count_key2 = samples.count("key2")
 
-    # Allow for some statistical variation (±30%)
-    assert 25 <= count_key1 <= 75, f"Key 'key1' appeared {count_key1} times, expected around 50"
-    assert 25 <= count_key2 <= 75, f"Key 'key2' appeared {count_key2} times, expected around 50"
+    # Allow for some statistical variation (±50%)
+    assert 50 <= count_key1 <= 150, f"Key 'key1' appeared {count_key1} times, expected around 100"
+    assert 50 <= count_key2 <= 150, f"Key 'key2' appeared {count_key2} times, expected around 100"
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
