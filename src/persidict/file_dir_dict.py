@@ -118,7 +118,6 @@ class FileDirDict(PersiDict):
     """
 
     _base_dir:str
-    file_type:str
 
     def __init__(self
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
@@ -152,16 +151,8 @@ class FileDirDict(PersiDict):
 
         super().__init__(immutable_items = immutable_items
                 ,digest_len = digest_len
-                ,base_class_for_values = base_class_for_values)
-
-        if file_type != replace_unsafe_chars(file_type, ""):
-            raise ValueError("file_type contains unsafe characters")
-        self.file_type = file_type
-
-        if (base_class_for_values is None or
-                not issubclass(base_class_for_values,str)):
-            if file_type not in {"json", "pkl"}:
-                raise ValueError("For non-string values file_type must be either 'pkl' or 'json'.")
+                ,base_class_for_values = base_class_for_values
+                ,file_type = file_type)
 
         base_dir = str(base_dir)
         self._base_dir = os.path.abspath(base_dir)
@@ -182,13 +173,12 @@ class FileDirDict(PersiDict):
         in the standard dict API.
 
         Returns:
-            dict: A mapping of parameter names to values including base_dir and
-                file_type merged with the base PersiDict parameters.
+            dict: A mapping of parameter names to values including base_dir
+                merged with the base PersiDict parameters.
         """
         params = PersiDict.get_params(self)
         additional_params = dict(
-            base_dir=self.base_dir
-            , file_type=self.file_type)
+            base_dir=self.base_dir)
         params.update(additional_params)
         sorted_params = sort_dict_by_keys(params)
         return sorted_params

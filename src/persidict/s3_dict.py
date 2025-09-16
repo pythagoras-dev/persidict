@@ -41,7 +41,6 @@ class S3Dict(PersiDict):
     region: str
     bucket_name: str
     root_prefix: str
-    file_type: str
     _base_dir: str
 
     def __init__(self, bucket_name: str = "my_bucket",
@@ -84,8 +83,8 @@ class S3Dict(PersiDict):
 
         super().__init__(immutable_items = immutable_items
                          , digest_len = digest_len
-                         , base_class_for_values=base_class_for_values)
-        self.file_type = file_type
+                         , base_class_for_values=base_class_for_values
+                         , file_type = file_type)
         self.etag_file_type = f"{file_type}_etag"
 
         self.local_cache = OverlappingMultiDict(

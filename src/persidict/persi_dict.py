@@ -24,6 +24,7 @@ from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
 from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
+from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
@@ -78,11 +79,13 @@ class PersiDict(MutableMapping, ParameterizableClass):
     digest_len:int
     immutable_items:bool
     base_class_for_values:Optional[type]
+    file_type:str
 
     def __init__(self,
                  immutable_items: bool = False,
                  digest_len: int = 8,
                  base_class_for_values: Optional[type] = None,
+                 file_type: str = "pkl",
                  *args, **kwargs):
         """Initialize base parameters shared by all persistent dictionaries.
 
@@ -95,6 +98,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
             base_class_for_values (Optional[type]): Optional base class that values
                 must inherit from. If None, values are not type-restricted.
                 Defaults to None.
+            file_type (str): File extension/format for stored values.
+                Defaults to "pkl".
             *args: Additional positional arguments (ignored in base class, reserved
                 for subclasses).
             **kwargs: Additional keyword arguments (ignored in base class, reserved
@@ -107,7 +112,20 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if digest_len < 0:
             raise ValueError("digest_len must be non-negative")
         self.immutable_items = bool(immutable_items)
+        if not isinstance(base_class_for_values, (type, type(None))):
+            raise ValueError("base_class_for_values must be a type or None")
         self.base_class_for_values = base_class_for_values
+        if len(file_type) == 0:
+            raise ValueError("file_type must be a non-empty string")
+        if contains_unsafe_chars(file_type):
+            raise ValueError("file_type must contain only URL/filename-safe characters")
+        self.file_type = str(file_type)
+
+        if (base_class_for_values is None or
+                not issubclass(base_class_for_values, str)):
+            if file_type not in {"json", "pkl"}:
+                raise ValueError("For non-string values file_type must be either 'pkl' or 'json'.")
+
         ParameterizableClass.__init__(self)
 
 
@@ -122,7 +140,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
         params = dict(
             immutable_items=self.immutable_items,
             digest_len=self.digest_len,
-            base_class_for_values=self.base_class_for_values
+            base_class_for_values=self.base_class_for_values,
+            file_type=self.file_type
         )
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
