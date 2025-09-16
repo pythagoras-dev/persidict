@@ -43,3 +43,16 @@ def replace_unsafe_chars(a_str: str, replace_with: str) -> str:
     result_list = [(c if c in safe_chars else replace_with) for c in a_str]
     result_str = "".join(result_list)
     return result_str
+
+def contains_unsafe_chars(a_str: str) -> bool:
+    """Check if a string contains unsafe characters.
+
+    Args:
+        a_str (str): Input string to check for unsafe characters.
+
+    Returns:
+        bool: True if the string contains any character not in the safe
+            character set, False otherwise.
+    """
+    safe_chars = get_safe_chars()
+    return any(c not in safe_chars for c in a_str)
