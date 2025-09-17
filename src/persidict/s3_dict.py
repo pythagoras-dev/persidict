@@ -85,7 +85,12 @@ class S3Dict(PersiDict):
                          digest_len=digest_len,
                          base_class_for_values=base_class_for_values,
                          file_type=file_type)
-        self.etag_file_type = f"{file_type}_etag"
+        individual_subdicts_params = {self.file_type: {}}
+
+        if not immutable_items:
+            self.etag_file_type = f"{self.file_type}_etag"
+            individual_subdicts_params[self.etag_file_type] = {
+                "base_class_for_values": str}
 
         self.local_cache = OverlappingMultiDict(
             dict_type=FileDirDict,
@@ -95,14 +100,11 @@ class S3Dict(PersiDict):
                 "base_class_for_values": base_class_for_values,
                 "digest_len": digest_len
             },
-            **{
-                self.file_type: {},
-                self.etag_file_type: {"base_class_for_values": str}
-            }
-        )
+            **individual_subdicts_params)
 
         self.main_cache = getattr(self.local_cache, self.file_type)
-        self.etag_cache = getattr(self.local_cache, self.etag_file_type)
+        if not self.immutable_items:
+            self.etag_cache = getattr(self.local_cache, self.etag_file_type)
 
         self.region = region
         if region is None:
@@ -267,7 +269,6 @@ class S3Dict(PersiDict):
             response = self.s3_client.get_object(**get_kwargs)
 
             # 200 OK: object was downloaded, either because it's new or changed.
-            s3_etag = response.get("ETag")
             body = response['Body']
 
             # Deserialize and cache the S3 object content
@@ -279,7 +280,11 @@ class S3Dict(PersiDict):
                 deserialized_value = body.read().decode('utf-8')
 
             self.main_cache[key] = deserialized_value
-            self.etag_cache[key] = s3_etag
+
+            if not self.immutable_items:
+                # Cache the S3 ETag for future conditional requests
+                s3_etag = response.get("ETag")
+                self.etag_cache[key] = s3_etag
 
         except ClientError as e:
             if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
@@ -328,6 +333,11 @@ class S3Dict(PersiDict):
         # Upload the serialized file from local cache to S3
         file_path = self.main_cache._build_full_path(key)
         self.s3_client.upload_file(file_path, self.bucket_name, obj_name)
+
+        if self.immutable_items:
+            # For immutable items, the local cache is authoritative; no need to
+            # verify ETag from S3 as the item cannot change after initial upload
+            return
 
         try:
             # Cache the S3 ETag for efficient conditional requests on future reads
