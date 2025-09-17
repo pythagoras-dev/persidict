@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Iterator
 
-from .persi_dict import PersiDict, PersiDictKey
+from .safe_str_tuple import NonEmptySafeStrTuple
+from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
 
 
 class EmptyDict(PersiDict):
@@ -25,22 +26,22 @@ class EmptyDict(PersiDict):
     to simply pass for better performance.
     """
     
-    def __contains__(self, key: PersiDictKey) -> bool:
+    def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
         """Always returns False as EmptyDict contains nothing."""
         return False
     
-    def __getitem__(self, key: PersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
         """Always raises KeyError as EmptyDict contains nothing."""
         raise KeyError(key)
     
-    def __setitem__(self, key: PersiDictKey, value: Any) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any) -> None:
         """Accepts any write operation, discards the data (like /dev/null)."""
         # Run base validations (immutable checks, key normalization,
         # type checks, jokers) to ensure API consistency, then discard.
         super().__setitem__(key, value)
         # Do nothing - discard the write like /dev/null
     
-    def __delitem__(self, key: PersiDictKey) -> None:
+    def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
         """Always raises KeyError as there's nothing to delete."""
         raise KeyError(key)
     
@@ -60,23 +61,23 @@ class EmptyDict(PersiDict):
         """No-op since EmptyDict is always empty."""
         pass
     
-    def get(self, key: PersiDictKey, default: Any = None) -> Any:
+    def get(self, key: NonEmptyPersiDictKey, default: Any = None) -> Any:
         """Always returns the default value since key is never found."""
         return default
     
-    def setdefault(self, key: PersiDictKey, default: Any = None) -> Any:
+    def setdefault(self, key: NonEmptyPersiDictKey, default: Any = None) -> Any:
         """Always returns the default value without storing it."""
         return default
     
-    def timestamp(self, key: PersiDictKey) -> float:
+    def timestamp(self, key: NonEmptyPersiDictKey) -> float:
         """Always raises KeyError as EmptyDict contains nothing."""
         raise KeyError(key)
     
-    def delete_if_exists(self, key: PersiDictKey) -> bool:
+    def delete_if_exists(self, key: NonEmptyPersiDictKey) -> bool:
         """Always returns False as the key never exists."""
         return False
     
-    def random_key(self) -> PersiDictKey|None:
+    def random_key(self) -> NonEmptySafeStrTuple|None:
         """Returns None as EmptyDict contains no keys."""
         return None
     

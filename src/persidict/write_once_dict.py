@@ -6,7 +6,7 @@ from deepdiff import DeepDiff
 from parameterizable import register_parameterizable_class, sort_dict_by_keys
 
 from .jokers import KEEP_CURRENT, KeepCurrentFlag
-from .persi_dict import PersiDict
+from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .file_dir_dict import FileDirDict
 import random
 import sys
@@ -181,7 +181,7 @@ class WriteOnceDict(PersiDict):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def __setitem__(self, key:PersiDictKey, value):
+    def __setitem__(self, key:NonEmptyPersiDictKey, value):
         """Set a value for a key, preserving the first assignment.
 
         If the key is new, the value is stored. If the key already exists,
@@ -233,7 +233,7 @@ class WriteOnceDict(PersiDict):
                         + f"which is not allowed. Details here: {diff_dict} ")
                 self._consistency_checks_passed += 1
 
-    def __contains__(self, item:PersiDictKey):
+    def __contains__(self, item:NonEmptyPersiDictKey):
         """Check if a key exists in the dictionary.
 
         Args:
@@ -244,7 +244,7 @@ class WriteOnceDict(PersiDict):
         """
         return item in self._wrapped_dict
 
-    def __getitem__(self, key:PersiDictKey):
+    def __getitem__(self, key:NonEmptyPersiDictKey):
         """Retrieve a value by key.
 
         Args:
@@ -274,7 +274,7 @@ class WriteOnceDict(PersiDict):
         """
         return self._wrapped_dict._generic_iter(iter_type)
 
-    def timestamp(self, key: PersiDictKey) -> float:
+    def timestamp(self, key: NonEmptyPersiDictKey) -> float:
         """Return the timestamp for a given key.
 
         Args:
@@ -315,7 +315,7 @@ class WriteOnceDict(PersiDict):
         """
         return self._wrapped_dict.base_url
 
-    def get_subdict(self, prefix_key: PersiDictKey) -> WriteOnceDict:
+    def get_subdict(self, prefix_key: NonEmptyPersiDictKey) -> WriteOnceDict:
         """Return a WriteOnceDict view over a sub-keyspace.
 
         Args:

@@ -1,5 +1,5 @@
 from persidict.safe_chars import SAFE_CHARS_SET, get_safe_chars
-from persidict import SafeStrTuple
+from persidict import SafeStrTuple, NonEmptySafeStrTuple
 from persidict.safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 
 def test_add():
@@ -131,8 +131,9 @@ def test_rejecting_empty_strings():
 
 def test_rejecting_empty_sequences():
     """Test if SafeStrTuple rejects empty sequences."""
+    SafeStrTuple([])
     try:
-        SafeStrTuple()
+        NonEmptySafeStrTuple([])
     except:
         pass
     else:

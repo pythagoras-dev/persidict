@@ -24,11 +24,9 @@ import parameterizable
 from parameterizable import sort_dict_by_keys
 
 from .jokers import Joker
-from .safe_chars import replace_unsafe_chars
-from .safe_str_tuple import SafeStrTuple
+from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
-from .persi_dict import PersiDict, PersiDictKey, _non_empty_persidict_key
-
+from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
 
 if os.name == 'nt':
     import msvcrt
@@ -208,6 +206,11 @@ class FileDirDict(PersiDict):
         return drop_long_path_prefix(self._base_dir)
 
 
+    @property
+    def prefix_key(self) -> SafeStrTuple:
+        return SafeStrTuple(self._base_dir.strip(os.sep).split(os.sep))
+
+
     def __len__(self) -> int:
         """Return the number of key-value pairs in the dictionary.
 
@@ -355,6 +358,7 @@ class FileDirDict(PersiDict):
         """Get a subdictionary containing items with the same prefix key.
 
         For non-existing prefix key, an empty sub-dictionary is returned.
+        Iа the prefix is empty, the entire dictionary is returned.
         This method is absent in the original dict API.
 
         Args:
@@ -572,7 +576,7 @@ class FileDirDict(PersiDict):
                     raise e
 
 
-    def __contains__(self, key:PersiDictKey) -> bool:
+    def __contains__(self, key:NonEmptyPersiDictKey) -> bool:
         """Check whether a key exists in the dictionary.
 
         Args:
@@ -581,12 +585,12 @@ class FileDirDict(PersiDict):
         Returns:
             bool: True if a file for the key exists; False otherwise.
         """
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.isfile(filename)
 
 
-    def __getitem__(self, key:PersiDictKey) -> Any:
+    def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
         """Retrieve the value stored for a key.
 
         Equivalent to obj[key]. Reads the corresponding file from the disk and
@@ -603,7 +607,7 @@ class FileDirDict(PersiDict):
             TypeError: If the deserialized value does not match base_class_for_values
                 when it is set.
         """
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -616,7 +620,7 @@ class FileDirDict(PersiDict):
         return result
 
 
-    def __setitem__(self, key:PersiDictKey, value:Any):
+    def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
         """Store a value for a key on the disk.
 
         Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
@@ -634,7 +638,7 @@ class FileDirDict(PersiDict):
                 base_class_for_values when it is set.
         """
 
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
         PersiDict.__setitem__(self, key, value)
         if isinstance(value, Joker):
             # processed by base class
@@ -644,7 +648,7 @@ class FileDirDict(PersiDict):
         self._save_to_file(filename, value)
 
 
-    def __delitem__(self, key:PersiDictKey) -> None:
+    def __delitem__(self, key:NonEmptyPersiDictKey) -> None:
         """Delete the stored value for a key.
 
         Args:
@@ -653,7 +657,7 @@ class FileDirDict(PersiDict):
         Raises:
             KeyError: If immutable_items is True or if the key does not exist.
         """
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -737,7 +741,7 @@ class FileDirDict(PersiDict):
         return step()
 
 
-    def timestamp(self, key:PersiDictKey) -> float:
+    def timestamp(self, key:NonEmptyPersiDictKey) -> float:
         """Get last modification time (in seconds, Unix epoch time).
 
         This method is absent in the original dict API.
@@ -751,12 +755,12 @@ class FileDirDict(PersiDict):
         Raises:
             FileNotFoundError: If the key does not exist.
         """
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.getmtime(filename)
 
 
-    def random_key(self) -> PersiDictKey | None:
+    def random_key(self) -> NonEmptySafeStrTuple | None:
         """Return a uniformly random key from the dictionary, or None if empty.
 
         Performs a full directory traversal using reservoir sampling

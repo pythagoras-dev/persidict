@@ -23,37 +23,21 @@ from parameterizable import ParameterizableClass, sort_dict_by_keys
 from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
+from . import NonEmptySafeStrTuple
 from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
+NonEmptyPersiDictKey = NonEmptySafeStrTuple | Sequence[str] | str
 """A value which can be used as a key for PersiDict.
 
-PersiDict instances accept keys in the form of SafeStrTuple,
-or a string, or a sequence of strings.
+PersiDict instances accept keys in the form of (NonEmpty)SafeStrTuple,
+or a string, or a (non-empty) sequence of strings.
 The characters within strings must be URL/filename-safe.
 If a string (or a sequence of strings) is passed to a PersiDict as a key,
 it will be automatically converted into SafeStrTuple.
 """
-
-
-def _non_empty_persidict_key(*args) -> SafeStrTuple:
-    """Create a non-empty SafeStrTuple from the given arguments.
-    This is a convenience function that ensures the resulting SafeStrTuple is
-    not empty, raising a KeyError if it is.
-    Args:
-        *args: Arguments to pass to SafeStrTuple constructor.
-    Returns:
-        SafeStrTuple: A non-empty SafeStrTuple instance.
-    Raises:
-        KeyError: If the resulting SafeStrTuple is empty.
-    """
-    result = SafeStrTuple(*args)
-    if len(result) == 0:
-        raise KeyError("Key cannot be empty")
-    return result
-
 
 class PersiDict(MutableMapping, ParameterizableClass):
     """Abstract dict-like interface for durable key-value stores.
@@ -74,6 +58,10 @@ class PersiDict(MutableMapping, ParameterizableClass):
         base_class_for_values (Optional[type]):
             Optional base class that all values must inherit from. If None, any
             type is accepted.
+        file_type (str):
+            File extension/format for stored values (e.g., "pkl", "json").
+        prefix_key (SafeStrTuple):
+            Optional key prefix prepended to all keys in this dictionary.
     """
 
     digest_len:int
@@ -111,22 +99,29 @@ class PersiDict(MutableMapping, ParameterizableClass):
         self.digest_len = int(digest_len)
         if digest_len < 0:
             raise ValueError("digest_len must be non-negative")
+
         self.immutable_items = bool(immutable_items)
-        if not isinstance(base_class_for_values, (type, type(None))):
-            raise ValueError("base_class_for_values must be a type or None")
-        self.base_class_for_values = base_class_for_values
+
         if len(file_type) == 0:
             raise ValueError("file_type must be a non-empty string")
         if contains_unsafe_chars(file_type):
             raise ValueError("file_type must contain only URL/filename-safe characters")
         self.file_type = str(file_type)
 
+        if not isinstance(base_class_for_values, (type, type(None))):
+            raise TypeError("base_class_for_values must be a type or None")
         if (base_class_for_values is None or
                 not issubclass(base_class_for_values, str)):
             if file_type not in {"json", "pkl"}:
                 raise ValueError("For non-string values file_type must be either 'pkl' or 'json'.")
+        self.base_class_for_values = base_class_for_values
 
         ParameterizableClass.__init__(self)
+
+    @property
+    def prefix_key(self) -> SafeStrTuple:
+        raise NotImplementedError("PersiDict is an abstract base class"
+            " and cannot provide a prefix_key directly")
 
 
     def get_params(self):
@@ -212,7 +207,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @abstractmethod
-    def __contains__(self, key:PersiDictKey) -> bool:
+    def __contains__(self, key:NonEmptyPersiDictKey) -> bool:
         """Check whether a key exists in the store.
 
         Args:
@@ -227,7 +222,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @abstractmethod
-    def __getitem__(self, key:PersiDictKey) -> Any:
+    def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
         """Retrieve the value for a key.
 
         Args:
@@ -241,7 +236,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                                         " and cannot retrieve items directly")
 
 
-    def __setitem__(self, key:PersiDictKey, value:Any):
+    def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
         """Set the value for a key.
 
         Special values KEEP_CURRENT and DELETE_CURRENT are interpreted as
@@ -262,7 +257,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             if key in self:
                 raise KeyError("Can't modify an immutable key-value pair")
 
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
 
         if value is DELETE_CURRENT:
             self.delete_if_exists(key)
@@ -278,7 +273,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                                       " and cannot store items directly")
 
 
-    def __delitem__(self, key:PersiDictKey):
+    def __delitem__(self, key:NonEmptyPersiDictKey):
         """Delete a key and its value.
 
         Args:
@@ -294,7 +289,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             raise NotImplementedError("PersiDict is an abstract base class"
                                       " and cannot delete items directly")
 
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
 
         if key not in self:
             raise KeyError(f"Key {key} not found")
@@ -406,7 +401,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return self._generic_iter({"keys", "values", "timestamps"})
 
 
-    def setdefault(self, key: PersiDictKey, default: Any = None) -> Any:
+    def setdefault(self, key: NonEmptyPersiDictKey, default: Any = None) -> Any:
         """Insert key with default value if absent; return the current value.
 
         Behaves like the built-in dict.setdefault() method: if the key exists,
@@ -423,7 +418,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT).
         """
-        key = SafeStrTuple(key)
+        key = NonEmptySafeStrTuple(key)
         if isinstance(default, Joker):
             raise TypeError("default must be a regular value, not a Joker command")
         if key in self:
@@ -497,7 +492,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 pass
 
 
-    def delete_if_exists(self, key:PersiDictKey) -> bool:
+    def delete_if_exists(self, key:NonEmptyPersiDictKey) -> bool:
         """Delete an item without raising an exception if it doesn't exist.
 
         This method is absent in the original dict API.
@@ -515,7 +510,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
 
-        key = _non_empty_persidict_key(key)
+        key = NonEmptySafeStrTuple(key)
 
         if key in self:
             try:
@@ -532,13 +527,14 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         Items whose keys start with the provided prefix are visible through the
         returned sub-dictionary. If the prefix does not exist, an empty
-        sub-dictionary is returned.
+        sub-dictionary is returned. If the prefix is empty, the entire
+        dictionary is returned.
 
         This method is absent in the original Python dict API.
 
         Args:
             prefix_key: Key prefix (string, sequence of strings, or SafeStrTuple)
-                identifying the sub-namespace to expose.
+                identifying the sub-dict to expose.
 
         Returns:
             PersiDict: A dictionary-like view restricted to keys under the
@@ -548,6 +544,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             NotImplementedError: Must be implemented by subclasses that support
                 hierarchical key spaces.
         """
+
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
                 " and cannot create sub-dictionaries directly")
@@ -567,7 +564,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return result_subdicts
 
 
-    def random_key(self) -> PersiDictKey | None:
+    def random_key(self) -> NonEmptySafeStrTuple | None:
         """Return a random key from the dictionary.
 
         This method is absent in the original Python dict API.
@@ -599,7 +596,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @abstractmethod
-    def timestamp(self, key:PersiDictKey) -> float:
+    def timestamp(self, key:NonEmptyPersiDictKey) -> float:
         """Return the last modification time of a key.
 
         This method is absent in the original dict API.
@@ -619,7 +616,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                                       " and cannot provide timestamps directly")
 
 
-    def oldest_keys(self, max_n=None):
+    def oldest_keys(self, max_n=None) -> list[NonEmptySafeStrTuple]:
         """Return up to max_n oldest keys in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -647,7 +644,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return [key for key,_ in smallest_pairs]
 
 
-    def oldest_values(self, max_n=None):
+    def oldest_values(self, max_n=None) -> list[Any]:
         """Return up to max_n oldest values in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -663,7 +660,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return [self[k] for k in self.oldest_keys(max_n)]
 
 
-    def newest_keys(self, max_n=None):
+    def newest_keys(self, max_n=None)  -> list[NonEmptySafeStrTuple]:
         """Return up to max_n newest keys in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -691,7 +688,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return [key for key,_ in largest_pairs]
 
 
-    def newest_values(self, max_n=None):
+    def newest_values(self, max_n=None) -> list[Any]:
         """Return up to max_n newest values in the dictionary.
 
         This method is absent in the original Python dict API.

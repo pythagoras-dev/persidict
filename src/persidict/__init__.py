@@ -5,10 +5,10 @@ The package offers a few classes:
 PersiDict: base class in the hierarchy, defines unified interface
 for all persistent dictionaries.
 
-SafeStrTuple: a flat tuple of URL/filename-safe strings
+NonEmptySafeStrTuple: a flat tuple of URL/filename-safe strings
 that can be used as a key for PersiDict objects
 
-FileDirDict (inherited from PersiDict) : a dictionary that
+FileDirDict (inherited from PersiDict): a dictionary that
 stores key-value pairs as files on a local hard-drive.
 A key is used to compose a filename, while a value is stored
 as a pickle or a json object in the file.

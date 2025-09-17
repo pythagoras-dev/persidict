@@ -42,7 +42,7 @@ def _is_sequence_not_mapping(obj: Any) -> bool:
 
 
 class SafeStrTuple(Sequence, Hashable):
-    """An immutable sequence of non-empty URL/filename-safe strings.
+    """An immutable sequence of URL/filename-safe strings.
 
     The sequence is flat (no nested structures) and hashable, making it suitable
     for use as a dictionary key. All strings are validated to contain only
@@ -55,7 +55,7 @@ class SafeStrTuple(Sequence, Hashable):
     def __init__(self, *args, **kwargs):
         """Initialize from strings or nested sequences of strings.
 
-        The constructor accepts one or more arguments which may be:
+        The constructor accepts zero or more arguments which may be:
         - a SafeStrTuple
         - a single string
         - a sequence (list/tuple/etc.) containing any of the above recursively
@@ -66,7 +66,7 @@ class SafeStrTuple(Sequence, Hashable):
         SAFE_STRING_MAX_LENGTH.
 
         Args:
-            *args: One or more inputs (strings, sequences, or SafeStrTuple) that
+            *args: Zero or more inputs (strings, sequences, or SafeStrTuple) that
                 will be flattened into a tuple of safe strings.
             **kwargs: Not supported.
 
@@ -78,8 +78,6 @@ class SafeStrTuple(Sequence, Hashable):
         """
         if len(kwargs) != 0:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs.keys())}")
-        if len(args) == 0:
-            raise TypeError("At least one argument is required")
         candidate_strings = []
         for a in args:
             if isinstance(a, SafeStrTuple):
@@ -214,3 +212,27 @@ class SafeStrTuple(Sequence, Hashable):
             SafeStrTuple: A new instance with elements in reverse order.
         """
         return SafeStrTuple(*reversed(self.strings))
+
+class NonEmptySafeStrTuple(SafeStrTuple):
+    """A SafeStrTuple that must contain at least one string.
+
+    This subclass enforces that the tuple is non-empty.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize and enforce non-empty constraint.
+
+        Args:
+            *args: One or more inputs (strings, sequences, or SafeStrTuple) that
+                will be flattened into a tuple of safe strings.
+            **kwargs: Not supported.
+
+        Raises:
+            TypeError: If unexpected keyword arguments are provided, if no args
+                are provided, or if an argument has an invalid type.
+            ValueError: If a string is empty, too long, contains disallowed
+                characters, or if the resulting tuple is empty.
+        """
+        super().__init__(*args, **kwargs)
+        if len(self.strings) == 0:
+            raise ValueError("NonEmptySafeStrTuple must contain at least one string")
