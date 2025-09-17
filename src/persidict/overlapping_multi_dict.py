@@ -1,3 +1,11 @@
+"""Container for multiple PersiDict instances with different file types.
+
+This module provides OverlappingMultiDict, which creates and manages multiple
+PersiDict sub-dictionaries that share common parameters but use different
+file_type values. Each sub-dictionary is exposed as an attribute named after
+its file_type, enabling organized storage of different data formats in the
+same logical location.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Type

@@ -1,3 +1,10 @@
+"""Write-once dictionary with probabilistic consistency checking.
+
+This module provides WriteOnceDict, a wrapper around PersiDict that enforces
+write-once semantics - the first value written to a key is preserved, and
+subsequent writes are ignored. Random consistency checks ensure that
+repeated writes contain the same values, helping detect data consistency issues.
+"""
 from __future__ import annotations
 
 import time

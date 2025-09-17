@@ -208,6 +208,14 @@ class FileDirDict(PersiDict):
 
     @property
     def prefix_key(self) -> SafeStrTuple:
+        """Return the prefix key corresponding to the base directory path.
+        
+        This property is absent in the original dict API.
+        
+        Returns:
+            SafeStrTuple: A tuple representing the directory path components
+                from the root to the base directory.
+        """
         return SafeStrTuple(self._base_dir.strip(os.sep).split(os.sep))
 
 
@@ -326,7 +334,8 @@ class FileDirDict(PersiDict):
 
             # Remove the base directory from the path
             if not full_path.startswith(self._base_dir):
-                raise ValueError(f"Path {full_path} is not within base directory {self._base_dir}")
+                raise ValueError(f"Path {full_path} is not "
+                                 f"within base directory {self._base_dir}")
 
             # Get the relative path
             rel_path = os.path.relpath(
@@ -358,7 +367,7 @@ class FileDirDict(PersiDict):
         """Get a subdictionary containing items with the same prefix key.
 
         For non-existing prefix key, an empty sub-dictionary is returned.
-        Iа the prefix is empty, the entire dictionary is returned.
+        If the prefix is empty, the entire dictionary is returned.
         This method is absent in the original dict API.
 
         Args:
@@ -512,8 +521,8 @@ class FileDirDict(PersiDict):
                     finally:
                         os.close(dir_fd)
                 elif os.name == 'nt':
-                # On Windows, try to flush directory metadata
-                # This is less reliable than on POSIX systems
+                    # On Windows, try to flush directory metadata
+                    # This is less reliable than on POSIX systems
                     try:
                         handle = CreateFileW(
                             dir_name,
@@ -580,7 +589,8 @@ class FileDirDict(PersiDict):
         """Check whether a key exists in the dictionary.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+                or NonEmptySafeStrTuple).
 
         Returns:
             bool: True if a file for the key exists; False otherwise.
@@ -597,7 +607,8 @@ class FileDirDict(PersiDict):
         deserializes according to file_type.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+                or NonEmptySafeStrTuple).
 
         Returns:
             Any: The stored value.
@@ -628,7 +639,8 @@ class FileDirDict(PersiDict):
         and writes to a file determined by the key and file_type.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+                or NonEmptySafeStrTuple).
             value (Any): Value to store, or a joker command.
 
         Raises:
@@ -652,7 +664,8 @@ class FileDirDict(PersiDict):
         """Delete the stored value for a key.
 
         Args:
-            key (PersiDictKey): Key (string or sequence of strings) or SafeStrTuple.
+            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+                or NonEmptySafeStrTuple).
 
         Raises:
             KeyError: If immutable_items is True or if the key does not exist.
@@ -720,7 +733,7 @@ class FileDirDict(PersiDict):
                         to_return = []
 
                         if "keys" in result_type:
-                            key_to_return= unsign_safe_str_tuple(
+                            key_to_return = unsign_safe_str_tuple(
                                 result_key, self.digest_len)
                             to_return.append(key_to_return)
 
@@ -747,7 +760,7 @@ class FileDirDict(PersiDict):
         This method is absent in the original dict API.
 
         Args:
-            key (PersiDictKey): Key whose timestamp to return.
+            key (NonEmptyPersiDictKey): Key whose timestamp to return.
 
         Returns:
             float: POSIX timestamp of the underlying file.
@@ -768,7 +781,7 @@ class FileDirDict(PersiDict):
         loading all keys into memory.
 
         Returns:
-            PersiDictKey | None: A random key if any items exist; otherwise None.
+            NonEmptySafeStrTuple | None: A random key if any items exist; otherwise None.
         """
         # canonicalise extension once
         ext = None

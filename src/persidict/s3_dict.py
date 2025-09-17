@@ -81,10 +81,10 @@ class S3Dict(PersiDict):
             allow. Network connectivity and valid AWS credentials are required.
         """
 
-        super().__init__(immutable_items = immutable_items
-                         , digest_len = digest_len
-                         , base_class_for_values=base_class_for_values
-                         , file_type = file_type)
+        super().__init__(immutable_items=immutable_items,
+                         digest_len=digest_len,
+                         base_class_for_values=base_class_for_values,
+                         file_type=file_type)
         self.etag_file_type = f"{file_type}_etag"
 
         self.local_cache = OverlappingMultiDict(
@@ -137,7 +137,7 @@ class S3Dict(PersiDict):
 
         self.bucket_name = bucket_name
 
-        self.root_prefix=root_prefix
+        self.root_prefix = root_prefix
         if len(self.root_prefix) and self.root_prefix[-1] != "/":
             self.root_prefix += "/"
 
@@ -198,7 +198,7 @@ class S3Dict(PersiDict):
         """
         key = NonEmptySafeStrTuple(key)
         key = sign_safe_str_tuple(key, self.digest_len)
-        objectname = self.root_prefix +  "/".join(key)+ "." + self.file_type
+        objectname = self.root_prefix + "/".join(key) + "." + self.file_type
         return objectname
 
 
@@ -351,7 +351,7 @@ class S3Dict(PersiDict):
         key = NonEmptySafeStrTuple(key)
         PersiDict.__delitem__(self, key)
         obj_name = self._build_full_objectname(key)
-        self.s3_client.delete_object(Bucket = self.bucket_name, Key = obj_name)
+        self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
         self.etag_cache.delete_if_exists(key)
         self.main_cache.delete_if_exists(key)
 
@@ -373,7 +373,7 @@ class S3Dict(PersiDict):
 
         paginator = self.s3_client.get_paginator("list_objects_v2")
         page_iterator = paginator.paginate(
-            Bucket=self.bucket_name, Prefix = self.root_prefix)
+            Bucket=self.bucket_name, Prefix=self.root_prefix)
 
         for page in page_iterator:
             contents = page.get("Contents")
@@ -445,7 +445,7 @@ class S3Dict(PersiDict):
             """
             paginator = self.s3_client.get_paginator("list_objects_v2")
             page_iterator = paginator.paginate(
-                Bucket=self.bucket_name, Prefix = self.root_prefix)
+                Bucket=self.bucket_name, Prefix=self.root_prefix)
 
             for page in page_iterator:
                 contents = page.get("Contents")
@@ -499,22 +499,22 @@ class S3Dict(PersiDict):
         key = SafeStrTuple(key)
         if len(key):
             key = sign_safe_str_tuple(key, self.digest_len)
-            full_root_prefix = self.root_prefix +  "/".join(key)
+            full_root_prefix = self.root_prefix + "/".join(key)
         else:
             full_root_prefix = self.root_prefix
 
         new_dir_path = self.main_cache._build_full_path(
-            key, create_subdirs = True, is_file_path = False)
+            key, create_subdirs=True, is_file_path=False)
 
         new_dict = S3Dict(
-            bucket_name = self.bucket_name
-            , region = self.region
-            , root_prefix = full_root_prefix
-            , base_dir = new_dir_path
-            , file_type = self.file_type
-            , immutable_items = self.immutable_items
-            , digest_len = self.digest_len
-            , base_class_for_values = self.base_class_for_values)
+            bucket_name=self.bucket_name,
+            region=self.region,
+            root_prefix=full_root_prefix,
+            base_dir=new_dir_path,
+            file_type=self.file_type,
+            immutable_items=self.immutable_items,
+            digest_len=self.digest_len,
+            base_class_for_values=self.base_class_for_values)
 
         return new_dict
 

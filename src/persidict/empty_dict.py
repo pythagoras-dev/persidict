@@ -1,3 +1,9 @@
+"""EmptyDict: EmptyDict implementation that discards writes, always appears empty.
+
+This module provides EmptyDict, a persistent dictionary that behaves like
+/dev/null - accepting all writes but discarding them, and always appearing
+empty on reads. Useful for testing, debugging, or as a no-op placeholder.
+"""
 from __future__ import annotations
 
 from typing import Any, Iterator
