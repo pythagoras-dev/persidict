@@ -138,13 +138,14 @@ and `DELETE_CURRENT` to delete a value during an assignment.
 * **`PersiDict`**: The abstract base class that defines the common interface 
 for all persistent dictionaries in the package. It's the foundation 
 upon which everything else is built.
-* **`PersiDictKey`**: A type hint that specifies what can be used
-as a key in any `PersiDict`. It can be a `SafeStrTuple`, a single string, 
+* **`NonEmptyPersiDictKey`**: A type hint that specifies what can be used
+as a key in any `PersiDict`. It can be a `NonEmptySafeStrTuple`, a single string, 
 or a sequence of strings. When a `PesiDict` method requires a key as an input,
-it will accept any of these types and convert them to a `SafeStrTuple` internally.
-* **`SafeStrTuple`**: The core data structure for keys. It's an immutable, 
-flat tuple of non-empty, URL/filename-safe strings, ensuring that 
-keys are consistent and safe for various storage backends. 
+it will accept any of these types and convert them to 
+a `NonEmptySafeStrTuple` internally.
+* **`NonEmptySafeStrTuple`**: The core data structure for keys. 
+It's an immutable, flat tuple of non-empty, URL/filename-safe strings, 
+ensuring that keys are consistent and safe for various storage backends. 
 When a `PersiDict` method returns a key, it will always be in this format.
 
 ### 5.2 Main Implementations
@@ -154,10 +155,6 @@ that stores each key-value pair as a separate file in a local directory.
 * **`S3Dict`**: The other primary implementation of `PersiDict`, 
 which stores each key-value pair as an object in an AWS S3 bucket, 
 suitable for distributed environments.
-* **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  
-like a null device in OS - accepts all writes but discards them, 
-returns nothing on reads. Always appears empty 
-regardless of operations performed on it.
 
 ### 5.3 Key Parameters
 
@@ -169,7 +166,7 @@ Any other value is treated as plain text for string storage.
 that enforces type checking on all stored values, ensuring they are 
 instances of a specific class.
 * **`immutable_items`**: A boolean parameter that can make a `PersiDict` 
-"write-once," preventing any modification or deletion of existing items.
+"append only," preventing any modification or deletion of existing items.
 * **`digest_len`**: An integer that specifies the length of a hash suffix 
 added to key components to prevent collisions on case-insensitive file systems.
 * **`base_dir`**: A string specifying the directory path where a `FileDirDict`
@@ -178,7 +175,7 @@ stores its files. For `S3Dict`, this directory is used to cache files locally.
 an `S3Dict` stores its objects.
 * **`region`**: An optional string specifying the AWS region for the S3 bucket.
 
-### 5.4 Advanced Classes
+### 5.4 Advanced and Supporting Classes
 
 * **`WriteOnceDict`**: A wrapper that enforces write-once behavior 
 on any `PersiDict`, ignoring subsequent writes to the same key. 
@@ -187,6 +184,10 @@ writes to the same key always match the original value.
 * **`OverlappingMultiDict`**: An advanced container that holds 
 multiple `PersiDict` instances sharing the same storage 
 but with different `file_type`s.
+* * **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  
+like a null device in OS - accepts all writes but discards them, 
+returns nothing on reads. Always appears empty 
+regardless of operations performed on it.
 
 ### 5.5 Special "Joker" Values
 
