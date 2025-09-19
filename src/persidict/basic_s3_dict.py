@@ -503,7 +503,8 @@ class BasicS3Dict(PersiDict):
         This method is not part of the standard Python dictionary interface.
 
         Args:
-            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings)
+            or NonEmptySafeStrTuple.
 
         Returns:
             float: POSIX timestamp (seconds since Unix epoch) of the last
@@ -515,8 +516,16 @@ class BasicS3Dict(PersiDict):
         """
         key = NonEmptySafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
-        response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
-        return response["LastModified"].timestamp()
+        try:
+            response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
+            return response["LastModified"].timestamp()
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code in ['NoSuchKey', '404', 'NotFound']:
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            else:
+                # Re-raise other client errors (permissions, throttling, etc.)
+                raise
 
 
 parameterizable.register_parameterizable_class(BasicS3Dict)
