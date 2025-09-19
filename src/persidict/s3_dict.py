@@ -162,6 +162,13 @@ class S3Dict(PersiDict):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
+    @property
+    def prefix_key(self) -> SafeStrTuple:
+        result = self.root_prefix.strip("/")
+        if len(result) == 0:
+            return SafeStrTuple()
+        return SafeStrTuple(result.split("/"))
+
 
     @property
     def base_url(self):

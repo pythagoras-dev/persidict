@@ -216,7 +216,10 @@ class FileDirDict(PersiDict):
             SafeStrTuple: A tuple representing the directory path components
                 from the root to the base directory.
         """
-        return SafeStrTuple(self._base_dir.strip(os.sep).split(os.sep))
+        result = self.base_dir.strip(os.sep)
+        if len(result) == 0:
+            return SafeStrTuple()
+        return SafeStrTuple(result.split(os.sep))
 
 
     def __len__(self) -> int:

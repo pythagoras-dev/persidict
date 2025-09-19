@@ -12,6 +12,7 @@ import time
 from deepdiff import DeepDiff
 from parameterizable import register_parameterizable_class, sort_dict_by_keys
 
+from . import SafeStrTuple
 from .jokers import KEEP_CURRENT, KeepCurrentFlag
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .file_dir_dict import FileDirDict
@@ -152,6 +153,11 @@ class WriteOnceDict(PersiDict):
         """
         return (self._consistency_checks_attempted
                 - self._consistency_checks_passed)
+
+
+    @property
+    def prefix_key(self) -> SafeStrTuple:
+        return self._wrapped_dict.prefix_key
 
 
     @property
