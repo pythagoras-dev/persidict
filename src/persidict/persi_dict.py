@@ -47,7 +47,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
     similar to Python's dict but does not guarantee insertion order and adds
     persistence-specific helpers (e.g., timestamp()).
 
-    Attributes:
+    Attributes (can't be changed after initialization):
         immutable_items (bool):
             If True, items are write-once: existing values cannot be modified or
             deleted.
