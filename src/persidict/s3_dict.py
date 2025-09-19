@@ -315,9 +315,9 @@ class S3Dict(PersiDict):
         the S3 ETag for efficient future retrievals.
 
         Args:
-            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings) or NonEmptyPersiDictKey.
             value: Value to store, or a joker command (KEEP_CURRENT or 
-                DELETE_CURRENT from the jokers module).
+                DELETE_CURRENT).
 
         Raises:
             KeyError: If attempting to modify an existing item when
@@ -360,7 +360,8 @@ class S3Dict(PersiDict):
         """Delete the stored value for a key from both S3 and local cache.
 
         Args:
-            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings)
+                or NonEmptyPersiDictKey.
 
         Raises:
             KeyError: If immutable_items is True, or if the key does not exist.

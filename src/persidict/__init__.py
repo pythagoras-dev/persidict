@@ -32,6 +32,7 @@ from .safe_str_tuple import *
 from .persi_dict import PersiDict, PersiDictKey
 from .file_dir_dict import FileDirDict
 from .s3_dict import S3Dict
+from .basic_s3_dict import BasicS3Dict
 from .write_once_dict import WriteOnceDict
 from .empty_dict import EmptyDict
 from .jokers import Joker, KeepCurrentFlag, DeleteCurrentFlag

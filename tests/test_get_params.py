@@ -11,7 +11,8 @@ def test_get_portable_params(tmpdir, DictToTest, kwargs):
     dict_to_test.clear()
     model_params = DictToTest.get_portable_default_params()
     model_params.update(kwargs)
-    model_params["base_dir"] = str(tmpdir)
+    if "base_dir" in model_params:
+        model_params["base_dir"] = str(tmpdir)
 
     assert model_params[CLASSNAME_PARAM_KEY] == DictToTest.__name__
 
