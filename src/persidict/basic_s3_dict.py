@@ -17,6 +17,24 @@ from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey
 from .jokers import Joker
 
 
+def not_found_error(e:ClientError) -> bool:
+    """Helper function to check if a ClientError indicates a missing S3 object.
+
+    Args:
+        e: The ClientError exception to check.
+
+    Returns:
+        bool: True if the error indicates a missing object (404, NoSuchKey),
+        False otherwise.
+    """
+    status = e.response['ResponseMetadata']['HTTPStatusCode']
+    if status == 404:
+        return True
+    else:
+        error_code = e.response['Error']['Code']
+        return error_code in ('NoSuchKey', '404', 'NotFound')
+
+
 class BasicS3Dict(PersiDict):
     """A persistent dictionary that stores key-value pairs as S3 objects.
     
@@ -94,11 +112,17 @@ class BasicS3Dict(PersiDict):
             if error_code == '404' or error_code == 'NotFound':
                 # Bucket does not exist, attempt to create it
                 try:
-                    self.s3_client.create_bucket(Bucket=bucket_name)
+                    if region and region != 'us-east-1':
+                        self.s3_client.create_bucket(
+                            Bucket=bucket_name,
+                            CreateBucketConfiguration={'LocationConstraint': region})
+                    else:
+                        self.s3_client.create_bucket(Bucket=bucket_name)
+
                 except ClientError as create_e:
                     create_error_code = create_e.response['Error']['Code']
-                    # Handle race condition where bucket was created by another process
-                    # or the bucket name is already taken by another AWS account
+                    # Handle race condition where the bucket was created by another
+                    # process or its name is already taken by another AWS account
                     if ( create_error_code == 'BucketAlreadyOwnedByYou'
                         or create_error_code == 'BucketAlreadyExists'):
                         pass
@@ -207,7 +231,7 @@ class BasicS3Dict(PersiDict):
             self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
             return True
         except ClientError as e:
-            if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+            if not_found_error(e):
                 return False
             else:
                 raise
@@ -254,10 +278,9 @@ class BasicS3Dict(PersiDict):
                 body.close()
 
         except ClientError as e:
-            if e.response.get("Error", {}).get("Code") == 'NoSuchKey':
+            if not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
             else:
-                # Re-raise other client errors (permissions, throttling, etc.)
                 raise
 
 
@@ -440,14 +463,14 @@ class BasicS3Dict(PersiDict):
                     obj_key = splitter(obj_name)
 
                     to_return = []
+                    unsigned_key = unsign_safe_str_tuple(
+                        obj_key, self.digest_len)
 
                     if "keys" in result_type:
-                        key_to_return = unsign_safe_str_tuple(
-                            obj_key, self.digest_len)
-                        to_return.append(key_to_return)
+                        to_return.append(unsigned_key)
 
                     if "values" in result_type:
-                        value_to_return = self[obj_key]
+                        value_to_return = self[unsigned_key]
                         to_return.append(value_to_return)
 
                     if len(result_type) == 1:
@@ -520,12 +543,9 @@ class BasicS3Dict(PersiDict):
             response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
             return response["LastModified"].timestamp()
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            if error_code in ['NoSuchKey', '404', 'NotFound']:
+            if not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
             else:
-                # Re-raise other client errors (permissions, throttling, etc.)
                 raise
-
 
 parameterizable.register_parameterizable_class(BasicS3Dict)
