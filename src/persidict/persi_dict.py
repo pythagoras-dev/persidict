@@ -25,7 +25,8 @@ from collections.abc import MutableMapping
 
 from . import NonEmptySafeStrTuple
 from .singletons import (KEEP_CURRENT, DELETE_CURRENT, Joker,
-    CONTINUE_NORMAL_EXECUTION, ProcessStatusFlag, EXECUTION_IS_COMPLETE)
+                         CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
+                         ETagHasNotChangedFlag)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -222,21 +223,23 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
     @abstractmethod
     def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]:
+                             ) -> tuple[Any, str|None]|ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
         This method is absent in the original dict API.
 
-                Args:
-                    key: Dictionary key (string or sequence of strings)
-                    or NonEmptySafeStrTuple.
-                    etag: The ETag value to compare against.
-                Returns:
-                    tuple[Any, str]: The deserialized value if the ETag
-                    has changed, along with the new ETag, or (None, None)
-                    if it matches the provided etag.
-                Raises:
-                    KeyError: If the key does not exist in S3.
+        Args:
+            key: Dictionary key (string or sequence of strings)
+                or NonEmptySafeStrTuple.
+            etag: The ETag value to compare against.
+
+        Returns:
+            tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized
+                value if the ETag has changed, along with the new ETag,
+                or ETAG_HAS_NOT_CHANGED if it matches the provided etag.
+
+        Raises:
+            KeyError: If the key does not exist.
         """
         raise NotImplementedError("PersiDict is an abstract base class"
                                     " and cannot retrieve items directly")
@@ -256,7 +259,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: Any
-                              ) -> ProcessStatusFlag:
+                              ) -> StatusFlag:
         """Perform the first steps for setting an item.
 
         Args:
@@ -272,7 +275,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 the required base_class_for_values when specified.
 
         Returns:
-            ProcessStatusFlag: CONTINUE_NORMAL_EXECUTION if the caller should
+            StatusFlag: CONTINUE_NORMAL_EXECUTION if the caller should
                 proceed with storing the value; EXECUTION_IS_COMPLETE if a
                 joker command was processed and no further action is needed.
         """
@@ -313,7 +316,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 DELETE_CURRENT).
 
         Returns:
-            Any: The ETag of the newly stored object, or None if a joker
+            str|None: The ETag of the newly stored object, or None if a joker
             command was processed without uploading a new object,
             or if the implementation does not support ETags.
 
@@ -538,7 +541,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def __eq__(self, other: PersiDict) -> bool:
         """Compare dictionaries for equality.
 
-        If other is a PersiDict instance, compares portable parameters for equality.
+        If other is a PersiDict instance, compares parameters for equality.
         Otherwise, attempts to compare as a mapping by comparing all keys and values.
 
         Args:
@@ -548,8 +551,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             bool: True if the dictionaries are considered equal, False otherwise.
         """
         if isinstance(other, PersiDict):
-            #TODO: decide whether to keep this semantics
-            return self.get_portable_params() == other.get_portable_params()
+            return self.get_params() == other.get_params()
         try:
             if len(self) != len(other):
                 return False

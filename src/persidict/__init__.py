@@ -1,31 +1,38 @@
-""" Persistent dictionaries that store key-value pairs on local disks or AWS S3.
+"""Persistent dictionaries that store key-value pairs on local disks or AWS S3.
 
-The package offers a few classes:
+This package provides a unified interface for persistent dictionary-like
+storage with various backends including filesystem and AWS S3.
 
-PersiDict: base class in the hierarchy, defines unified interface
-for all persistent dictionaries.
+Classes:
+    PersiDict: Abstract base class defining the unified interface for all
+        persistent dictionaries.
+    NonEmptySafeStrTuple: A flat tuple of URL/filename-safe strings that
+        can be used as a key for PersiDict objects.
+    FileDirDict: A dictionary that stores key-value pairs as files on a
+        local hard drive. Keys compose filenames, values are stored as
+        pickle or JSON objects.
+    S3Dict: A dictionary that stores key-value pairs as S3 objects on AWS.
+        Keys compose object names, values are stored as pickle or JSON S3 objects.
+    BasicS3Dict: A basic S3-backed dictionary with direct S3 operations.
+    WriteOnceDict: A write-once wrapper that prevents modification of existing
+        items after initial storage.
+    EmptyDict: Equivalent of null device in OS - accepts all writes but discards
+        them, returns nothing on reads. Always appears empty regardless of
+        operations performed. Useful for testing, debugging, or as a placeholder.
+    OverlappingMultiDict: A dictionary that can handle overlapping key spaces.
 
-NonEmptySafeStrTuple: a flat tuple of URL/filename-safe strings
-that can be used as a key for PersiDict objects
+Functions:
+    get_safe_chars(): Returns a set of URL/filename-safe characters permitted
+        in keys.
+    replace_unsafe_chars(): Replaces forbidden characters in a string with
+        safe alternatives.
 
-FileDirDict (inherited from PersiDict): a dictionary that
-stores key-value pairs as files on a local hard-drive.
-A key is used to compose a filename, while a value is stored
-as a pickle or a json object in the file.
+Constants:
+    KEEP_CURRENT, DELETE_CURRENT: Special joker values for conditional operations.
 
-S3_Dict (inherited from PersiDict): a dictionary that
-stores key-value pairs as S3 objects on AWS.
-A key is used to compose an objectname, while a value is stored
-as a pickle or a json S3 object.
-
-EmptyDict (inherited from PersiDict): equivalent of null device in OS -
-accepts all writes but discards them, returns nothing on reads.
-Always appears empty regardless of operations performed on it.
-Useful for testing, debugging, or as a placeholder.
-
-The package also offers two helper functions: get_safe_chars(),
-which returns a set of URL/filename-safe characters permitted in keys,
-and replace_unsafe_chars(), which replaces forbidden characters in a string.
+Note:
+    All persistent dictionaries support multiple serialization formats, including
+    pickle and JSON, with automatic type handling and collision-safe key encoding.
 """
 from .safe_chars import *
 from .safe_str_tuple import *

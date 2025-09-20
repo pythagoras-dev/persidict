@@ -94,7 +94,7 @@ class DeleteCurrentFlag(Joker):
     pass
 
 
-class ProcessStatusFlag(Singleton):
+class StatusFlag(Singleton):
     """Base class for process status flags.
 
     Subclasses represent status flags that can be used to control
@@ -102,12 +102,23 @@ class ProcessStatusFlag(Singleton):
     """
     pass
 
+class ETagHasNotChangedFlag(StatusFlag):
+    """Flag indicating that an ETag has not changed.
 
-class ContinueNormaExecutionFlag(ProcessStatusFlag):
+    Usage:
+        This flag can be used in contexts where a notification is needed
+        to indicate that an ETag (entity tag) has not changed, typically in
+        web or caching scenarios.
+    """
+
+    pass
+
+
+class ContinueNormaExecutionFlag(StatusFlag):
     """Flag indicating to continue normal execution without special handling.
 
     Usage:
-        This flag can be used in contexts where a special flag is needed
+        This flag can be used in contexts where a notification is needed
         to indicate that normal processing should proceed without alteration.
 
     Note:
@@ -116,11 +127,11 @@ class ContinueNormaExecutionFlag(ProcessStatusFlag):
     """
     pass
 
-class ExecutionIsCompleteFlag(ProcessStatusFlag):
+class ExecutionIsCompleteFlag(StatusFlag):
     """Flag indicating no more processing is required.
 
     Usage:
-        This flag can be used in contexts where a special flag is needed
+        This flag can be used in contexts where a notification is needed
         to indicate that all necessary processing steps were
         finished successfully and nore further action is needed.
 
@@ -135,6 +146,7 @@ register_parameterizable_class(KeepCurrentFlag)
 register_parameterizable_class(DeleteCurrentFlag)
 register_parameterizable_class(ContinueNormaExecutionFlag)
 register_parameterizable_class(ExecutionIsCompleteFlag)
+register_parameterizable_class(ETagHasNotChangedFlag)
 
 _KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT = KeepCurrentFlag()
@@ -147,3 +159,6 @@ CONTINUE_NORMAL_EXECUTION = ContinueNormaExecutionFlag()
 
 _ExecutionIsComplete = ExecutionIsCompleteFlag()
 EXECUTION_IS_COMPLETE = ExecutionIsCompleteFlag()
+
+_ETagHasNotChanged = ETagHasNotChangedFlag()
+ETAG_HAS_NOT_CHANGED = ETagHasNotChangedFlag()

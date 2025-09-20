@@ -43,8 +43,19 @@ class EmptyDict(PersiDict):
 
 
     def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str]:
-        """Always raises KeyError as EmptyDict contains nothing."""
+                             ) -> tuple[Any, str|None]:
+        """Always raises KeyError as EmptyDict contains nothing.
+
+        Args:
+            key: Dictionary key (ignored, as EmptyDict has no items).
+            etag: ETag value to compare against (ignored).
+
+        Returns:
+            tuple[Any, str|None]: Never returns as KeyError is always raised.
+
+        Raises:
+            KeyError: Always raised as EmptyDict contains no items.
+        """
         raise KeyError(key)
 
 
@@ -57,7 +68,19 @@ class EmptyDict(PersiDict):
 
 
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
-        """Accepts any write operation, discards the data, returns None as etag."""
+        """Accepts any write operation, discards the data, returns None as etag.
+
+        Args:
+            key: Dictionary key (processed for validation but discarded).
+            value: Value to store (processed for validation but discarded).
+
+        Returns:
+            str|None: Always returns None as no actual storage occurs.
+
+        Raises:
+            KeyError: If attempting to modify when immutable_items is True.
+            TypeError: If value doesn't match base_class_for_values when specified.
+        """
         # Run base validations (immutable checks, key normalization,
         # type checks, jokers) to ensure API consistency, then discard.
         self._process_setitem_args(key, value)
@@ -80,7 +103,18 @@ class EmptyDict(PersiDict):
 
 
     def _generic_iter(self, result_type: set[str]) -> Iterator[tuple]:
-        """Returns empty iterator for any generic iteration."""
+        """Returns empty iterator for any generic iteration.
+
+        Args:
+            result_type: Set indicating desired fields among {'keys', 'values', 
+                'timestamps'}. Validated but result is always empty.
+
+        Returns:
+            Iterator[tuple]: Always returns an empty iterator.
+
+        Raises:
+            ValueError: If result_type is invalid or contains unsupported fields.
+        """
         self._process_generic_iter_args(result_type)
         return iter(())
 
@@ -132,5 +166,12 @@ class EmptyDict(PersiDict):
 
 
     def get_subdict(self, prefix_key: PersiDictKey) -> 'EmptyDict':
-        """Returns a new EmptyDict as subdictionary."""
+        """Returns a new EmptyDict as subdictionary.
+
+        Args:
+            prefix_key: Key prefix (ignored, as EmptyDict has no hierarchical structure).
+
+        Returns:
+            EmptyDict: A new EmptyDict instance with the same configuration.
+        """
         return EmptyDict(**self.get_params())

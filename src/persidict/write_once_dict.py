@@ -13,7 +13,7 @@ from deepdiff import DeepDiff
 from parameterizable import register_parameterizable_class, sort_dict_by_keys
 
 from . import SafeStrTuple
-from .singletons import KEEP_CURRENT, KeepCurrentFlag
+from .singletons import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .file_dir_dict import FileDirDict
 import random
@@ -270,14 +270,15 @@ class WriteOnceDict(PersiDict):
 
 
     def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]:
+                             ) -> tuple[Any, str|None] |ETagHasNotChangedFlag:
         """Retrieve a value and its etag if the etag is new.
         Args:
             key: Key to look up.
             etag: Previous etag to compare against.
         Returns:
-            tuple: (value, etag) where value is the stored value and etag is
-                the current etag.
+            tuple[Any, str|None] | ETagHasNotChangedFlag: Stored value and its
+                etag if the etag is new, or ETAG_HAS_NOT_CHANGED if the
+                etag matches the current one.
         """
         return self._wrapped_dict.get_item_if_new_etag(key, etag)
 

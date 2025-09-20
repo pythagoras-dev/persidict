@@ -13,16 +13,18 @@ from parameterizable.dict_sorter import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
-from .singletons import Joker, EXECUTION_IS_COMPLETE
+from .singletons import Joker, EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag
 from .file_dir_dict import FileDirDict, PersiDictKey
 from .overlapping_multi_dict import OverlappingMultiDict
 
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
 
 class S3Dict(PersiDict):
-    """A persistent dictionary that stores key-value pairs as S3 objects.
+    """A persistent dictionary that stores key-value pairs as S3 objects with local caching.
     
     Each key-value pair is stored as a separate S3 object in the specified bucket.
+    S3Dict provides intelligent local caching to minimize S3 API calls and improve
+    performance by using conditional requests with ETags to detect changes.
     
     A key can be either a string (object name without file extension) or a sequence
     of strings representing a hierarchical path (folder structure ending with an
@@ -34,9 +36,16 @@ class S3Dict(PersiDict):
     - Human-readable text using jsonpickle ('json' format)
     - Plain text for string values (other formats)
     
+    Key Features:
+        - Local file-based caching for improved read performance
+        - ETag-based conditional requests to minimize unnecessary downloads
+        - Automatic cache invalidation when S3 objects change
+        - Seamless fallback to S3 when cached data is stale
+    
     Note:
         Unlike native Python dictionaries, insertion order is not preserved.
-        Operations may incur S3 API costs and network latency.
+        Operations may incur S3 API costs and network latency, though caching
+        significantly reduces this overhead for repeated access patterns.
     """
     region: str
     bucket_name: str
@@ -164,6 +173,11 @@ class S3Dict(PersiDict):
 
     @property
     def prefix_key(self) -> SafeStrTuple:
+        """Return the root prefix as a SafeStrTuple.
+
+        Returns:
+            SafeStrTuple: The root prefix components as a tuple of strings.
+        """
         result = self.root_prefix.strip("/")
         if len(result) == 0:
             return SafeStrTuple()
@@ -354,11 +368,55 @@ class S3Dict(PersiDict):
             self.etag_cache.delete_if_exists(key)
 
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
-        """Set item ETag value for a key in both S3 and local cache."""
+        """Store a value for a key and return the new ETag with local caching.
+
+        Stores the value in both the local cache and S3, then caches the resulting
+        ETag for efficient future conditional requests. This method leverages the
+        local file system to minimize direct S3 serialization overhead.
+
+        This method is absent in the original dict API.
+
+        Args:
+            key: Dictionary key (string or sequence of strings)
+                or NonEmptySafeStrTuple.
+            value: Value to store, or a joker command (KEEP_CURRENT or
+                DELETE_CURRENT).
+
+        Returns:
+            str|None: The ETag of the newly stored S3 object, or None if a joker
+            command was processed without uploading a new object.
+
+        Raises:
+            KeyError: If attempting to modify an existing item when
+                immutable_items is True.
+            TypeError: If value is a PersiDict instance or does not match
+                the required base_class_for_values when specified.
+        """
         return super().set_item_get_etag(key, value)
 
     def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]:
+                             ) -> tuple[Any, str|None]|ETagHasNotChangedFlag:
+        """Retrieve a value only if its ETag has changed, with local caching optimization.
+
+        Uses local cache and ETag-based conditional requests to efficiently determine
+        if the S3 object has changed since the provided ETag. Updates the local cache
+        if a new version is retrieved.
+
+        This method is absent in the original dict API.
+
+        Args:
+            key: Dictionary key (string or sequence of strings)
+                or NonEmptySafeStrTuple.
+            etag: The ETag value to compare against.
+
+        Returns:
+            tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized
+                value if the ETag has changed, along with the new ETag,
+                or ETAG_HAS_NOT_CHANGED if it matches the provided etag.
+
+        Raises:
+            KeyError: If the key does not exist in S3.
+        """
         return super().get_item_if_new_etag(key, etag)
 
 

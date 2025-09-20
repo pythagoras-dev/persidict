@@ -14,7 +14,8 @@ from parameterizable.dict_sorter import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey
-from .singletons import Joker, EXECUTION_IS_COMPLETE
+from .singletons import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
+                         ETAG_HAS_NOT_CHANGED)
 
 
 def not_found_error(e:ClientError) -> bool:
@@ -169,6 +170,11 @@ class BasicS3Dict(PersiDict):
 
     @property
     def prefix_key(self) -> SafeStrTuple:
+        """Return the root prefix as a SafeStrTuple.
+
+        Returns:
+            SafeStrTuple: The root prefix components as a tuple of strings.
+        """
         result = self.root_prefix.strip("/")
         if len(result) == 0:
             return SafeStrTuple()
@@ -240,18 +246,21 @@ class BasicS3Dict(PersiDict):
                 raise
 
     def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag:str|None
-                             ) -> tuple[Any,str|None]:
+                             ) -> tuple[Any,str|None] | ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
         This method is absent in the original dict API.
 
         Args:
             key: Dictionary key (string or sequence of strings
-            or NonEmptySafeStrTuple).
+                or NonEmptySafeStrTuple).
             etag: The ETag value to compare against.
+
         Returns:
-            Any: The deserialized value if the ETag has changed, or None if it
-            matches the provided etag.
+            tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized value
+                if the ETag has changed, along with the new ETag,
+                or ETAG_HAS_NOT_CHANGED if the etag matches the current one.
+
         Raises:
             KeyError: If the key does not exist in S3.
         """
@@ -289,7 +298,7 @@ class BasicS3Dict(PersiDict):
         except ClientError as e:
             if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
                 # HTTP 304 Not Modified: the version is current, no download needed
-                return (None,None)
+                return ETAG_HAS_NOT_CHANGED
             elif not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
             else:
@@ -328,7 +337,7 @@ class BasicS3Dict(PersiDict):
                 DELETE_CURRENT).
 
         Returns:
-            Any: The ETag of the newly stored object, or None if a joker
+            str|None: The ETag of the newly stored object, or None if a joker
             command was processed without uploading a new object.
 
         Raises:
