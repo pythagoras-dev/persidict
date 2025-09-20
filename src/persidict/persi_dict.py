@@ -220,6 +220,27 @@ class PersiDict(MutableMapping, ParameterizableClass):
             raise NotImplementedError("PersiDict is an abstract base class"
                                         " and cannot check items directly")
 
+    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
+                             ) -> tuple[Any, str|None]:
+        """Retrieve the value for a key only if its ETag has changed.
+
+        This method is absent in the original dict API.
+
+                Args:
+                    key: Dictionary key (string or sequence of strings)
+                    or NonEmptySafeStrTuple.
+                    etag: The ETag value to compare against.
+                Returns:
+                    tuple[Any, str]: The deserialized value if the ETag
+                    has changed, along with the new ETag, or (None, None)
+                    if it matches the provided etag.
+                Raises:
+                    KeyError: If the key does not exist in S3.
+        """
+
+        if type(self) is PersiDict:
+            raise NotImplementedError("PersiDict is an abstract base class"
+                                        " and cannot retrieve items directly")
 
     @abstractmethod
     def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
@@ -231,9 +252,56 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             Any: The stored value.
         """
+        return self.get_item_if_new_etag(key, None)[0]
+
+
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+        """Store a value for a key directly in the dict and return the new ETag.
+
+        Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
+        conditional operations. Validates value types against base_class_for_values
+        if specified, then serializes and uploads directly to S3.
+
+        This method is absent in the original dict API.
+
+        Args:
+            key: Dictionary key (string or sequence of strings)
+                or NonEmptySafeStrTuple.
+            value: Value to store, or a joker command (KEEP_CURRENT or
+                DELETE_CURRENT).
+
+        Returns:
+            Any: The ETag of the newly stored object, or None if a joker
+            command was processed without uploading a new object,
+            or if the implementation does not support ETags.
+
+        Raises:
+            KeyError: If attempting to modify an existing item when
+                immutable_items is True.
+            TypeError: If the value is a PersiDict instance or does not match
+                the required base_class_for_values when specified.
+            NotImplementedError: Subclasses must implement actual writing.
+        """
+
+        if value is KEEP_CURRENT:
+            return
+        elif self.immutable_items and key in self:
+            raise KeyError("Can't modify an immutable key-value pair")
+
+        key = NonEmptySafeStrTuple(key)
+
+        if value is DELETE_CURRENT:
+            self.delete_if_exists(key)
+            return
+
+        if self.base_class_for_values is not None:
+            if not isinstance(value, self.base_class_for_values):
+                raise TypeError(f"Value must be an instance of"
+                                f" {self.base_class_for_values.__name__}")
+
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
-                                        " and cannot retrieve items directly")
+                                      " and cannot store items directly")
 
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):

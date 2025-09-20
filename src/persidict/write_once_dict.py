@@ -268,6 +268,19 @@ class WriteOnceDict(PersiDict):
         """
         return self._wrapped_dict[key]
 
+
+    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
+                             ) -> tuple[Any, str|None]:
+        """Retrieve a value and its etag if the etag is new.
+        Args:
+            key: Key to look up.
+            etag: Previous etag to compare against.
+        Returns:
+            tuple: (value, etag) where value is the stored value and etag is
+                the current etag.
+        """
+        return self._wrapped_dict.get_item_if_new_etag(key, etag)
+
     def __len__(self):
         """Return the number of items stored.
 
@@ -342,5 +355,6 @@ class WriteOnceDict(PersiDict):
         subdict = self._wrapped_dict.get_subdict(prefix_key)
         result = WriteOnceDict(subdict, self.p_consistency_checks)
         return result
+
 
 register_parameterizable_class(WriteOnceDict)

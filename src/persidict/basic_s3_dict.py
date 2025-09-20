@@ -202,7 +202,8 @@ class BasicS3Dict(PersiDict):
         """Convert a key into a full S3 object key.
 
         Args:
-            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings
+            or NonEmptySafeStrTuple).
 
         Returns:
             str: The complete S3 object key including root_prefix and file_type
@@ -217,10 +218,11 @@ class BasicS3Dict(PersiDict):
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
         """Check if the specified key exists in the dictionary.
 
-        Performs a HEAD request to S3 to verify object existence.
+        Performs a HEAD request to S3 to verify the object's existence.
 
         Args:
-            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings
+            or NonEmptySafeStrTuple).
 
         Returns:
             bool: True if the key exists in S3, False otherwise.
@@ -236,12 +238,66 @@ class BasicS3Dict(PersiDict):
             else:
                 raise
 
+    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag:str|None
+                             ) -> tuple[Any,str|None]:
+        """Retrieve the value for a key only if its ETag has changed.
+
+        This method is absent in the original dict API.
+
+        Args:
+            key: Dictionary key (string or sequence of strings
+            or NonEmptySafeStrTuple).
+            etag: The ETag value to compare against.
+        Returns:
+            Any: The deserialized value if the ETag has changed, or None if it
+            matches the provided etag.
+        Raises:
+            KeyError: If the key does not exist in S3.
+        """
+        key = NonEmptySafeStrTuple(key)
+        obj_name = self._build_full_objectname(key)
+
+        try:
+            get_kwargs = {'Bucket': self.bucket_name, 'Key': obj_name}
+            if etag:
+                get_kwargs['IfNoneMatch'] = etag
+
+            response = self.s3_client.get_object(**get_kwargs)
+
+            # 200 OK: object was downloaded, either because it's new or changed.
+            body = response['Body']
+            s3_etag = response.get("ETag")
+
+            if self.file_type == 'json':
+                deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
+            elif self.file_type == 'pkl':
+                data = body.read()
+                buffer = io.BytesIO(data)
+                try:
+                    deserialized_value = joblib.load(buffer)
+                finally:
+                    buffer.close()
+            else:
+                deserialized_value = body.read().decode('utf-8')
+
+            return (deserialized_value, s3_etag)
+
+        except ClientError as e:
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
+                # HTTP 304 Not Modified: the version is current, no download needed
+                return (None,None)
+            elif not_found_error(e):
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            else:
+                raise
+
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
         """Retrieve the value stored for a key directly from S3.
 
         Args:
-            key: Dictionary key (string or sequence of strings) or SafeStrTuple.
+            key: Dictionary key (string or sequence of strings
+            or NonEmptySafeStrTuple).
 
         Returns:
             Any: The deserialized value stored for the key.
@@ -249,53 +305,27 @@ class BasicS3Dict(PersiDict):
         Raises:
             KeyError: If the key does not exist in S3.
         """
-
-        key = NonEmptySafeStrTuple(key)
-        obj_name = self._build_full_objectname(key)
-
-        try:
-            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=obj_name)
-            body = response['Body']
-
-            try:
-                # Deserialize the S3 object content
-                if self.file_type == 'json':
-                    deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
-                elif self.file_type == 'pkl':
-                    # For pickle files, read data into a BytesIO buffer that supports seeking
-                    data = body.read()
-                    buffer = io.BytesIO(data)
-                    try:
-                        deserialized_value = joblib.load(buffer)
-                    finally:
-                        buffer.close()
-                else:
-                    deserialized_value = body.read().decode('utf-8')
-                    
-                return deserialized_value
-            finally:
-                # Ensure the response body stream is properly closed
-                body.close()
-
-        except ClientError as e:
-            if not_found_error(e):
-                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
-            else:
-                raise
+        return self.get_item_if_new_etag(key, None)[0]
 
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
-        """Store a value for a key directly in S3.
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+        """Store a value for a key directly in S3 and return the new ETag.
 
         Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
         conditional operations. Validates value types against base_class_for_values
         if specified, then serializes and uploads directly to S3.
 
+        This method is absent in the original dict API.
+
         Args:
             key: Dictionary key (string or sequence of strings)
-                or NonEmptyPersiDictKey.
-            value: Value to store, or a joker command (KEEP_CURRENT or 
+                or NonEmptySafeStrTuple.
+            value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
+
+        Returns:
+            Any: The ETag of the newly stored object, or None if a joker
+            command was processed without uploading a new object.
 
         Raises:
             KeyError: If attempting to modify an existing item when
@@ -305,10 +335,10 @@ class BasicS3Dict(PersiDict):
         """
 
         key = NonEmptySafeStrTuple(key)
-        PersiDict.__setitem__(self, key, value)
+        PersiDict.set_item_get_etag(self, key, value)
         if isinstance(value, Joker):
             # Joker values (KEEP_CURRENT, DELETE_CURRENT) are handled by base class
-            return
+            return None
 
         obj_name = self._build_full_objectname(key)
 
@@ -334,23 +364,44 @@ class BasicS3Dict(PersiDict):
 
         # Upload directly to S3
         try:
-            self.s3_client.put_object(
-                Bucket=self.bucket_name, 
+            response = self.s3_client.put_object(
+                Bucket=self.bucket_name,
                 Key=obj_name,
                 Body=serialized_data,
                 ContentType=content_type
             )
+            return response.get("ETag")
         except ClientError as e:
-            # Re-raise client errors (permissions, throttling, etc.)
             raise
+
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
+        """Store a value for a key directly in S3.
+
+        Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
+        conditional operations. Validates value types against base_class_for_values
+        if specified, then serializes and uploads directly to S3.
+
+        Args:
+            key: Dictionary key (string or sequence of strings
+                or NonEmptyPersiDictKey).
+            value: Value to store, or a joker command (KEEP_CURRENT or 
+                DELETE_CURRENT).
+
+        Raises:
+            KeyError: If attempting to modify an existing item when
+                immutable_items is True.
+            TypeError: If value is a PersiDict instance or does not match
+                the required base_class_for_values when specified.
+        """
+        self.set_item_get_etag(key, value)
 
 
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Delete the stored value for a key from S3.
 
         Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptyPersiDictKey.
+            key: Dictionary key (string or sequence of strings
+                or NonEmptyPersiDictKey).
 
         Raises:
             KeyError: If immutable_items is True, or if the key does not exist.
@@ -492,7 +543,7 @@ class BasicS3Dict(PersiDict):
         This method is not part of the standard Python dictionary interface.
 
         Args:
-            key: A common prefix (string or sequence of strings)
+            key: A common prefix (string or sequence of strings or SafeStrTuple)
                 used to scope items stored under this dictionary.
 
         Returns:
@@ -526,8 +577,8 @@ class BasicS3Dict(PersiDict):
         This method is not part of the standard Python dictionary interface.
 
         Args:
-            key: Dictionary key (string or sequence of strings)
-            or NonEmptySafeStrTuple.
+            key: Dictionary key (string or sequence of strings
+            or NonEmptySafeStrTuple).
 
         Returns:
             float: POSIX timestamp (seconds since Unix epoch) of the last
