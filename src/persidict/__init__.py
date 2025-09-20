@@ -45,3 +45,4 @@ from .empty_dict import EmptyDict
 from .singletons import Joker, KeepCurrentFlag, DeleteCurrentFlag
 from .singletons import KEEP_CURRENT, DELETE_CURRENT
 from .overlapping_multi_dict import OverlappingMultiDict
+from .cached_dict_imp import CachedDictImp
