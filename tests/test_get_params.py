@@ -1,3 +1,5 @@
+from os.path import abspath
+
 import pytest
 from moto import mock_aws
 
@@ -32,4 +34,6 @@ def test_get_portable_params(tmpdir, DictToTest, kwargs):
 def test_get_default_portable_params(tmpdir, DictToTest, kwargs):
     dict_to_test_1 = DictToTest().get_portable_params()
     dict_to_test_2 = DictToTest.get_portable_default_params()
+    if "base_dir" in dict_to_test_1:
+        dict_to_test_2["base_dir"] = abspath(dict_to_test_2["base_dir"])
     assert dict_to_test_1 == dict_to_test_2
