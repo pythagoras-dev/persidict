@@ -11,7 +11,7 @@ assignments (e.g., d[key] = KEEP_CURRENT) and are interpreted by PersiDict
 implementations.
 
 Examples:
-    >>> from persidict.jokers import KEEP_CURRENT, DELETE_CURRENT
+    >>> from persidict.singletons import KEEP_CURRENT, DELETE_CURRENT
     >>> d[key] = KEEP_CURRENT  # Do not alter existing value
     >>> d[key] = DELETE_CURRENT  # Remove key if present
 """
@@ -22,18 +22,13 @@ from parameterizable import (
     , register_parameterizable_class)
 
 
-class Joker(ParameterizableClass):
-    """Base class for singleton joker flags.
+class Singleton(ParameterizableClass):
+    """Base class for singleton classes.
 
-    Implements a per-subclass singleton pattern and integrates with the
-    parameterizable framework. Subclasses represent value-less commands that
-    alter persistence behavior when assigned to a key.
-
-    Note:
-        This class uses a singleton pattern where each subclass maintains
-        exactly one instance that is returned on every instantiation.
+    This class implements a singleton pattern where each subclass maintains
+    exactly one instance that is returned on every instantiation.
     """
-    _instances: dict[type, "Joker"] = {}
+    _instances: dict[type, "Singleton"] = {}
 
     def get_params(self) -> dict[str, Any]:
         """Return parameters for parameterizable API.
@@ -52,9 +47,18 @@ class Joker(ParameterizableClass):
         Returns:
             Joker: The singleton instance for the specified class.
         """
-        if cls not in Joker._instances:
-            Joker._instances[cls] = super().__new__(cls)
-        return Joker._instances[cls]
+        if cls not in Singleton._instances:
+            Singleton._instances[cls] = super().__new__(cls)
+        return Singleton._instances[cls]
+
+
+class Joker(Singleton):
+    """Base class for joker flags.
+
+    Subclasses represent value-less commands that
+    alter persistence behavior when assigned to a key.
+    """
+    pass
 
 
 class KeepCurrentFlag(Joker):
@@ -89,11 +93,57 @@ class DeleteCurrentFlag(Joker):
     """
     pass
 
+
+class ProcessStatusFlag(Singleton):
+    """Base class for process status flags.
+
+    Subclasses represent status flags that can be used to control
+    processing flow in various contexts.
+    """
+    pass
+
+
+class ContinueNormaExecutionFlag(ProcessStatusFlag):
+    """Flag indicating to continue normal execution without special handling.
+
+    Usage:
+        This flag can be used in contexts where a special flag is needed
+        to indicate that normal processing should proceed without alteration.
+
+    Note:
+        This is a singleton class; constructing it repeatedly returns the same
+        instance.
+    """
+    pass
+
+class ExecutionIsCompleteFlag(ProcessStatusFlag):
+    """Flag indicating no more processing is required.
+
+    Usage:
+        This flag can be used in contexts where a special flag is needed
+        to indicate that all necessary processing steps were
+        finished successfully and nore further action is needed.
+
+    Note:
+        This is a singleton class; constructing it repeatedly returns the same
+        instance.
+    """
+    pass
+
+
 register_parameterizable_class(KeepCurrentFlag)
 register_parameterizable_class(DeleteCurrentFlag)
+register_parameterizable_class(ContinueNormaExecutionFlag)
+register_parameterizable_class(ExecutionIsCompleteFlag)
 
 _KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT = KeepCurrentFlag()
 
 _DeleteCurrent = DeleteCurrentFlag()
 DELETE_CURRENT = DeleteCurrentFlag()
+
+_ContinueNormalExecution = ContinueNormaExecutionFlag()
+CONTINUE_NORMAL_EXECUTION = ContinueNormaExecutionFlag()
+
+_ExecutionIsComplete = ExecutionIsCompleteFlag()
+EXECUTION_IS_COMPLETE = ExecutionIsCompleteFlag()

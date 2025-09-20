@@ -14,7 +14,7 @@ from parameterizable.dict_sorter import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey
-from .jokers import Joker
+from .singletons import Joker, EXECUTION_IS_COMPLETE
 
 
 def not_found_error(e:ClientError) -> bool:
@@ -339,9 +339,7 @@ class BasicS3Dict(PersiDict):
         """
 
         key = NonEmptySafeStrTuple(key)
-        PersiDict.set_item_get_etag(self, key, value)
-        if isinstance(value, Joker):
-            # Joker values (KEEP_CURRENT, DELETE_CURRENT) are handled by base class
+        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
             return None
 
         obj_name = self._build_full_objectname(key)
@@ -407,7 +405,7 @@ class BasicS3Dict(PersiDict):
             KeyError: If immutable_items is True, or if the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        PersiDict.__delitem__(self, key)
+        self._process_delitem_args(key)
         obj_name = self._build_full_objectname(key)
         self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
 
@@ -467,7 +465,7 @@ class BasicS3Dict(PersiDict):
                 unsupported field names).
         """
 
-        PersiDict._generic_iter(self, result_type)
+        self._process_generic_iter_args(result_type)
 
         suffix = "." + self.file_type
         ext_len = len(self.file_type) + 1

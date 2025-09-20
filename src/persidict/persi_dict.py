@@ -24,7 +24,8 @@ from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
 from . import NonEmptySafeStrTuple
-from .jokers import KEEP_CURRENT, DELETE_CURRENT, Joker
+from .singletons import (KEEP_CURRENT, DELETE_CURRENT, Joker,
+    CONTINUE_NORMAL_EXECUTION, ProcessStatusFlag, EXECUTION_IS_COMPLETE)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -141,7 +142,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def copy(self) -> 'PersiDict':
+    def __copy__(self) -> 'PersiDict':
         """Return a shallow copy of the dictionary.
 
         This creates a new PersiDict instance with the same parameters, pointing
@@ -216,10 +217,10 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             bool: True if key exists, False otherwise.
         """
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                        " and cannot check items directly")
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                    " and cannot check items directly")
 
+    @abstractmethod
     def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
                              ) -> tuple[Any, str|None]:
         """Retrieve the value for a key only if its ETag has changed.
@@ -237,10 +238,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 Raises:
                     KeyError: If the key does not exist in S3.
         """
-
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                        " and cannot retrieve items directly")
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                    " and cannot retrieve items directly")
 
     @abstractmethod
     def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
@@ -252,9 +251,52 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             Any: The stored value.
         """
-        return self.get_item_if_new_etag(key, None)[0]
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                  " and cannot retrieve items directly")
 
 
+    def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: Any
+                              ) -> ProcessStatusFlag:
+        """Perform the first steps for setting an item.
+
+        Args:
+            key: Dictionary key (string or sequence of strings
+                or NonEmptySafeStrTuple).
+            value: Value to store, or a joker command (KEEP_CURRENT or
+                DELETE_CURRENT).
+
+        Raises:
+            KeyError: If attempting to modify an existing item when
+                immutable_items is True.
+            TypeError: If the value is a PersiDict instance or does not match
+                the required base_class_for_values when specified.
+
+        Returns:
+            ProcessStatusFlag: CONTINUE_NORMAL_EXECUTION if the caller should
+                proceed with storing the value; EXECUTION_IS_COMPLETE if a
+                joker command was processed and no further action is needed.
+        """
+
+        if value is KEEP_CURRENT:
+            return EXECUTION_IS_COMPLETE
+        elif self.immutable_items and (value is DELETE_CURRENT or key in self):
+            raise KeyError("Can't modify an immutable key-value pair")
+
+        key = NonEmptySafeStrTuple(key)
+
+        if value is DELETE_CURRENT:
+            self.delete_if_exists(key)
+            return EXECUTION_IS_COMPLETE
+
+        if self.base_class_for_values is not None:
+            if not isinstance(value, self.base_class_for_values):
+                raise TypeError(f"Value must be an instance of"
+                                f" {self.base_class_for_values.__name__}")
+
+        return CONTINUE_NORMAL_EXECUTION
+
+
+    @abstractmethod
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
         """Store a value for a key directly in the dict and return the new ETag.
 
@@ -283,27 +325,13 @@ class PersiDict(MutableMapping, ParameterizableClass):
             NotImplementedError: Subclasses must implement actual writing.
         """
 
-        if value is KEEP_CURRENT:
-            return
-        elif self.immutable_items and key in self:
-            raise KeyError("Can't modify an immutable key-value pair")
+        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
+            return None
 
-        key = NonEmptySafeStrTuple(key)
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                  " and cannot store items directly")
 
-        if value is DELETE_CURRENT:
-            self.delete_if_exists(key)
-            return
-
-        if self.base_class_for_values is not None:
-            if not isinstance(value, self.base_class_for_values):
-                raise TypeError(f"Value must be an instance of"
-                                f" {self.base_class_for_values.__name__}")
-
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                      " and cannot store items directly")
-
-
+    @abstractmethod
     def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
         """Set the value for a key.
 
@@ -319,43 +347,25 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 immutable_items is True.
             NotImplementedError: Subclasses must implement actual writing.
         """
-        if value is KEEP_CURRENT:
-            return
-        elif self.immutable_items:
-            if key in self:
-                raise KeyError("Can't modify an immutable key-value pair")
-
-        key = NonEmptySafeStrTuple(key)
-
-        if value is DELETE_CURRENT:
-            self.delete_if_exists(key)
+        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
             return
 
-        if self.base_class_for_values is not None:
-            if not isinstance(value, self.base_class_for_values):
-                raise TypeError(f"Value must be an instance of"
-                                f" {self.base_class_for_values.__name__}")
-
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                      " and cannot store items directly")
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                  " and cannot store items directly")
 
 
-    def __delitem__(self, key:NonEmptyPersiDictKey):
-        """Delete a key and its value.
+    def _process_delitem_args(self, key: NonEmptyPersiDictKey) -> None:
+        """Perform the first steps for deleting an item.
 
         Args:
-            key: Key (string or sequence of strings) or SafeStrTuple.
-
+            key: Dictionary key (string or sequence of strings
+                or NonEmptySafeStrTuple).
         Raises:
-            KeyError: If immutable_items is True.
-            NotImplementedError: Subclasses must implement deletion.
+            KeyError: If attempting to delete an item when
+                immutable_items is True or if the key does not exist.
         """
         if self.immutable_items:
             raise KeyError("Can't delete an immutable key-value pair")
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                      " and cannot delete items directly")
 
         key = NonEmptySafeStrTuple(key)
 
@@ -364,15 +374,53 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @abstractmethod
+    def __delitem__(self, key:NonEmptyPersiDictKey):
+        """Delete a key and its value.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Raises:
+            KeyError: If immutable_items is True or if the key does not exist.
+            NotImplementedError: Subclasses must implement deletion.
+        """
+        self._process_delitem_args(key)
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                  " and cannot delete items directly")
+
+
+    @abstractmethod
     def __len__(self) -> int:
         """Return the number of stored items.
 
         Returns:
             int: Number of key-value pairs.
+        Raises:
+            NotImplementedError: Subclasses must implement counting.
         """
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                        " and cannot count items directly")
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                    " and cannot count items directly")
+
+
+    def _process_generic_iter_args(self, result_type: set[str]) -> None:
+        """Validate arguments for iterator helpers.
+
+        Args:
+            result_type: A set indicating desired fields among {'keys',
+                'values', 'timestamps'}.
+        Raises:
+            TypeError: If result_type is not a set.
+            ValueError: If result_type contains invalid entries or an invalid number of items.
+        """
+        if not isinstance(result_type, set):
+            raise TypeError("result_type must be a set of strings")
+        if not (1 <= len(result_type) <= 3):
+            raise ValueError("result_type must contain between 1 and 3 elements")
+        allowed = {"keys", "values", "timestamps"}
+        if (result_type | allowed) != allowed:
+            raise ValueError("result_type can only contain 'keys', 'values', 'timestamps'")
+        if not (1 <= len(result_type & allowed) <= 3):
+            raise ValueError("result_type must include at least one of 'keys', 'values', 'timestamps'")
 
 
     @abstractmethod
@@ -392,18 +440,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
             ValueError: If result_type contains invalid entries or an invalid number of items.
             NotImplementedError: Subclasses must implement the concrete iterator.
         """
-        if not isinstance(result_type, set):
-            raise TypeError("result_type must be a set of strings")
-        if not (1 <= len(result_type) <= 3):
-            raise ValueError("result_type must contain between 1 and 3 elements")
-        allowed = {"keys", "values", "timestamps"}
-        if (result_type | allowed) != allowed:
-            raise ValueError("result_type can only contain 'keys', 'values', 'timestamps'")
-        if not (1 <= len(result_type & allowed) <= 3):
-            raise ValueError("result_type must include at least one of 'keys', 'values', 'timestamps'")
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                        " and cannot iterate items directly")
+        self._process_generic_iter_args(result_type)
+        raise NotImplementedError("PersiDict is an abstract base class"
+                                  " and cannot iterate items directly")
 
 
     def __iter__(self):

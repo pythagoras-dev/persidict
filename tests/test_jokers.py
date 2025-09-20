@@ -1,5 +1,5 @@
 
-from persidict.jokers import (
+from persidict.singletons import (
     KeepCurrentFlag, _KeepCurrent, KEEP_CURRENT
     , DeleteCurrentFlag, _DeleteCurrent, DELETE_CURRENT)
 

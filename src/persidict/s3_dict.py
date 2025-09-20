@@ -13,7 +13,7 @@ from parameterizable.dict_sorter import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
-from .jokers import Joker
+from .singletons import Joker, EXECUTION_IS_COMPLETE
 from .file_dir_dict import FileDirDict, PersiDictKey
 from .overlapping_multi_dict import OverlappingMultiDict
 
@@ -327,10 +327,8 @@ class S3Dict(PersiDict):
         """
 
         key = NonEmptySafeStrTuple(key)
-        PersiDict.__setitem__(self, key, value)
-        if isinstance(value, Joker):
-            # Joker values (KEEP_CURRENT, DELETE_CURRENT) are handled by base class
-            return
+        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
+            return None
 
         obj_name = self._build_full_objectname(key)
 
@@ -355,6 +353,14 @@ class S3Dict(PersiDict):
             # Remove stale ETag on failure to force fresh downloads later
             self.etag_cache.delete_if_exists(key)
 
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+        """Set item ETag value for a key in both S3 and local cache."""
+        return super().set_item_get_etag(key, value)
+
+    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
+                             ) -> tuple[Any, str|None]:
+        return super().get_item_if_new_etag(key, etag)
+
 
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Delete the stored value for a key from both S3 and local cache.
@@ -367,7 +373,7 @@ class S3Dict(PersiDict):
             KeyError: If immutable_items is True, or if the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        PersiDict.__delitem__(self, key)
+        self._process_delitem_args(key)
         obj_name = self._build_full_objectname(key)
         self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
         self.etag_cache.delete_if_exists(key)
@@ -429,7 +435,7 @@ class S3Dict(PersiDict):
                 unsupported field names).
         """
 
-        PersiDict._generic_iter(self, result_type)
+        self._process_generic_iter_args(result_type)
 
         suffix = "." + self.file_type
         ext_len = len(self.file_type) + 1

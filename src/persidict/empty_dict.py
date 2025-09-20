@@ -52,7 +52,7 @@ class EmptyDict(PersiDict):
         """Accepts any write operation, discards the data (like /dev/null)."""
         # Run base validations (immutable checks, key normalization,
         # type checks, jokers) to ensure API consistency, then discard.
-        super().__setitem__(key, value)
+        self._process_setitem_args(key, value)
         # Do nothing - discard the write like /dev/null
 
 
@@ -60,7 +60,7 @@ class EmptyDict(PersiDict):
         """Accepts any write operation, discards the data, returns None as etag."""
         # Run base validations (immutable checks, key normalization,
         # type checks, jokers) to ensure API consistency, then discard.
-        super().set_item_get_etag(key, value)
+        self._process_setitem_args(key, value)
         # Do nothing - discard the write like /dev/null
 
     
@@ -81,6 +81,7 @@ class EmptyDict(PersiDict):
 
     def _generic_iter(self, result_type: set[str]) -> Iterator[tuple]:
         """Returns empty iterator for any generic iteration."""
+        self._process_generic_iter_args(result_type)
         return iter(())
 
 

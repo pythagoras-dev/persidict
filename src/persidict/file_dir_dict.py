@@ -23,7 +23,7 @@ import jsonpickle.ext.pandas as jsonpickle_pandas
 import parameterizable
 from parameterizable import sort_dict_by_keys
 
-from .jokers import Joker
+from .singletons import Joker, EXECUTION_IS_COMPLETE
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
@@ -675,10 +675,8 @@ class FileDirDict(PersiDict):
         """
 
         key = NonEmptySafeStrTuple(key)
-        PersiDict.__setitem__(self, key, value)
-        if isinstance(value, Joker):
-            # processed by base class
-            return
+        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
+            return None
 
         filename = self._build_full_path(key, create_subdirs=True)
         self._save_to_file(filename, value)
@@ -704,7 +702,7 @@ class FileDirDict(PersiDict):
             TypeError: If the value is a PersiDict or does not match
                 base_class_for_values when it is set.
         """
-        self.__setitem__(key, value)
+        self[key] = value
         return None
 
 
@@ -719,6 +717,7 @@ class FileDirDict(PersiDict):
             KeyError: If immutable_items is True or if the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
+        self._process_delitem_args(key)
         filename = self._build_full_path(key)
         if not os.path.isfile(filename):
             raise KeyError(f"File {filename} does not exist")
@@ -748,7 +747,7 @@ class FileDirDict(PersiDict):
             ValueError: If result_type is empty or contains unsupported labels.
         """
 
-        PersiDict._generic_iter(self, result_type)
+        self._process_generic_iter_args(result_type)
         walk_results = os.walk(self._base_dir)
         ext_len = len(self.file_type) + 1
 
