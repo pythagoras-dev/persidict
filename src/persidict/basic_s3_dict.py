@@ -109,13 +109,14 @@ class BasicS3Dict(PersiDict):
             self.s3_client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
             error_code = e.response['Error']['Code']
-            if error_code == '404' or error_code == 'NotFound':
+            if not_found_error(e):
                 # Bucket does not exist, attempt to create it
                 try:
-                    if region and region != 'us-east-1':
+                    effective_region = self.s3_client.meta.region_name
+                    if effective_region and effective_region != 'us-east-1':
                         self.s3_client.create_bucket(
                             Bucket=bucket_name,
-                            CreateBucketConfiguration={'LocationConstraint': region})
+                            CreateBucketConfiguration={'LocationConstraint': effective_region})
                     else:
                         self.s3_client.create_bucket(Bucket=bucket_name)
 
@@ -268,17 +269,20 @@ class BasicS3Dict(PersiDict):
             body = response['Body']
             s3_etag = response.get("ETag")
 
-            if self.file_type == 'json':
-                deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
-            elif self.file_type == 'pkl':
-                data = body.read()
-                buffer = io.BytesIO(data)
-                try:
-                    deserialized_value = joblib.load(buffer)
-                finally:
-                    buffer.close()
-            else:
-                deserialized_value = body.read().decode('utf-8')
+            try:
+                if self.file_type == 'json':
+                    deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
+                elif self.file_type == 'pkl':
+                    data = body.read()
+                    buffer = io.BytesIO(data)
+                    try:
+                        deserialized_value = joblib.load(buffer)
+                    finally:
+                        buffer.close()
+                else:
+                    deserialized_value = body.read().decode('utf-8')
+            finally:
+                body.close()
 
             return (deserialized_value, s3_etag)
 
@@ -362,17 +366,13 @@ class BasicS3Dict(PersiDict):
                 serialized_data = str(value).encode('utf-8')
             content_type = 'text/plain'
 
-        # Upload directly to S3
-        try:
-            response = self.s3_client.put_object(
-                Bucket=self.bucket_name,
-                Key=obj_name,
-                Body=serialized_data,
-                ContentType=content_type
-            )
-            return response.get("ETag")
-        except ClientError as e:
-            raise
+        response = self.s3_client.put_object(
+            Bucket=self.bucket_name,
+            Key=obj_name,
+            Body=serialized_data,
+            ContentType=content_type
+        )
+        return response.get("ETag")
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
         """Store a value for a key directly in S3.
