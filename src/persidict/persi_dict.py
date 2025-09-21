@@ -160,32 +160,25 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @property
-    @abstractmethod
-    def base_url(self):
-        """Base URL identifying the storage location.
+    def base_url(self) -> str | None:
+        """Base URL identifying the storage location, if applicable.
 
         Returns:
-            str: A URL-like string (e.g., s3://bucket/prefix or file://...).
-
-        Raises:
-            NotImplementedError: Must be provided by subclasses.
+            str: A URL-like string (e.g., s3://bucket/prefix or file://...)
+                or None if not applicable.
         """
         raise NotImplementedError
 
 
     @property
-    @abstractmethod
-    def base_dir(self):
+    def base_dir(self) -> str|None:
         """Base directory on the local filesystem, if applicable.
 
         Returns:
-            str: Path to a local base directory used by the store.
-
-        Raises:
-            NotImplementedError: Must be provided by subclasses that use local
-                storage.
+            str: Path to a local base directory used by the store,
+                or None if not applicable
         """
-        raise NotImplementedError
+        return None
 
 
     def __repr__(self) -> str:

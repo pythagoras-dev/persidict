@@ -255,16 +255,6 @@ class ETaggableDictCached(PersiDict):
         self._etag_cache.delete_if_exists(key)
         self._data_cache.delete_if_exists(key)
 
-    @property
-    def base_url(self):
-        """Optional[str]: Base URL delegated to the main dict, if any."""
-        return self._main.base_url
-
-    @property
-    def base_dir(self):
-        """Optional[str]: Base directory delegated to the main dict, if any."""
-        return self._main.base_dir
-
 
 class AppendOnlyDictCached(PersiDict):
     """Append-only dict facade with a read-through cache.
@@ -511,13 +501,3 @@ class AppendOnlyDictCached(PersiDict):
             TypeError: Always raised to indicate append-only restriction.
         """
         raise TypeError("append-only dicts do not support deletion")
-
-    @property
-    def base_url(self):
-        """str | None: Delegated base URL of the main dict, if any."""
-        return self._main.base_url
-
-    @property
-    def base_dir(self):
-        """str | None: Delegated base directory of the main dict, if any."""
-        return self._main.base_dir

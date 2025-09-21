@@ -188,7 +188,7 @@ class BasicS3Dict(PersiDict):
 
 
     @property
-    def base_url(self):
+    def base_url(self) -> str|None:
         """Return the S3 URL prefix of this dictionary.
 
         This property is not part of the standard Python dictionary interface.
@@ -197,18 +197,6 @@ class BasicS3Dict(PersiDict):
             str: The base S3 URL in the format "s3://<bucket>/<root_prefix>".
         """
         return f"s3://{self.bucket_name}/{self.root_prefix}"
-
-
-    @property
-    def base_dir(self) -> str:
-        """Return None since BasicS3Dict doesn't use local directories.
-
-        This property is not part of the standard Python dictionary interface.
-
-        Returns:
-            None: BasicS3Dict doesn't use local cache directories.
-        """
-        return None
 
 
     def _build_full_objectname(self, key: NonEmptyPersiDictKey) -> str:

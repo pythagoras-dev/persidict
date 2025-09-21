@@ -183,19 +183,7 @@ class FileDirDict(PersiDict):
 
 
     @property
-    def base_url(self) -> str:
-        """Return dictionary's URL.
-
-        This property is absent in the original dict API.
-
-        Returns:
-            str: URL of the underlying storage in the form "file://<abs_path>".
-        """
-        return pathlib.Path(self._base_dir).resolve().as_uri()
-
-
-    @property
-    def base_dir(self) -> str:
+    def base_dir(self) -> str|None:
         """Return dictionary's base directory.
 
         This property is absent in the original dict API.

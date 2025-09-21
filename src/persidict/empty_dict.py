@@ -155,16 +155,6 @@ class EmptyDict(PersiDict):
         return params
 
 
-    def base_dir(self) -> str:
-        """Returns empty string as there's no storage directory."""
-        return ""
-
-
-    def base_url(self) -> str:
-        """Returns empty string as there's no storage URL."""
-        return ""
-
-
     def get_subdict(self, prefix_key: PersiDictKey) -> 'EmptyDict':
         """Returns a new EmptyDict as subdictionary.
 
