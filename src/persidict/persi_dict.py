@@ -222,7 +222,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        current_etag = str(self.timestamp(key))
+        current_etag = f"{self.timestamp(key):.6f}"
         if etag == current_etag:
             return ETAG_HAS_NOT_CHANGED
         else:
@@ -326,7 +326,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
         self[key] = value
-        return str(self.timestamp(key))
+        return f"{self.timestamp(key):.6f}"
 
     @abstractmethod
     def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
