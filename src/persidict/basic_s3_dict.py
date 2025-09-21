@@ -524,7 +524,12 @@ class BasicS3Dict(PersiDict):
                         to_return.append(unsigned_key)
 
                     if "values" in result_type:
-                        value_to_return = self[unsigned_key]
+                        # The object can be deleted between listing and fetching.
+                        # Skip such races instead of raising to make iteration robust.
+                        try:
+                            value_to_return = self[unsigned_key]
+                        except KeyError:
+                            continue
                         to_return.append(value_to_return)
 
                     if len(result_type) == 1:
