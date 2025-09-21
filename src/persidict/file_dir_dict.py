@@ -721,8 +721,16 @@ class FileDirDict(PersiDict):
                             to_return.append(key_to_return)
 
                         if "values" in result_type:
+                            # The file can be deleted between listing and fetching.
+                            # Skip such races instead of raising to make iteration robust.
                             full_path = os.path.join(dir_name, f)
-                            value_to_return = self._read_from_file(full_path)
+                            try:
+                                value_to_return = self._read_from_file(full_path)
+                            except:
+                                if not os.path.isfile(full_path):
+                                    continue
+                                else:
+                                    raise
                             to_return.append(value_to_return)
 
                         if len(result_type) == 1:
