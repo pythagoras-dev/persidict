@@ -519,12 +519,11 @@ class PersiDict(MutableMapping, ParameterizableClass):
         key = NonEmptySafeStrTuple(key)
         if isinstance(default, Joker):
             raise TypeError("default must be a regular value, not a Joker command")
-        if key in self:
+        try:
             return self[key]
-        else:
+        except KeyError:
             self[key] = default
             return default
-
 
     def __eq__(self, other: PersiDict) -> bool:
         """Compare dictionaries for equality.
