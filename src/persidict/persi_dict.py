@@ -26,7 +26,7 @@ from collections.abc import MutableMapping
 from . import NonEmptySafeStrTuple
 from .singletons import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                          CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
-                         ETagHasNotChangedFlag)
+                         ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -214,12 +214,13 @@ class PersiDict(MutableMapping, ParameterizableClass):
         raise NotImplementedError("PersiDict is an abstract base class"
                                     " and cannot check items directly")
 
-    @abstractmethod
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]|ETagHasNotChangedFlag:
+
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+                                 ) -> tuple[Any, str|None]|ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
         This method is absent in the original dict API.
+        By default, the timestamp is used in lieu of ETag.
 
         Args:
             key: Dictionary key (string or sequence of strings)
@@ -234,8 +235,13 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             KeyError: If the key does not exist.
         """
-        raise NotImplementedError("PersiDict is an abstract base class"
-                                    " and cannot retrieve items directly")
+        key = NonEmptySafeStrTuple(key)
+        current_etag = str(self.timestamp(key))
+        if etag == current_etag:
+            return ETAG_HAS_NOT_CHANGED
+        else:
+            return self[key], current_etag
+
 
     @abstractmethod
     def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
@@ -252,9 +258,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
 
     @property
-    @classmethod
-    def etags_operations_supported(self) -> bool:
-        """Whether ETag operations are supported by this dictionary class."""
+    def native_etags(self) -> bool:
+        """Whether ETag operations are natively supported by a dictionary class.
+
+        False by default, means the timestamp is used in lieu of ETag.
+        True means the class provides custom ETag implementation.
+        """
         return False
 
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: Any
@@ -298,7 +307,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
         return CONTINUE_NORMAL_EXECUTION
 
 
-    @abstractmethod
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
         """Store a value for a key directly in the dict and return the new ETag.
 
@@ -307,6 +315,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if specified, then serializes and uploads directly to S3.
 
         This method is absent in the original dict API.
+        By default, the timestamp is used in lieu of ETag.
 
         Args:
             key: Dictionary key (string or sequence of strings)
@@ -315,23 +324,21 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 DELETE_CURRENT).
 
         Returns:
-            str|None: The ETag of the newly stored object, or None if a joker
-            command was processed without uploading a new object,
-            or if the implementation does not support ETags.
+            str|None: The ETag of the newly stored object,
+            or None if the ETag was not provided as a result of the operation.
 
         Raises:
             KeyError: If attempting to modify an existing item when
                 immutable_items is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
-            NotImplementedError: Subclasses must implement actual writing.
         """
 
+        key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
-
-        raise NotImplementedError("PersiDict is an abstract base class"
-                                  " and cannot store items directly")
+        self[key] = value
+        return str(self.timestamp(key))
 
     @abstractmethod
     def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):

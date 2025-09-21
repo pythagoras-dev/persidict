@@ -42,8 +42,8 @@ class EmptyDict(PersiDict):
         raise KeyError(key)
 
 
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]:
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+                                 ) -> tuple[Any, str|None]:
         """Always raises KeyError as EmptyDict contains nothing.
 
         Args:

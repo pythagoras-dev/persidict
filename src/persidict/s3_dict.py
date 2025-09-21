@@ -367,58 +367,6 @@ class S3Dict(PersiDict):
             # Remove stale ETag on failure to force fresh downloads later
             self.etag_cache.delete_if_exists(key)
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
-        """Store a value for a key and return the new ETag with local caching.
-
-        Stores the value in both the local cache and S3, then caches the resulting
-        ETag for efficient future conditional requests. This method leverages the
-        local file system to minimize direct S3 serialization overhead.
-
-        This method is absent in the original dict API.
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            value: Value to store, or a joker command (KEEP_CURRENT or
-                DELETE_CURRENT).
-
-        Returns:
-            str|None: The ETag of the newly stored S3 object, or None if a joker
-            command was processed without uploading a new object.
-
-        Raises:
-            KeyError: If attempting to modify an existing item when
-                immutable_items is True.
-            TypeError: If value is a PersiDict instance or does not match
-                the required base_class_for_values when specified.
-        """
-        return super().set_item_get_etag(key, value)
-
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]|ETagHasNotChangedFlag:
-        """Retrieve a value only if its ETag has changed, with local caching optimization.
-
-        Uses local cache and ETag-based conditional requests to efficiently determine
-        if the S3 object has changed since the provided ETag. Updates the local cache
-        if a new version is retrieved.
-
-        This method is absent in the original dict API.
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against.
-
-        Returns:
-            tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized
-                value if the ETag has changed, along with the new ETag,
-                or ETAG_HAS_NOT_CHANGED if it matches the provided etag.
-
-        Raises:
-            KeyError: If the key does not exist in S3.
-        """
-        return super().get_item_if_new_etag(key, etag)
-
 
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Delete the stored value for a key from both S3 and local cache.

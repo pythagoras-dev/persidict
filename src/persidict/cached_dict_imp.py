@@ -61,7 +61,7 @@ class ETaggableDictCached(PersiDict):
             if v.immutable_items:
                 raise ValueError(f"{k} can't be append-only "
                                  "(immutable_items must be False)")
-        if not main_dict.etags_operations_supported:
+        if not main_dict.native_etags:
             raise ValueError("main_dict must fully support etags")
 
         super().__init__(
@@ -71,7 +71,7 @@ class ETaggableDictCached(PersiDict):
             file_type=main_dict.file_type,
         )
 
-        self._main = main_dict
+        self._main_dict = main_dict
         self._data_cache = data_cache
         self._etag_cache = etag_cache
 
@@ -85,7 +85,7 @@ class ETaggableDictCached(PersiDict):
             the main dict to ensure both share the same namespace.
         """
         # Keep the same logical namespace as the main dict
-        return self._main.prefix_key
+        return self._main_dict.prefix_key
 
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
@@ -98,7 +98,7 @@ class ETaggableDictCached(PersiDict):
             bool: True if the key exists in the main dict, False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
-        return key in self._main
+        return key in self._main_dict
 
     def __len__(self) -> int:
         """Number of items in the main dict.
@@ -106,7 +106,7 @@ class ETaggableDictCached(PersiDict):
         Returns:
             int: Count of keys according to the main dict.
         """
-        return len(self._main)
+        return len(self._main_dict)
 
     def _generic_iter(self, result_type: set[str]):
         """Delegate iteration to the main dict.
@@ -118,7 +118,7 @@ class ETaggableDictCached(PersiDict):
         Returns:
             Iterator over keys/values as provided by the main dict.
         """
-        return self._main._generic_iter(result_type)
+        return self._main_dict._generic_iter(result_type)
 
     def timestamp(self, key: NonEmptyPersiDictKey) -> float:
         """Get the last-modified timestamp from the main dict.
@@ -130,7 +130,17 @@ class ETaggableDictCached(PersiDict):
             float: POSIX timestamp (seconds since epoch) as provided by the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        return self._main.timestamp(key)
+        return self._main_dict.timestamp(key)
+
+
+    @property
+    def native_etags(self) -> bool:
+        """Whether ETag operations are natively supported by a dictionary class.
+
+        False by default, means the timestamp is used in lieu of ETag.
+        True means the class provides custom ETag implementation.
+        """
+        return self._main_dict.native_etags
 
 
     def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: Optional[str]) -> None:
@@ -164,19 +174,19 @@ class ETaggableDictCached(PersiDict):
         """
         key = NonEmptySafeStrTuple(key)
         old_etag = self._etag_cache.get(key, None)
-        res = self.get_item_if_new_etag(key, old_etag)
+        res = self.get_item_if_etag_changed(key, old_etag)
         if res is ETAG_HAS_NOT_CHANGED:
             try:
                 return self._data_cache[key]
             except KeyError:
-                value, _ =  self.get_item_if_new_etag(key, None)
+                value, _ =  self.get_item_if_etag_changed(key, None)
                 return value
         else:
             value, _ = res
             return value
 
 
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
         """Fetch value if the ETag is different from the provided one.
 
         Delegates to main_dict.get_item_if_new_etag. On change, updates both
@@ -193,7 +203,7 @@ class ETaggableDictCached(PersiDict):
             the supplied ETag matches the current one.
         """
         key = NonEmptySafeStrTuple(key)
-        res = self._main.get_item_if_new_etag(key, etag)
+        res = self._main_dict.get_item_if_etag_changed(key, etag)
         if res is ETAG_HAS_NOT_CHANGED:
             return res
         value, new_etag = res
@@ -217,6 +227,7 @@ class ETaggableDictCached(PersiDict):
         # set_item_get_etag helper below.
         self.set_item_get_etag(key, value)
 
+
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> Optional[str]:
         """Set item and return its ETag, updating caches.
 
@@ -235,7 +246,7 @@ class ETaggableDictCached(PersiDict):
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
-        etag = self._main.set_item_get_etag(key, value)
+        etag = self._main_dict.set_item_get_etag(key, value)
         self._data_cache[key] = value
         self._set_cached_etag(key, etag)
         return etag
@@ -251,7 +262,7 @@ class ETaggableDictCached(PersiDict):
             key: Non-empty key to delete.
         """
         key = NonEmptySafeStrTuple(key)
-        self._main.delete_if_exists(key)
+        self._main_dict.delete_if_exists(key)
         self._etag_cache.delete_if_exists(key)
         self._data_cache.delete_if_exists(key)
 
@@ -390,6 +401,17 @@ class AppendOnlyDictCached(PersiDict):
         key = NonEmptySafeStrTuple(key)
         return self._main.timestamp(key)
 
+
+    @property
+    def native_etags(self) -> bool:
+        """Whether ETag operations are natively supported by a dictionary class.
+
+        False by default, means the timestamp is used in lieu of ETag.
+        True means the class provides custom ETag implementation.
+        """
+        return self._main.native_etags
+
+
     def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
         """Retrieve a value using a read-through cache.
 
@@ -418,7 +440,7 @@ class AppendOnlyDictCached(PersiDict):
             return value
 
 
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
         """Return value only if its ETag changed; cache the value if so.
 
         Delegates to the main dict. If the ETag differs from the provided one,
@@ -438,7 +460,7 @@ class AppendOnlyDictCached(PersiDict):
             KeyError: If the key does not exist in the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        res = self._main.get_item_if_new_etag(key, etag)
+        res = self._main.get_item_if_etag_changed(key, etag)
         if not res is ETAG_HAS_NOT_CHANGED:
             value, _ = res
             self._data_cache[key] = value

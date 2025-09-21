@@ -121,8 +121,8 @@ def test_empty_dict_properties():
     empty_dict = EmptyDict()
     
     # Base directory and URL should be empty
-    assert empty_dict.base_dir() == ""
-    assert empty_dict.base_url() == ""
+    assert empty_dict.base_dir is None
+    assert empty_dict.base_url is None
     
     # Get params should work
     params = empty_dict.get_params()

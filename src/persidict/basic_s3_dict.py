@@ -169,9 +169,9 @@ class BasicS3Dict(PersiDict):
         return sorted_params
 
     @property
-    @classmethod
-    def etags_operations_supported(self) -> bool:
-        """Whether ETag operations are supported by this dictionary class."""
+    def native_etags(self) -> bool:
+        """Always True as ETag-s are natively supported by S3.
+        """
         return True
 
     @property
@@ -239,8 +239,8 @@ class BasicS3Dict(PersiDict):
             else:
                 raise
 
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag:str|None
-                             ) -> tuple[Any,str|None] | ETagHasNotChangedFlag:
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+                                 ) -> tuple[Any,str|None] | ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
         This method is absent in the original dict API.
@@ -312,7 +312,7 @@ class BasicS3Dict(PersiDict):
         Raises:
             KeyError: If the key does not exist in S3.
         """
-        return self.get_item_if_new_etag(key, None)[0]
+        return self.get_item_if_etag_changed(key, None)[0]
 
 
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:

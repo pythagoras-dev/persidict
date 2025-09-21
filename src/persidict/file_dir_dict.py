@@ -622,27 +622,6 @@ class FileDirDict(PersiDict):
         return result
 
 
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None]:
-        """Retrieve the value for a key if it has changed since the given etag.
-        This method is absent in the original dict API.
-        Args:
-            key (NonEmptyPersiDictKey): Key (string or sequence of strings
-                or NonEmptySafeStrTuple).
-            etag (str|None): Previous etag value, or None to always fetch.
-        Returns:
-            tuple[Any, str|None]: A tuple containing:
-                - The stored value if it has changed since the provided etag;
-                    otherwise, None.
-                - The new etag (always None for FileDirDict).
-        Raises:
-            KeyError: If the file for the key does not exist.
-            TypeError: If the deserialized value does not match base_class_for_values
-                when it is set.
-        """
-        return (self[key], None)
-
-
     def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
         """Store a value for a key on the disk.
 
@@ -668,30 +647,6 @@ class FileDirDict(PersiDict):
 
         filename = self._build_full_path(key, create_subdirs=True)
         self._save_to_file(filename, value)
-
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
-        """Store a value for a key and return None as etag.
-
-        Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
-        Validates value type if base_class_for_values is set, then serializes
-        and writes to a file determined by the key and file_type.
-
-        This method is absent in the original dict API.
-
-        Args:
-            key (NonEmptyPersiDictKey): Key (string or sequence of strings
-                or NonEmptySafeStrTuple).
-            value (Any): Value to store, or a joker command.
-        Returns:
-            str|None: Always returns None as etag.
-        Raises:
-            KeyError: If attempting to modify an existing item when
-                immutable_items is True.
-            TypeError: If the value is a PersiDict or does not match
-                base_class_for_values when it is set.
-        """
-        self[key] = value
-        return None
 
 
     def __delitem__(self, key:NonEmptyPersiDictKey) -> None:

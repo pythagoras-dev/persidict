@@ -182,6 +182,15 @@ class WriteOnceDict(PersiDict):
         """
         return self._consistency_checks_passed
 
+    @property
+    def native_etags(self) -> bool:
+        """Whether ETag operations are natively supported by a dictionary class.
+
+        False by default, means the timestamp is used in lieu of ETag.
+        True means the class provides custom ETag implementation.
+        """
+        return self._wrapped_dict.native_etags
+
 
     def get_params(self):
         """Return parameterization of this instance.
@@ -275,8 +284,8 @@ class WriteOnceDict(PersiDict):
         return self._wrapped_dict[key]
 
 
-    def get_item_if_new_etag(self, key: NonEmptyPersiDictKey, etag: str|None
-                             ) -> tuple[Any, str|None] |ETagHasNotChangedFlag:
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+                                 ) -> tuple[Any, str|None] |ETagHasNotChangedFlag:
         """Retrieve a value and its etag if the etag is new.
         Args:
             key: Key to look up.
@@ -286,7 +295,7 @@ class WriteOnceDict(PersiDict):
                 etag if the etag is new, or ETAG_HAS_NOT_CHANGED if the
                 etag matches the current one.
         """
-        return self._wrapped_dict.get_item_if_new_etag(key, etag)
+        return self._wrapped_dict.get_item_if_etag_changed(key, etag)
 
     def __len__(self):
         """Return the number of items stored.
