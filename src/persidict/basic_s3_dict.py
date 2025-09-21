@@ -273,12 +273,8 @@ class BasicS3Dict(PersiDict):
                 if self.file_type == 'json':
                     deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
                 elif self.file_type == 'pkl':
-                    data = body.read()
-                    buffer = io.BytesIO(data)
-                    try:
+                    with io.BytesIO(body.read()) as buffer:
                         deserialized_value = joblib.load(buffer)
-                    finally:
-                        buffer.close()
                 else:
                     deserialized_value = body.read().decode('utf-8')
             finally:
@@ -349,13 +345,9 @@ class BasicS3Dict(PersiDict):
             serialized_data = jsonpickle.dumps(value, indent=4).encode('utf-8')
             content_type = 'application/json'
         elif self.file_type == 'pkl':
-            buffer = io.BytesIO()
-            try:
+            with io.BytesIO() as buffer:
                 joblib.dump(value, buffer)
                 serialized_data = buffer.getvalue()
-            finally:
-                # Ensure the BytesIO buffer is properly closed
-                buffer.close()
             content_type = 'application/octet-stream'
         else:
             if isinstance(value, str):
