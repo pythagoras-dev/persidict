@@ -1,7 +1,7 @@
 """Write-once dictionary with probabilistic consistency checking.
 
 This module provides WriteOnceDict, a wrapper around PersiDict that supports
-a different semantic for write-once constraint of immutable dictionaries.
+an alternative behavior of append-only dictionaries (immutable_items==True).
 It allows repeated writes to an existing key, but assumes that
 all the subsequent writes have exactly the same value as the first one,
 so they can be safely ingnored. Random consistency checks ensure that
