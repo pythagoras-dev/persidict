@@ -5,10 +5,14 @@ from moto import mock_aws
 
 from parameterizable import CLASSNAME_PARAM_KEY
 from data_for_mutable_tests import mutable_tests
+from persidict import LocalDict
+
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_portable_params(tmpdir, DictToTest, kwargs):
+    if issubclass(DictToTest, LocalDict):
+        return
     dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
     dict_to_test.clear()
     model_params = DictToTest.get_portable_default_params()
@@ -32,6 +36,8 @@ def test_get_portable_params(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_default_portable_params(tmpdir, DictToTest, kwargs):
+    if issubclass(DictToTest, LocalDict):
+        return
     dict_to_test_1 = DictToTest().get_portable_params()
     dict_to_test_2 = DictToTest.get_portable_default_params()
     if "base_dir" in dict_to_test_1:

@@ -1,4 +1,4 @@
-from persidict import FileDirDict, S3Dict, BasicS3Dict
+from persidict import FileDirDict, S3Dict, BasicS3Dict, LocalDict
 
 mutable_tests = [
 
@@ -23,8 +23,10 @@ mutable_tests = [
 ,(FileDirDict, dict(file_type="json"))
 ,(S3Dict, dict(file_type="pkl", bucket_name="her_bucket"))
 ,(S3Dict, dict(file_type="json", bucket_name="their_bucket"))
-,(BasicS3Dict, dict(file_type="pkl", bucket_name="her_bucket"))
-,(BasicS3Dict, dict(file_type="json", bucket_name="their_bucket"))
+,(BasicS3Dict, dict(file_type="pkl", bucket_name="super_bucket"))
+,(BasicS3Dict, dict(file_type="json", bucket_name="mega_bucket"))
+,(LocalDict, dict(file_type="json", bucket_name="first_bucket"))
+,(LocalDict, dict(file_type="pkl", bucket_name="second_bucket"))
 
 ,(S3Dict, dict(file_type="pkl", bucket_name="a_bucket", root_prefix = "_"))
 ,(S3Dict, dict(file_type="json", bucket_name="the_bucket", root_prefix = "OYO"))
