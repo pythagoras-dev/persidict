@@ -167,7 +167,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             str: A URL-like string (e.g., s3://bucket/prefix or file://...)
                 or None if not applicable.
         """
-        raise NotImplementedError
+        return None
 
 
     @property
