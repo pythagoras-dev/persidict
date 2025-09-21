@@ -194,6 +194,9 @@ class WriteOnceDict(PersiDict):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+        raise NotImplementedError("Operation not supported on WriteOnceDict.")
+
     def __setitem__(self, key:NonEmptyPersiDictKey, value):
         """Set a value for a key, preserving the first assignment.
 
@@ -323,6 +326,12 @@ class WriteOnceDict(PersiDict):
             Any: Attribute value from the wrapped dict.
         """
         return getattr(self._wrapped_dict, name)
+
+
+    def __delitem__(self, key):
+        raise TypeError(
+            f"{self.__class__.__name__} has immutable items "
+            "and does not support deletion.")
 
     @property
     def base_dir(self) -> str|None:
