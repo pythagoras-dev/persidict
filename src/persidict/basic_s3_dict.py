@@ -405,8 +405,13 @@ class BasicS3Dict(PersiDict):
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
         obj_name = self._build_full_objectname(key)
-        self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
-
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
+        except ClientError as e:
+            if not_found_error(e):
+                pass
+            else:
+                raise
 
     def __len__(self) -> int:
         """Return the number of key-value pairs in the dictionary.
