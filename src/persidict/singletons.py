@@ -114,7 +114,7 @@ class ETagHasNotChangedFlag(StatusFlag):
     pass
 
 
-class ContinueNormaExecutionFlag(StatusFlag):
+class ContinueNormalExecutionFlag(StatusFlag):
     """Flag indicating to continue normal execution without special handling.
 
     Usage:
@@ -144,7 +144,7 @@ class ExecutionIsCompleteFlag(StatusFlag):
 
 register_parameterizable_class(KeepCurrentFlag)
 register_parameterizable_class(DeleteCurrentFlag)
-register_parameterizable_class(ContinueNormaExecutionFlag)
+register_parameterizable_class(ContinueNormalExecutionFlag)
 register_parameterizable_class(ExecutionIsCompleteFlag)
 register_parameterizable_class(ETagHasNotChangedFlag)
 
@@ -154,8 +154,8 @@ KEEP_CURRENT = KeepCurrentFlag()
 _DeleteCurrent = DeleteCurrentFlag()
 DELETE_CURRENT = DeleteCurrentFlag()
 
-_ContinueNormalExecution = ContinueNormaExecutionFlag()
-CONTINUE_NORMAL_EXECUTION = ContinueNormaExecutionFlag()
+_ContinueNormalExecution = ContinueNormalExecutionFlag()
+CONTINUE_NORMAL_EXECUTION = ContinueNormalExecutionFlag()
 
 _ExecutionIsComplete = ExecutionIsCompleteFlag()
 EXECUTION_IS_COMPLETE = ExecutionIsCompleteFlag()
