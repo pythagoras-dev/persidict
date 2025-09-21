@@ -180,6 +180,8 @@ class BasicS3Dict(PersiDict):
         except ClientError as e:
             if not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            else:
+                raise
 
 
     @property
@@ -344,7 +346,7 @@ class BasicS3Dict(PersiDict):
 
         # Serialize the value directly to S3
         if self.file_type == 'json':
-            serialized_data = jsonpickle.dumps(value).encode('utf-8')
+            serialized_data = jsonpickle.dumps(value, indent=4).encode('utf-8')
             content_type = 'application/json'
         elif self.file_type == 'pkl':
             buffer = io.BytesIO()
