@@ -247,7 +247,10 @@ class FileDirDict(PersiDict):
             suffix = "." + self.file_type
             for f in files:
                 if f.endswith(suffix):
-                    os.remove(os.path.join(subdir_name, f))
+                    try:
+                        os.remove(os.path.join(subdir_name, f))
+                    except OSError:
+                        continue
             if (subdir_name != self._base_dir) and (
                     len(os.listdir(subdir_name)) == 0 ):
                 try:
