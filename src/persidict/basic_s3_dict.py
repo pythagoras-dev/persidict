@@ -169,6 +169,12 @@ class BasicS3Dict(PersiDict):
         return sorted_params
 
     @property
+    @classmethod
+    def etags_operations_supported(self) -> bool:
+        """Whether ETag operations are supported by this dictionary class."""
+        return True
+
+    @property
     def prefix_key(self) -> SafeStrTuple:
         """Return the root prefix as a SafeStrTuple.
 

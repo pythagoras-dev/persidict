@@ -258,6 +258,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
                                   " and cannot retrieve items directly")
 
 
+    @property
+    @classmethod
+    def etags_operations_supported(self) -> bool:
+        """Whether ETag operations are supported by this dictionary class."""
+        return False
+
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: Any
                               ) -> StatusFlag:
         """Perform the first steps for setting an item.
