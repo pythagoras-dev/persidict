@@ -203,24 +203,43 @@ class LocalDict(PersiDict):
                 clear_ft(ch)
         clear_ft(self._backend)
 
-    def _navigate_to_parent(self, key: SafeStrTuple) -> tuple[_RAMBackend, str]:
+    def _navigate_to_parent(self, key: SafeStrTuple, create_if_missing: bool = True) -> tuple[Optional[_RAMBackend], str]:
         """Resolve a hierarchical key to its parent node and leaf name.
 
         This helper walks all segments of the key except the last one to find
-        (or create) the corresponding RAMBackend node that contains the leaf
-        bucket for this file_type.
+        the corresponding RAMBackend node that contains the leaf bucket for this
+        file_type.
+
+        Behavior:
+            - When create_if_missing is True (default), missing intermediate
+              nodes are created as needed (write-path semantics).
+            - When create_if_missing is False, traversal stops and returns
+              (None, None) if an intermediate node is absent (read-path
+              semantics), ensuring no phantom nodes are created.
 
         Args:
             key (SafeStrTuple): Full hierarchical key. Must be non-empty; the
                 last segment is treated as the leaf item name.
+            create_if_missing (bool): Whether to create intermediate nodes while
+                traversing. Defaults to True.
 
         Returns:
-            tuple[_RAMBackend, str]: A pair consisting of the backend node that
-            holds the leaf bucket and the leaf segment (final component).
+            tuple[Optional[_RAMBackend], str]: A pair consisting of the backend
+            node that would hold the leaf bucket (or None if not found during
+            lookup when create_if_missing=False) and the leaf segment (final
+            component).
         """
-        backend_node = self._backend
+        backend_node: Optional[_RAMBackend] = self._backend
         for segment in key[:-1]:
-            backend_node = backend_node.child(segment)
+            if backend_node is None:
+                break
+            if create_if_missing:
+                backend_node = backend_node.child(segment)
+            else:
+                backend_node = backend_node.subdicts.get(segment)
+                if backend_node is None:
+                    # Early exit: path does not exist and we shouldn't create it
+                    return None, None
         return backend_node, key[-1]
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
@@ -233,7 +252,9 @@ class LocalDict(PersiDict):
             bool: True if the key is present; False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key)
+        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
+        if parent_node is None:
+            return False
         bucket = parent_node.values.get(self.file_type, {})
         return leaf in bucket
 
@@ -252,7 +273,9 @@ class LocalDict(PersiDict):
                 not match it.
         """
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key)
+        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
+        if parent_node is None:
+            raise KeyError(f"Key {tuple(key)} does not exist")
         bucket = parent_node.values.get(self.file_type, {})
         if leaf not in bucket:
             raise KeyError(f"Key {tuple(key)} does not exist")
@@ -299,7 +322,9 @@ class LocalDict(PersiDict):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
-        parent_node, leaf = self._navigate_to_parent(key)
+        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
+        if parent_node is None:
+            raise KeyError(f"Key {tuple(key)} does not exist")
         bucket = parent_node.values.get(self.file_type, {})
         if leaf not in bucket:
             raise KeyError(f"Key {tuple(key)} does not exist")
@@ -365,7 +390,9 @@ class LocalDict(PersiDict):
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key)
+        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
+        if parent_node is None:
+            raise KeyError(f"Key {tuple(key)} does not exist")
         bucket = parent_node.values.get(self.file_type, {})
         if leaf not in bucket:
             raise KeyError(f"Key {tuple(key)} does not exist")
@@ -377,6 +404,8 @@ class LocalDict(PersiDict):
         The returned LocalDict shares the same underlying RAMBackend, but its
         root is moved to the subtree identified by prefix_key. If intermediate
         nodes do not exist, they are created (resulting in an empty subdict).
+        Modifications to a sub-dictionary will affect the parent dictionary
+        and any other sub-dictionaries that share the same backend.
 
         Args:
             prefix_key (Iterable[str] | SafeStrTuple): Key prefix identifying the
