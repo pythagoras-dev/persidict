@@ -292,6 +292,8 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return EXECUTION_IS_COMPLETE
         elif self.immutable_items and (value is DELETE_CURRENT or key in self):
             raise KeyError("Can't modify an immutable key-value pair")
+        elif isinstance(value, PersiDict):
+            raise TypeError("Cannot store a PersiDict instance directly")
 
         key = NonEmptySafeStrTuple(key)
 
