@@ -334,7 +334,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             NotImplementedError: Subclasses must implement actual writing.
         """
 
-        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
+        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
 
         raise NotImplementedError("PersiDict is an abstract base class"
@@ -356,7 +356,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 immutable_items is True.
             NotImplementedError: Subclasses must implement actual writing.
         """
-        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
+        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return
 
         raise NotImplementedError("PersiDict is an abstract base class"

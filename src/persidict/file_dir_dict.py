@@ -675,7 +675,7 @@ class FileDirDict(PersiDict):
         """
 
         key = NonEmptySafeStrTuple(key)
-        if self._process_setitem_args(key, value) == EXECUTION_IS_COMPLETE:
+        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
 
         filename = self._build_full_path(key, create_subdirs=True)
