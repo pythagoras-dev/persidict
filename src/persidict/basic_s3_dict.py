@@ -65,7 +65,6 @@ class BasicS3Dict(PersiDict):
                  root_prefix: str = "",
                  file_type: str = "pkl",
                  immutable_items: bool = False,
-                 digest_len: int = 8,
                  base_class_for_values: Optional[type] = None,
                  *args, **kwargs):
         """Initialize a basic S3-backed persistent dictionary.
@@ -81,9 +80,6 @@ class BasicS3Dict(PersiDict):
                 'pkl' (pickle), 'json' (jsonpickle), or custom text formats.
             immutable_items: If True, prevents modification of existing items
                 after they are initially stored.
-            digest_len: Number of base32 MD5 hash characters appended to key
-                elements to prevent case-insensitive filename collisions. 
-                Set to 0 to disable collision prevention.
             base_class_for_values: Optional base class that all stored values
                 must inherit from. When specified (and not str), file_type
                 must be 'pkl' or 'json' for proper serialization.
@@ -96,7 +92,6 @@ class BasicS3Dict(PersiDict):
         """
 
         super().__init__(immutable_items=immutable_items,
-                         digest_len=digest_len,
                          base_class_for_values=base_class_for_values,
                          file_type=file_type)
 
@@ -162,7 +157,6 @@ class BasicS3Dict(PersiDict):
             "root_prefix": self.root_prefix,
             "file_type": self.file_type,
             "immutable_items": self.immutable_items,
-            "digest_len": self.digest_len,
             "base_class_for_values": self.base_class_for_values,
         }
         sorted_params = sort_dict_by_keys(params)
@@ -173,18 +167,6 @@ class BasicS3Dict(PersiDict):
         """Always True as ETag-s are natively supported by S3.
         """
         return True
-
-    @property
-    def prefix_key(self) -> SafeStrTuple:
-        """Return the root prefix as a SafeStrTuple.
-
-        Returns:
-            SafeStrTuple: The root prefix components as a tuple of strings.
-        """
-        result = self.root_prefix.strip("/")
-        if len(result) == 0:
-            return SafeStrTuple()
-        return SafeStrTuple(result.split("/"))
 
 
     @property
@@ -211,7 +193,7 @@ class BasicS3Dict(PersiDict):
             extension, with digest-based collision prevention applied if enabled.
         """
         key = NonEmptySafeStrTuple(key)
-        key = sign_safe_str_tuple(key, self.digest_len)
+        key = sign_safe_str_tuple(key, 0)
         objectname = self.root_prefix + "/".join(key) + "." + self.file_type
         return objectname
 
@@ -516,7 +498,7 @@ class BasicS3Dict(PersiDict):
 
                     to_return = []
                     unsigned_key = unsign_safe_str_tuple(
-                        obj_key, self.digest_len)
+                        obj_key, 0)
 
                     if "keys" in result_type:
                         to_return.append(unsigned_key)
@@ -555,7 +537,7 @@ class BasicS3Dict(PersiDict):
 
         key = SafeStrTuple(key)
         if len(key):
-            key = sign_safe_str_tuple(key, self.digest_len)
+            key = sign_safe_str_tuple(key, 0)
             full_root_prefix = self.root_prefix + "/".join(key)
         else:
             full_root_prefix = self.root_prefix
@@ -566,7 +548,6 @@ class BasicS3Dict(PersiDict):
             root_prefix=full_root_prefix,
             file_type=self.file_type,
             immutable_items=self.immutable_items,
-            digest_len=self.digest_len,
             base_class_for_values=self.base_class_for_values)
 
         return new_dict

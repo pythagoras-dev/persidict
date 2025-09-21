@@ -76,18 +76,6 @@ class ETaggableDictCached(PersiDict):
         self._etag_cache = etag_cache
 
 
-    @property
-    def prefix_key(self):
-        """tuple[str, ...]: The same prefix as the main dict's namespace.
-
-        Returns:
-            tuple[str, ...]: The logical prefix used for all keys, delegated to
-            the main dict to ensure both share the same namespace.
-        """
-        # Keep the same logical namespace as the main dict
-        return self._main_dict.prefix_key
-
-
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
         """Check membership against the main dict.
 
@@ -339,14 +327,6 @@ class AppendOnlyDictCached(PersiDict):
         self._main: PersiDict = main_dict
         self._data_cache: PersiDict = data_cache
 
-    @property
-    def prefix_key(self):
-        """tuple[str, ...]: Prefix of keys identical to the main dict's.
-
-        Delegates to main_dict.prefix_key to keep the same logical namespace.
-        """
-        # Keep the same logical namespace as the main dict
-        return self._main.prefix_key
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
         """Check whether a key exists in the cache or main dict.

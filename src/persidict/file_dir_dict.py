@@ -116,12 +116,13 @@ class FileDirDict(PersiDict):
     """
 
     _base_dir:str
+    digest_len:int
 
     def __init__(self
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
                  , file_type: str = "pkl"
                  , immutable_items:bool = False
-                 , digest_len:int = 8
+                 , digest_len:int = 1
                  , base_class_for_values: Optional[type] = None):
         """Initialize a filesystem-backed persistent dictionary.
 
@@ -152,6 +153,10 @@ class FileDirDict(PersiDict):
                 ,base_class_for_values = base_class_for_values
                 ,file_type = file_type)
 
+        if digest_len < 0:
+            raise ValueError("digest_len must be non-negative")
+        self.digest_len = digest_len
+
         base_dir = str(base_dir)
         self._base_dir = os.path.abspath(base_dir)
         self._base_dir = add_long_path_prefix(self._base_dir)
@@ -176,7 +181,8 @@ class FileDirDict(PersiDict):
         """
         params = PersiDict.get_params(self)
         additional_params = dict(
-            base_dir=self.base_dir)
+            base_dir=self.base_dir,
+            digest_len=self.digest_len)
         params.update(additional_params)
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
@@ -192,22 +198,6 @@ class FileDirDict(PersiDict):
             str: Absolute path to the base directory used by this dictionary.
         """
         return drop_long_path_prefix(self._base_dir)
-
-
-    @property
-    def prefix_key(self) -> SafeStrTuple:
-        """Return the prefix key corresponding to the base directory path.
-        
-        This property is absent in the original dict API.
-        
-        Returns:
-            SafeStrTuple: A tuple representing the directory path components
-                from the root to the base directory.
-        """
-        result = self.base_dir.strip(os.sep)
-        if len(result) == 0:
-            return SafeStrTuple()
-        return SafeStrTuple(result.split(os.sep))
 
 
     def __len__(self) -> int:

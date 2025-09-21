@@ -159,11 +159,6 @@ class WriteOnceDict(PersiDict):
 
 
     @property
-    def prefix_key(self) -> SafeStrTuple:
-        return self._wrapped_dict.prefix_key
-
-
-    @property
     def consistency_checks_attempted(self) -> int:
         """Number of attempted consistency checks.
 

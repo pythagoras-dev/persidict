@@ -66,14 +66,12 @@ class PersiDict(MutableMapping, ParameterizableClass):
             Optional key prefix prepended to all keys in this dictionary.
     """
 
-    digest_len:int
     immutable_items:bool
     base_class_for_values:Optional[type]
     file_type:str
 
     def __init__(self,
                  immutable_items: bool = False,
-                 digest_len: int = 8,
                  base_class_for_values: Optional[type] = None,
                  file_type: str = "pkl",
                  *args, **kwargs):
@@ -82,9 +80,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Args:
             immutable_items (bool): If True, items cannot be modified or deleted.
                 Defaults to False.
-            digest_len (int): Number of hash characters to append to key components
-                to avoid case-insensitive collisions. Must be non-negative.
-                Defaults to 8.
             base_class_for_values (Optional[type]): Optional base class that values
                 must inherit from. If None, values are not type-restricted.
                 Defaults to None.
@@ -98,9 +93,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             ValueError: If digest_len is negative.
         """
-        self.digest_len = int(digest_len)
-        if digest_len < 0:
-            raise ValueError("digest_len must be non-negative")
 
         self.immutable_items = bool(immutable_items)
 
@@ -120,11 +112,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         ParameterizableClass.__init__(self)
 
-    @property
-    def prefix_key(self) -> SafeStrTuple:
-        raise NotImplementedError("PersiDict is an abstract base class"
-            " and cannot provide a prefix_key directly")
-
 
     def get_params(self):
         """Return configuration parameters of this dictionary.
@@ -136,7 +123,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         params = dict(
             immutable_items=self.immutable_items,
-            digest_len=self.digest_len,
             base_class_for_values=self.base_class_for_values,
             file_type=self.file_type
         )

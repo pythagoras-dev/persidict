@@ -6,22 +6,17 @@ mutable_tests = [
 ,(FileDirDict, dict(file_type="json", digest_len=11))
 ,(S3Dict, dict(file_type="pkl", bucket_name="my_bucket", digest_len=11))
 ,(S3Dict, dict(file_type="json", bucket_name="her_bucket", digest_len=11))
-,(BasicS3Dict, dict(file_type="pkl", bucket_name="my_bucket", digest_len=11))
-,(BasicS3Dict, dict(file_type="json", bucket_name="her_bucket", digest_len=11))
+
 
 ,(FileDirDict, dict(file_type="pkl", digest_len=5))
 ,(FileDirDict, dict(file_type="json", digest_len=5))
 ,(S3Dict, dict(file_type="pkl", bucket_name="my_bucket", digest_len=5))
 ,(S3Dict, dict(file_type="json", bucket_name="his_bucket", digest_len=5))
-,(BasicS3Dict, dict(file_type="pkl", bucket_name="my_bucket", digest_len=5))
-,(BasicS3Dict, dict(file_type="json", bucket_name="his_bucket", digest_len=5))
 
 ,(FileDirDict, dict(file_type="pkl", digest_len=0))
 ,(FileDirDict, dict(file_type="json", digest_len=0))
 ,(S3Dict, dict(file_type="pkl", bucket_name="my_bucket", digest_len=0))
 ,(S3Dict, dict(file_type="json", bucket_name="her_bucket", digest_len=0))
-,(BasicS3Dict, dict(file_type="pkl", bucket_name="my_bucket", digest_len=0))
-,(BasicS3Dict, dict(file_type="json", bucket_name="her_bucket", digest_len=0))
 
 
 ,(FileDirDict, dict(file_type="pkl"))

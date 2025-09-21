@@ -57,8 +57,8 @@ class S3Dict(PersiDict):
                  root_prefix: str = "",
                  base_dir: str = S3DICT_DEFAULT_BASE_DIR,
                  file_type: str = "pkl",
-                 immutable_items: bool = False,
                  digest_len: int = 8,
+                 immutable_items: bool = False,
                  base_class_for_values: Optional[type] = None,
                  *args, **kwargs):
         """Initialize an S3-backed persistent dictionary.
@@ -91,7 +91,6 @@ class S3Dict(PersiDict):
         """
 
         super().__init__(immutable_items=immutable_items,
-                         digest_len=digest_len,
                          base_class_for_values=base_class_for_values,
                          file_type=file_type)
         individual_subdicts_params = {self.file_type: {}}
@@ -152,6 +151,10 @@ class S3Dict(PersiDict):
         if len(self.root_prefix) and self.root_prefix[-1] != "/":
             self.root_prefix += "/"
 
+    @property
+    def digest_len(self) -> int:
+        return self.main_cache.digest_len
+
 
     def get_params(self):
         """Return configuration parameters as a dictionary.
@@ -170,18 +173,6 @@ class S3Dict(PersiDict):
         params["root_prefix"] = self.root_prefix
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
-
-    @property
-    def prefix_key(self) -> SafeStrTuple:
-        """Return the root prefix as a SafeStrTuple.
-
-        Returns:
-            SafeStrTuple: The root prefix components as a tuple of strings.
-        """
-        result = self.root_prefix.strip("/")
-        if len(result) == 0:
-            return SafeStrTuple()
-        return SafeStrTuple(result.split("/"))
 
 
     @property
@@ -220,7 +211,7 @@ class S3Dict(PersiDict):
             extension, with digest-based collision prevention applied if enabled.
         """
         key = NonEmptySafeStrTuple(key)
-        key = sign_safe_str_tuple(key, self.digest_len)
+        key = sign_safe_str_tuple(key, 0)
         objectname = self.root_prefix + "/".join(key) + "." + self.file_type
         return objectname
 
@@ -491,7 +482,7 @@ class S3Dict(PersiDict):
 
                     if "keys" in result_type:
                         key_to_return = unsign_safe_str_tuple(
-                            obj_key, self.digest_len)
+                            obj_key, 0)
                         to_return.append(key_to_return)
 
                     if "values" in result_type:
@@ -528,7 +519,7 @@ class S3Dict(PersiDict):
 
         key = SafeStrTuple(key)
         if len(key):
-            key = sign_safe_str_tuple(key, self.digest_len)
+            key = sign_safe_str_tuple(key, 0)
             full_root_prefix = self.root_prefix + "/".join(key)
         else:
             full_root_prefix = self.root_prefix
@@ -543,7 +534,6 @@ class S3Dict(PersiDict):
             base_dir=new_dir_path,
             file_type=self.file_type,
             immutable_items=self.immutable_items,
-            digest_len=self.digest_len,
             base_class_for_values=self.base_class_for_values)
 
         return new_dict
