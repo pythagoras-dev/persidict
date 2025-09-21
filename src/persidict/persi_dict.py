@@ -222,7 +222,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        current_etag = f"{self.timestamp(key):.6f}"
+        current_etag = self.etag(key)
         if etag == current_etag:
             return ETAG_HAS_NOT_CHANGED
         else:
@@ -326,7 +326,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
         self[key] = value
-        return f"{self.timestamp(key):.6f}"
+        return self.etag(key)
 
     @abstractmethod
     def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
@@ -717,6 +717,17 @@ class PersiDict(MutableMapping, ParameterizableClass):
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
                                       " and cannot provide timestamps directly")
+
+    def etag(self, key:NonEmptyPersiDictKey) -> str|None:
+        """Return the ETag of a key.
+
+        When a dictionary class does not provide a custom
+        implementation of ETag-s (native_etags == False),
+        the timestamp is used in lieu of ETag.
+
+        This method is absent in the original Python dict API.
+        """
+        return f"{self.timestamp(key):.6f}"
 
 
     def oldest_keys(self, max_n=None) -> list[NonEmptySafeStrTuple]:

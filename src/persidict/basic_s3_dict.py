@@ -162,11 +162,24 @@ class BasicS3Dict(PersiDict):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
+
     @property
     def native_etags(self) -> bool:
         """Always True as ETag-s are natively supported by S3.
         """
         return True
+
+
+    def etag(self, key:NonEmptyPersiDictKey) -> str|None:
+        """Get an ETag for a key."""
+        key = NonEmptySafeStrTuple(key)
+        obj_name = self._build_full_objectname(key)
+        try:
+            response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
+            return response["ETag"]
+        except ClientError as e:
+            if not_found_error(e):
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
 
 
     @property
