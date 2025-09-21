@@ -203,7 +203,10 @@ class LocalDict(PersiDict):
                 clear_ft(ch)
         clear_ft(self._backend)
 
-    def _navigate_to_parent(self, key: SafeStrTuple, create_if_missing: bool = True) -> tuple[Optional[_RAMBackend], str]:
+    def _navigate_to_parent(self
+                            , key: SafeStrTuple
+                            , create_if_missing: bool = True
+                            ) -> tuple[Optional[_RAMBackend], str]:
         """Resolve a hierarchical key to its parent node and leaf name.
 
         This helper walks all segments of the key except the last one to find
