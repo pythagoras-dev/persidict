@@ -53,17 +53,11 @@ class PersiDict(MutableMapping, ParameterizableClass):
         immutable_items (bool):
             If True, items are write-once: existing values cannot be modified or
             deleted.
-        digest_len (int):
-            Length of a base32 MD5 digest fragment used to suffix each key
-            component to avoid collisions on case-insensitive filesystems. 0
-            disables suffixing.
         base_class_for_values (Optional[type]):
             Optional base class that all values must inherit from. If None, any
             type is accepted.
         file_type (str):
             File extension/format for stored values (e.g., "pkl", "json").
-        prefix_key (SafeStrTuple):
-            Optional key prefix prepended to all keys in this dictionary.
     """
 
     immutable_items:bool
