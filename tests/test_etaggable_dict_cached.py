@@ -1,7 +1,7 @@
 import time
 import pytest
 
-from persidict.cached_dicts import MutableDictCached
+from persidict.cached_mutable_dict import MutableDictCached
 from persidict.persi_dict import PersiDict
 from persidict.local_dict import LocalDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple

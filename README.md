@@ -126,8 +126,8 @@ print(f"API Key: {cloud_config['api_key']}")
 You can also constrain values to a specific class.
 * **Order**: Insertion order is not preserved.
 * **Additional Methods**: `PersiDict` provides extra methods not in the standard 
-dict API, such as `timestamp()`, `random_key()`, `newest_keys()`, `subdicts()`
-, `delete_if_exists()`, `get_params()` and more.
+dict API, such as `timestamp()`, `etag()`, `random_key()`, `newest_keys()`
+, `subdicts()`, `delete_if_exists()`, `get_params()` and more.
 * **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
 and `DELETE_CURRENT` to delete a value during an assignment.
 
