@@ -213,6 +213,9 @@ class LocalDict(PersiDict):
         other file types remains intact.
         """
         # Override for efficiency (optional). Remove only our file_type data.
+        if self.immutable_items:
+            raise KeyError("Can't delete an immutable key-value pair")
+
         def clear_ft(node: _RAMBackend):
             node.values.pop(self.file_type, None)
             for ch in node.subdicts.values():
