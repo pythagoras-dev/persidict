@@ -124,7 +124,8 @@ class LocalDict(PersiDict):
                  backend: Optional[_RAMBackend] = None,
                  file_type: str = "pkl",
                  immutable_items: bool = False,
-                 base_class_for_values: Optional[type] = None, *args, **kwargs):
+                 base_class_for_values: Optional[type] = None,
+                 prune_interval: Optional[int] = 64, *args, **kwargs):
         """Initialize an in-memory persistent dictionary.
 
         Args:
@@ -137,6 +138,11 @@ class LocalDict(PersiDict):
             base_class_for_values (type | None): Optional base class that all
                 stored values must inherit from. If None, any type is accepted
                 (subject to file_type restrictions). Defaults to None.
+            prune_interval (int | None): If None or <= 0, disables pruning.
+                Otherwise, run pruning only once every N destructive
+                operations (deletions/clears). Higher values reduce pruning
+                overhead at the cost of keeping some empty nodes around until
+                the next prune. Defaults to 64.
 
         Raises:
             ValueError: Propagated from PersiDict if file_type is empty, has
@@ -145,6 +151,16 @@ class LocalDict(PersiDict):
                 invalid type.
         """
         self._backend = backend or _RAMBackend()
+        # Pruning throttling
+        if prune_interval is None:
+            self._prune_interval = None
+        else:
+            try:
+                pi = int(prune_interval)
+            except (TypeError, ValueError):
+                pi = 64
+            self._prune_interval = None if pi <= 0 else pi
+        self._ops_since_prune: int = 0
         PersiDict.__init__(self,
                            immutable_items=immutable_items,
                            base_class_for_values=base_class_for_values,
@@ -202,6 +218,53 @@ class LocalDict(PersiDict):
             for ch in node.subdicts.values():
                 clear_ft(ch)
         clear_ft(self._backend)
+        # Throttled pruning: run only once per prune_interval destructive ops
+        self._maybe_prune()
+
+    def _maybe_prune(self) -> None:
+        """Increment destructive-op counter and prune when threshold reached.
+
+        Pruning the entire in-memory tree can be relatively expensive for large
+        datasets. To amortize the cost, we only prune once every
+        ``self._prune_interval`` deletions/clears. This keeps memory usage
+        bounded over time without incurring per-operation full-tree traversals.
+        """
+        if self._prune_interval is None:
+            return
+        self._ops_since_prune += 1
+        if self._ops_since_prune >= self._prune_interval:
+            self._prune_empty_subtrees(self._backend)
+            self._ops_since_prune = 0
+
+    def _prune_empty_subtrees(self, node: Optional[_RAMBackend] = None) -> bool:
+        """Remove empty per-file_type buckets and prunes empty subtrees.
+
+        This walks the in-memory tree and:
+          - Deletes value buckets that became empty (no leaves for any file_type).
+          - Recursively deletes child subdicts that become empty after pruning.
+
+        A node is considered empty if it has no children (subdicts) and no
+        non-empty value buckets in ``values``. The method returns a boolean
+        indicating whether the given node is now empty.
+
+        Args:
+            node (_RAMBackend | None): Node to prune; defaults to the root.
+
+        Returns:
+            bool: True if the node is empty after pruning; False otherwise.
+        """
+        if node is None:
+            node = self._backend
+        # First, prune children depth-first
+        for name, child in list(node.subdicts.items()):
+            if self._prune_empty_subtrees(child):
+                del node.subdicts[name]
+        # Next, drop empty value buckets for any file_type
+        for ft, bucket in list(node.values.items()):
+            if not bucket:  # empty dict
+                del node.values[ft]
+        # Node is empty if it has no children and no value buckets left
+        return not node.subdicts and not node.values
 
     def _navigate_to_parent(self
                             , key: SafeStrTuple
@@ -332,6 +395,8 @@ class LocalDict(PersiDict):
         if leaf not in bucket:
             raise KeyError(f"Key {tuple(key)} does not exist")
         del bucket[leaf]
+        # Throttled pruning: run only once per prune_interval destructive ops
+        self._maybe_prune()
 
     def _generic_iter(self, result_type: set[str]):
         """Underlying implementation for keys/values/items/timestamps iterators.
@@ -426,7 +491,8 @@ class LocalDict(PersiDict):
         return LocalDict(backend=root_node,
                          file_type=self.file_type,
                          immutable_items=self.immutable_items,
-                         base_class_for_values=self.base_class_for_values)
+                         base_class_for_values=self.base_class_for_values,
+                         prune_interval=self._prune_interval)
 
 
 # parameterizable.register_parameterizable_class(LocalDict)
