@@ -1,7 +1,7 @@
 import time
 import pytest
 
-from persidict.cached_dict_imp import AppendOnlyDictCached
+from persidict.cached_dicts import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
 from persidict.persi_dict import PersiDict
 from persidict.singletons import ETAG_HAS_NOT_CHANGED

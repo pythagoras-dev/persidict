@@ -1,7 +1,7 @@
 import time
 import pytest
 
-from persidict.cached_dict_imp import ETaggableDictCached
+from persidict.cached_dicts import MutableDictCached
 from persidict.persi_dict import PersiDict
 from persidict.local_dict import LocalDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple
@@ -106,7 +106,7 @@ def cached_env():
     main = FakeETagMain()
     data_cache = LocalDict()
     etag_cache = LocalDict(file_type="json")  # store etags as str
-    wrapper = ETaggableDictCached(main, data_cache, etag_cache)
+    wrapper = MutableDictCached(main, data_cache, etag_cache)
     return main, data_cache, etag_cache, wrapper
 
 
@@ -115,17 +115,17 @@ def test_constructor_validations():
     good_cache = LocalDict()
     # immutable caches are not allowed
     with pytest.raises(ValueError):
-        ETaggableDictCached(main, LocalDict(immutable_items=True), good_cache)
+        MutableDictCached(main, LocalDict(immutable_items=True), good_cache)
     with pytest.raises(ValueError):
-        ETaggableDictCached(main, good_cache, LocalDict(immutable_items=True))
+        MutableDictCached(main, good_cache, LocalDict(immutable_items=True))
     # Using a LocalDict as main is not supported by this adapter (missing required features such as digest_len)
     with pytest.raises(Exception):
-        ETaggableDictCached(LocalDict(), good_cache, good_cache)
+        MutableDictCached(LocalDict(), good_cache, good_cache)
     # all must be PersiDict
     with pytest.raises(TypeError):
-        ETaggableDictCached(main, {}, good_cache)  # type: ignore[arg-type]
+        MutableDictCached(main, {}, good_cache)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        ETaggableDictCached(main, good_cache, {})  # type: ignore[arg-type]
+        MutableDictCached(main, good_cache, {})  # type: ignore[arg-type]
 
 
 def test_setitem_and_caches_updated(cached_env):
@@ -312,7 +312,7 @@ def test_constructor_main_type_validation():
     good_cache = LocalDict()
     # main must be a PersiDict too
     with pytest.raises(TypeError):
-        ETaggableDictCached({}, good_cache, good_cache)  # type: ignore[arg-type]
+        MutableDictCached({}, good_cache, good_cache)  # type: ignore[arg-type]
 
 
 def test_base_class_for_values_enforced_via_wrapper():
@@ -320,7 +320,7 @@ def test_base_class_for_values_enforced_via_wrapper():
     main = FakeETagMain(base_class_for_values=dict)
     data_cache = LocalDict()
     etag_cache = LocalDict(file_type="json")
-    wrapper = ETaggableDictCached(main, data_cache, etag_cache)
+    wrapper = MutableDictCached(main, data_cache, etag_cache)
 
     # Wrapper should mirror main's base_class_for_values
     assert wrapper.base_class_for_values is dict

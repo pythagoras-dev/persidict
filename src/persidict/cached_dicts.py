@@ -7,7 +7,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple
 from .singletons import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
-class ETaggableDictCached(PersiDict):
+class MutableDictCached(PersiDict):
     """PersiDict adapter with read-through caching and ETag validation.
 
     This adapter composes three concrete PersiDict instances:
