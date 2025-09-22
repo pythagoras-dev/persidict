@@ -184,7 +184,9 @@ writes to the same key always match the original value.
 * **`OverlappingMultiDict`**: An advanced container that holds 
 multiple `PersiDict` instances sharing the same storage 
 but with different `file_type`s.
-* * **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  
+* **`LocalDict`**: An in-memory `PersiDict` backed by 
+a RAM-only hierarchical store.
+* **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  
 like a null device in OS - accepts all writes but discards them, 
 returns nothing on reads. Always appears empty 
 regardless of operations performed on it.
