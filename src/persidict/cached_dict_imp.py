@@ -61,8 +61,6 @@ class ETaggableDictCached(PersiDict):
             if v.immutable_items:
                 raise ValueError(f"{k} can't be append-only "
                                  "(immutable_items must be False)")
-        if not main_dict.native_etags:
-            raise ValueError("main_dict must fully support etags")
 
         super().__init__(
             immutable_items=main_dict.immutable_items,
@@ -121,14 +119,6 @@ class ETaggableDictCached(PersiDict):
         return self._main_dict.timestamp(key)
 
 
-    @property
-    def native_etags(self) -> bool:
-        """Whether ETag operations are natively supported by a dictionary class.
-
-        False by default, means the timestamp is used in lieu of ETag.
-        True means the class provides custom ETag implementation.
-        """
-        return self._main_dict.native_etags
 
 
     def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: Optional[str]) -> None:
@@ -381,15 +371,6 @@ class AppendOnlyDictCached(PersiDict):
         key = NonEmptySafeStrTuple(key)
         return self._main.timestamp(key)
 
-
-    @property
-    def native_etags(self) -> bool:
-        """Whether ETag operations are natively supported by a dictionary class.
-
-        False by default, means the timestamp is used in lieu of ETag.
-        True means the class provides custom ETag implementation.
-        """
-        return self._main.native_etags
 
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:

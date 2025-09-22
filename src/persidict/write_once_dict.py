@@ -177,15 +177,6 @@ class WriteOnceDict(PersiDict):
         """
         return self._consistency_checks_passed
 
-    @property
-    def native_etags(self) -> bool:
-        """Whether ETag operations are natively supported by a dictionary class.
-
-        False by default, means the timestamp is used in lieu of ETag.
-        True means the class provides custom ETag implementation.
-        """
-        return self._wrapped_dict.native_etags
-
 
     def get_params(self):
         """Return parameterization of this instance.

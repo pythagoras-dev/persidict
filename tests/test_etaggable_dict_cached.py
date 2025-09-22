@@ -24,10 +24,6 @@ class FakeETagMain(PersiDict):
         self._store = {}
         self._counter = 0
 
-    @property
-    def native_etags(self) -> bool:
-        return True
-
     def __contains__(self, key) -> bool:
         key = NonEmptySafeStrTuple(key)
         return key in self._store
@@ -122,8 +118,8 @@ def test_constructor_validations():
         ETaggableDictCached(main, LocalDict(immutable_items=True), good_cache)
     with pytest.raises(ValueError):
         ETaggableDictCached(main, good_cache, LocalDict(immutable_items=True))
-    # main must support native etags
-    with pytest.raises(ValueError):
+    # Using a LocalDict as main is not supported by this adapter (missing required features such as digest_len)
+    with pytest.raises(Exception):
         ETaggableDictCached(LocalDict(), good_cache, good_cache)
     # all must be PersiDict
     with pytest.raises(TypeError):

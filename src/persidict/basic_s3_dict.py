@@ -163,12 +163,6 @@ class BasicS3Dict(PersiDict):
         return sorted_params
 
 
-    @property
-    def native_etags(self) -> bool:
-        """Always True as ETag-s are natively supported by S3.
-        """
-        return True
-
 
     def etag(self, key:NonEmptyPersiDictKey) -> str|None:
         """Get an ETag for a key."""

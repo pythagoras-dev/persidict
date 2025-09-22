@@ -41,16 +41,13 @@ def test_set_and_get_reads_through_cache(append_only_env):
     assert dict(wrapper.items()) == dict(main.items())
 
 
-def test_timestamp_and_native_etags_passthrough(append_only_env):
+def test_timestamp_passthrough(append_only_env):
     main, cache, wrapper = append_only_env
 
     wrapper["k"] = 123
     ts_main = main.timestamp(("k",))
     ts_wr = wrapper.timestamp(("k",))
     assert ts_wr == ts_main
-
-    # native_etags is delegated to main (FileDirDict uses timestamp-based etags)
-    assert wrapper.native_etags == main.native_etags
 
 
 def test_get_item_if_etag_changed_populates_cache(append_only_env):

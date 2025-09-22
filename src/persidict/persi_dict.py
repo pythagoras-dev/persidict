@@ -237,14 +237,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
                                   " and cannot retrieve items directly")
 
 
-    @property
-    def native_etags(self) -> bool:
-        """Whether ETag operations are natively supported by a dictionary class.
-
-        False by default, means the timestamp is used in lieu of ETag.
-        True means the class provides custom ETag implementation.
-        """
-        return False
 
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: Any
                               ) -> StatusFlag:
@@ -714,9 +706,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
     def etag(self, key:NonEmptyPersiDictKey) -> str|None:
         """Return the ETag of a key.
 
-        When a dictionary class does not provide a custom
-        implementation of ETag-s (native_etags == False),
-        the timestamp is used in lieu of ETag.
+        By default, this returns a stringified timestamp of the last
+        modification time. Subclasses may override to provide true
+        backend-specific ETags (e.g., S3).
 
         This method is absent in the original Python dict API.
         """
