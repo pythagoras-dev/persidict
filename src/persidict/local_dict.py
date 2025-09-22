@@ -344,10 +344,10 @@ class LocalDict(PersiDict):
         key = NonEmptySafeStrTuple(key)
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
-            raise KeyError(f"Key {tuple(key)} does not exist")
+            raise KeyError(f"Key {key} not found")
         bucket = parent_node.values.get(self.file_type, {})
         if leaf not in bucket:
-            raise KeyError(f"Key {tuple(key)} does not exist")
+            raise KeyError(f"Key {key} not found")
         value = bucket[leaf][0]
         if self.base_class_for_values is not None:
             if not isinstance(value, self.base_class_for_values):
@@ -393,10 +393,10 @@ class LocalDict(PersiDict):
         self._process_delitem_args(key)
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
-            raise KeyError(f"Key {tuple(key)} does not exist")
+            raise KeyError(f"Key {key} not found")
         bucket = parent_node.values.get(self.file_type, {})
         if leaf not in bucket:
-            raise KeyError(f"Key {tuple(key)} does not exist")
+            raise KeyError(f"Key {key} not found")
         del bucket[leaf]
         # Throttled pruning: run only once per prune_interval destructive ops
         self._maybe_prune()
@@ -463,10 +463,10 @@ class LocalDict(PersiDict):
         key = NonEmptySafeStrTuple(key)
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
-            raise KeyError(f"Key {tuple(key)} does not exist")
+            raise KeyError(f"Key {key} not found")
         bucket = parent_node.values.get(self.file_type, {})
         if leaf not in bucket:
-            raise KeyError(f"Key {tuple(key)} does not exist")
+            raise KeyError(f"Key {key} not found")
         return bucket[leaf][1]
 
     def get_subdict(self, prefix_key: Iterable[str] | SafeStrTuple) -> PersiDict:
