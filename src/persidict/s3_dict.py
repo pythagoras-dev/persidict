@@ -111,7 +111,7 @@ class S3Dict(PersiDict):
             **individual_subdicts_params)
 
         self.main_cache = getattr(self.local_cache, self.file_type)
-        if not self.immutable_items:
+        if not self.append_only:
             self.etag_cache = getattr(self.local_cache, self.etag_file_type)
 
         self.region = region
@@ -230,7 +230,7 @@ class S3Dict(PersiDict):
             items), False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
-        if self.immutable_items and key in self.main_cache:
+        if self.append_only and key in self.main_cache:
                 return True
         try:
             obj_name = self._build_full_objectname(key)
@@ -264,13 +264,13 @@ class S3Dict(PersiDict):
 
         key = NonEmptySafeStrTuple(key)
 
-        if self.immutable_items and key in self.main_cache:
+        if self.append_only and key in self.main_cache:
             return self.main_cache[key]
 
         obj_name = self._build_full_objectname(key)
 
         cached_etag = None
-        if not self.immutable_items and key in self.main_cache and key in self.etag_cache:
+        if not self.append_only and key in self.main_cache and key in self.etag_cache:
             cached_etag = self.etag_cache[key]
 
         try:
@@ -293,7 +293,7 @@ class S3Dict(PersiDict):
 
             self.main_cache[key] = deserialized_value
 
-            if not self.immutable_items:
+            if not self.append_only:
                 # Cache the S3 ETag for future conditional requests
                 s3_etag = response.get("ETag")
                 self.etag_cache[key] = s3_etag
@@ -344,7 +344,7 @@ class S3Dict(PersiDict):
         file_path = self.main_cache._build_full_path(key)
         self.s3_client.upload_file(file_path, self.bucket_name, obj_name)
 
-        if self.immutable_items:
+        if self.append_only:
             # For immutable items, the local cache is authoritative; no need to
             # verify ETag from S3 as the item cannot change after initial upload
             return
@@ -533,7 +533,7 @@ class S3Dict(PersiDict):
             root_prefix=full_root_prefix,
             base_dir=new_dir_path,
             file_type=self.file_type,
-            immutable_items=self.immutable_items,
+            immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values)
 
         return new_dict

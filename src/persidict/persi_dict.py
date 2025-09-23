@@ -116,7 +116,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 built-in dict.
         """
         params = dict(
-            immutable_items=self.immutable_items,
+            immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values,
             file_type=self.file_type
         )
@@ -138,6 +138,16 @@ class PersiDict(MutableMapping, ParameterizableClass):
         params = self.get_params()
         return self.__class__(**params)
 
+
+    @property
+    def append_only(self) -> bool:
+        """Whether the store is append-only.
+
+        Returns:
+            bool: True if the store is append-only (contains immutable items
+            that cannot be modified or deleted), False otherwise.
+        """
+        return self.immutable_items
 
     @property
     def base_url(self) -> str | None:
@@ -262,7 +272,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         if value is KEEP_CURRENT:
             return EXECUTION_IS_COMPLETE
-        elif self.immutable_items and (value is DELETE_CURRENT or key in self):
+        elif self.append_only and (value is DELETE_CURRENT or key in self):
             raise KeyError("Can't modify an immutable key-value pair")
         elif isinstance(value, PersiDict):
             raise TypeError("Cannot store a PersiDict instance directly")
@@ -347,7 +357,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             KeyError: If attempting to delete an item when
                 immutable_items is True or if the key does not exist.
         """
-        if self.immutable_items:
+        if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
 
         key = NonEmptySafeStrTuple(key)
@@ -570,7 +580,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Raises:
             KeyError: If items are immutable (immutable_items is True).
         """
-        if self.immutable_items:
+        if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
 
         for k in self.keys():
@@ -595,7 +605,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             KeyError: If items are immutable (immutable_items is True).
         """
 
-        if self.immutable_items:
+        if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
 
         key = NonEmptySafeStrTuple(key)

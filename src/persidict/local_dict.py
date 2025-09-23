@@ -179,7 +179,7 @@ class LocalDict(PersiDict):
         """
         params = dict(
             backend=self._backend,
-            immutable_items=self.immutable_items,
+            immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values,
             file_type=self.file_type,
         )
@@ -213,7 +213,7 @@ class LocalDict(PersiDict):
         other file types remains intact.
         """
         # Override for efficiency (optional). Remove only our file_type data.
-        if self.immutable_items:
+        if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
 
         def clear_ft(node: _RAMBackend):

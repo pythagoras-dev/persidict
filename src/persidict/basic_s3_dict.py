@@ -156,7 +156,7 @@ class BasicS3Dict(PersiDict):
             "bucket_name": self.bucket_name,
             "root_prefix": self.root_prefix,
             "file_type": self.file_type,
-            "immutable_items": self.immutable_items,
+            "immutable_items": self.append_only,
             "base_class_for_values": self.base_class_for_values,
         }
         sorted_params = sort_dict_by_keys(params)
@@ -558,7 +558,7 @@ class BasicS3Dict(PersiDict):
             region=self.region,
             root_prefix=full_root_prefix,
             file_type=self.file_type,
-            immutable_items=self.immutable_items,
+            immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values)
 
         return new_dict

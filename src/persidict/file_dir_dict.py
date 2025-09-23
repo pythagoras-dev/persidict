@@ -226,7 +226,7 @@ class FileDirDict(PersiDict):
             KeyError: If immutable_items is True.
         """
 
-        if self.immutable_items:
+        if self.append_only:
             raise KeyError("Can't clear a dict that contains immutable items")
 
         # we can't use shutil.rmtree() because
@@ -370,7 +370,7 @@ class FileDirDict(PersiDict):
         return FileDirDict(
             base_dir= full_dir_path
             , file_type=self.file_type
-            , immutable_items= self.immutable_items
+            , immutable_items= self.append_only
             , digest_len=self.digest_len
             , base_class_for_values=self.base_class_for_values)
 
