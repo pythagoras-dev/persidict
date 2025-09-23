@@ -150,15 +150,83 @@ register_parameterizable_class(ETagHasNotChangedFlag)
 
 _KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT = KeepCurrentFlag()
+"""Singleton flag indicating that the current value should be kept unchanged.
+
+This flag can be assigned to a key in a PersiDict to indicate that any existing
+value for that key should not be modified during an update operation.
+
+If assigned to a key that does not exist, the operation will succeed without
+eny change.
+
+Example:
+    >>> d = PersiDict()
+    >>> d['key'] = 'value'
+    >>> d['key'] = KEEP_CURRENT  # Keeps 'value' unchanged
+"""
+
 
 _DeleteCurrent = DeleteCurrentFlag()
 DELETE_CURRENT = DeleteCurrentFlag()
+"""Singleton flag indicating that the current value should be deleted.
+
+This flag can be assigned to a key in a PersiDict to indicate that any existing
+value for that key should be deleted during an update operation.
+
+If assigned to a key that does not exist, the operation will succeed without
+any change.
+
+Example:
+    >>> d = PersiDict()
+    >>> d['key'] = 'value'
+    >>> d['key'] = DELETE_CURRENT  # same as d.delete_if_exists('key')
+"""
+
 
 _ContinueNormalExecution = ContinueNormalExecutionFlag()
 CONTINUE_NORMAL_EXECUTION = ContinueNormalExecutionFlag()
+"""Singleton flag indicating that normal execution should continue.
+
+This flag can be used in process flow control contexts to signal that normal
+execution should proceed without any special handling or alterations.
+
+When this flag is returned from a processing step, it indicates that the
+operation completed successfully and the next step in the normal execution
+flow should be performed.
+
+Example:
+    >>> if pre_process_input(data) is CONTINUE_NORMAL_EXECUTION:
+    ...     # Continue with next step
+    ...     perform_next_step()
+"""
 
 _ExecutionIsComplete = ExecutionIsCompleteFlag()
 EXECUTION_IS_COMPLETE = ExecutionIsCompleteFlag()
+"""Singleton flag indicating that execution is complete and no further processing is needed.
+
+This flag can be used in process flow control contexts to signal that all necessary
+processing has been completed successfully and no additional steps are required.
+
+When this flag is returned from a processing step, it indicates that the
+operation completed successfully and no further processing should be performed.
+
+Example:
+    >>> if pre_process_input(data) is EXECUTION_IS_COMPLETE:
+    ...     # Skip remaining steps
+    ...     return result
+"""
 
 _ETagHasNotChanged = ETagHasNotChangedFlag()
 ETAG_HAS_NOT_CHANGED = ETagHasNotChangedFlag()
+"""Singleton flag indicating that an ETag value has not changed.
+
+This flag can be used in contexts where a notification is needed to indicate
+that an ETag (entity tag) comparison shows no changes.
+
+When this flag is returned from a processing step, it indicates that the
+resource's ETag matches and no content updates are necessary.
+
+Example:
+    >>> if check_resource_etag(url) is ETAG_HAS_NOT_CHANGED:
+    ...     # Skip resource update
+    ...     return cached_content
+"""
