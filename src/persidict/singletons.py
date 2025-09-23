@@ -150,7 +150,7 @@ register_parameterizable_class(ETagHasNotChangedFlag)
 
 _KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT = KeepCurrentFlag()
-"""Singleton flag indicating that the current value should be kept unchanged.
+"""Flag indicating that the current value should be kept unchanged.
 
 This flag can be assigned to a key in a PersiDict to indicate that any existing
 value for that key should not be modified during an update operation.
@@ -167,7 +167,7 @@ Example:
 
 _DeleteCurrent = DeleteCurrentFlag()
 DELETE_CURRENT = DeleteCurrentFlag()
-"""Singleton flag indicating that the current value should be deleted.
+"""Flag indicating that the current value should be deleted.
 
 This flag can be assigned to a key in a PersiDict to indicate that any existing
 value for that key should be deleted during an update operation.
@@ -184,7 +184,7 @@ Example:
 
 _ContinueNormalExecution = ContinueNormalExecutionFlag()
 CONTINUE_NORMAL_EXECUTION = ContinueNormalExecutionFlag()
-"""Singleton flag indicating that normal execution should continue.
+"""Flag indicating that normal execution should continue.
 
 This flag can be used in process flow control contexts to signal that normal
 execution should proceed without any special handling or alterations.
@@ -201,7 +201,7 @@ Example:
 
 _ExecutionIsComplete = ExecutionIsCompleteFlag()
 EXECUTION_IS_COMPLETE = ExecutionIsCompleteFlag()
-"""Singleton flag indicating that execution is complete and no further processing is needed.
+"""Flag indicating that execution is complete, no further processing is needed.
 
 This flag can be used in process flow control contexts to signal that all necessary
 processing has been completed successfully and no additional steps are required.
@@ -217,7 +217,7 @@ Example:
 
 _ETagHasNotChanged = ETagHasNotChangedFlag()
 ETAG_HAS_NOT_CHANGED = ETagHasNotChangedFlag()
-"""Singleton flag indicating that an ETag value has not changed.
+"""Flag indicating that an ETag value has not changed.
 
 This flag can be used in contexts where a notification is needed to indicate
 that an ETag (entity tag) comparison shows no changes.
