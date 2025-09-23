@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from copy import deepcopy
 from typing import Any, Optional, Iterable
 
 import parameterizable
@@ -378,7 +379,7 @@ class LocalDict(PersiDict):
             return None
         parent_node, leaf = self._navigate_to_parent(key)
         bucket = parent_node.get_values_bucket(self.file_type)
-        bucket[leaf] = (value, time.time())
+        bucket[leaf] = (deepcopy(value), time.time())
 
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
         """Delete a stored value for a key.
