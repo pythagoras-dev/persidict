@@ -366,18 +366,12 @@ def test_subdict_deep_prefix_isolation():
 
 
 
-def test_setdefault_mutation_persists():
+def test_setdefault_mutation_does_not_persist():
     ld = make_ld(file_type="json")
     d = {"x": 1}
     got = ld.setdefault(("a",), d)
     got["y"] = 2
-    assert ld[("a",)] == {"x": 1, "y": 2}
-
-
-
-
-
-
+    assert ld[("a",)] == {"x": 1}
 
 
 
