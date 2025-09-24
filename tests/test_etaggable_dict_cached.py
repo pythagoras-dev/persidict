@@ -118,9 +118,6 @@ def test_constructor_validations():
         MutableDictCached(main, LocalDict(immutable_items=True), good_cache)
     with pytest.raises(ValueError):
         MutableDictCached(main, good_cache, LocalDict(immutable_items=True))
-    # Using a LocalDict as main is not supported by this adapter (missing required features such as digest_len)
-    with pytest.raises(Exception):
-        MutableDictCached(LocalDict(), good_cache, good_cache)
     # all must be PersiDict
     with pytest.raises(TypeError):
         MutableDictCached(main, {}, good_cache)  # type: ignore[arg-type]

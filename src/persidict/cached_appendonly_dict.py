@@ -71,7 +71,6 @@ class AppendOnlyDictCached(PersiDict):
         # Initialize PersiDict base with parameters mirroring the main dict.
         super().__init__(
             immutable_items=True,
-            digest_len=main_dict.digest_len,
             base_class_for_values=main_dict.base_class_for_values,
             file_type=main_dict.file_type,
         )

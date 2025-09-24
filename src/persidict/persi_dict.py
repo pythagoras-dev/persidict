@@ -64,6 +64,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
     base_class_for_values:Optional[type]
     file_type:str
 
+    # Let's rename file_type to casing or container or vessel or holder
     def __init__(self,
                  immutable_items: bool = False,
                  base_class_for_values: Optional[type] = None,
@@ -85,7 +86,11 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 for subclasses).
 
         Raises:
-            ValueError: If digest_len is negative.
+            ValueError: If file_type is an empty string,
+            or contains unsafe characters, or not 'jason' or 'pkl'
+            for non-string values.
+
+            TypeError: If base_class_for_values is not a type or None.
         """
 
         self.immutable_items = bool(immutable_items)

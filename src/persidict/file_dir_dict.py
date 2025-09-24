@@ -118,6 +118,7 @@ class FileDirDict(PersiDict):
     _base_dir:str
     digest_len:int
 
+    # Let's rename file_type to casing or container or vessel or holder
     def __init__(self
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
                  , file_type: str = "pkl"

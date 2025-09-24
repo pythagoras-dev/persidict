@@ -168,7 +168,8 @@ instances of a specific class.
 * **`immutable_items`**: A boolean parameter that can make a `PersiDict` 
 "append only," preventing any modification or deletion of existing items.
 * **`digest_len`**: An integer that specifies the length of a hash suffix 
-added to key components to prevent collisions on case-insensitive file systems.
+added to key components in `FileDirDict` to prevent collisions 
+on case-insensitive file systems.
 * **`base_dir`**: A string specifying the directory path where a `FileDirDict`
 stores its files. For `S3Dict`, this directory is used to cache files locally.
 * **`bucket_name`**: A string specifying the name of the S3 bucket where

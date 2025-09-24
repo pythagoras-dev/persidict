@@ -47,7 +47,7 @@ class MutableDictCached(PersiDict):
                 if main_dict does not fully support ETag operations.
 
         Notes:
-            The adapter inherits base settings (digest_len, base_class_for_values,
+            The adapter inherits base settings (base_class_for_values,
             file_type, and immutability) from main_dict to ensure compatibility.
         """
 
@@ -64,7 +64,6 @@ class MutableDictCached(PersiDict):
 
         super().__init__(
             immutable_items=main_dict.immutable_items,
-            digest_len=main_dict.digest_len,
             base_class_for_values=main_dict.base_class_for_values,
             file_type=main_dict.file_type,
         )
