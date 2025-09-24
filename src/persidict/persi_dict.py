@@ -539,16 +539,21 @@ class PersiDict(MutableMapping, ParameterizableClass):
         Returns:
             bool: True if the dictionaries are considered equal, False otherwise.
         """
-        if isinstance(other, PersiDict):
-            return self.get_params() == other.get_params()
         try:
+            if type(self) is type(other) :
+                if self.get_params() == other.get_params():
+                    return True
+        except:
+            pass
+
+        try: #TODO: refactor to improve performance
             if len(self) != len(other):
                 return False
             for k in other.keys():
                 if self[k] != other[k]:
                     return False
             return True
-        except:
+        except KeyError:
             return False
 
 
@@ -681,7 +686,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         # Reservoir sampling algorithm
         i = 2
         for key in iterator:
-            # Select current key with probability 1/i
+            # Select the current key with probability 1/i
             if random.random() < 1/i:
                 result = key
             i += 1
