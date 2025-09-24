@@ -610,15 +610,11 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         key = NonEmptySafeStrTuple(key)
 
-        if key in self:
-            try:
-                del self[key]
-                return True
-            except:
-                return False
-        else:
+        try:
+            del self[key]
+            return True
+        except KeyError:
             return False
-
 
     def get_subdict(self, prefix_key:PersiDictKey) -> PersiDict:
         """Get a sub-dictionary containing items with the given prefix key.
