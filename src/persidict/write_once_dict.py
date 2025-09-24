@@ -331,23 +331,6 @@ class WriteOnceDict(PersiDict):
             f"{self.__class__.__name__} has immutable items "
             "and does not support deletion.")
 
-    # @property
-    # def base_dir(self) -> str|None:
-    #     """Base directory of the wrapped dict (if applicable).
-    #
-    #     Returns:
-    #         str | None: The base directory path, or None if not applicable.
-    #     """
-    #     return self._wrapped_dict.base_dir
-
-    # @property
-    # def base_url(self) -> str|None:
-    #     """Base URL of the wrapped dict (if applicable).
-    #
-    #     Returns:
-    #         str | None: The base URL, or None if not applicable.
-    #     """
-    #     return self._wrapped_dict.base_url
 
     def get_subdict(self, prefix_key: NonEmptyPersiDictKey) -> WriteOnceDict:
         """Return a WriteOnceDict view over a sub-keyspace.

@@ -154,28 +154,6 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """
         return self.immutable_items
 
-    #
-    # @property
-    # def base_url(self) -> str | None:
-    #     """Base URL identifying the storage location, if applicable.
-    #
-    #     Returns:
-    #         str: A URL-like string (e.g., s3://bucket/prefix or file://...)
-    #             or None if not applicable.
-    #     """
-    #     return None
-
-
-    # @property
-    # def base_dir(self) -> str|None:
-    #     """Base directory on the local filesystem, if applicable.
-    #
-    #     Returns:
-    #         str: Path to a local base directory used by the store,
-    #             or None if not applicable
-    #     """
-    #     return None
-
 
     def __repr__(self) -> str:
         """Return a reproducible string representation.
