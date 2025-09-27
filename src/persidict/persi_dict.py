@@ -50,9 +50,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
     persistence-specific helpers (e.g., timestamp()).
 
     Attributes (can't be changed after initialization):
-        immutable_items (bool):
-            If True, items are write-once: existing values cannot be modified or
-            deleted.
+        append_only (bool):
+            If True, items are immutable and non-removable: existing values 
+            cannot be modified or deleted.
         base_class_for_values (Optional[type]):
             Optional base class that all values must inherit from. If None, any
             type is accepted.
@@ -60,19 +60,19 @@ class PersiDict(MutableMapping, ParameterizableClass):
             File extension/format for stored values (e.g., "pkl", "json").
     """
 
-    immutable_items:bool
+    append_only:bool
     base_class_for_values:Optional[type]
     serialization_format:str
 
     def __init__(self,
-                 immutable_items: bool = False,
-                 base_class_for_values: Optional[type] = None,
+                 append_only: bool = False,
+                 base_class_for_values: type|None = None,
                  serialization_format: str = "pkl",
                  *args, **kwargs):
         """Initialize base parameters shared by all persistent dictionaries.
 
         Args:
-            immutable_items (bool): If True, items cannot be modified or deleted.
+            append_only (bool): If True, items cannot be modified or deleted.
                 Defaults to False.
             base_class_for_values (Optional[type]): Optional base class that values
                 must inherit from. If None, values are not type-restricted.
@@ -91,9 +91,9 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
             TypeError: If base_class_for_values is not a type or None.
         """
-
-        self.immutable_items = bool(immutable_items)
-
+        
+        self._append_only = bool(append_only)
+        
         if len(serialization_format) == 0:
             raise ValueError("serialization_format must be a non-empty string")
         if contains_unsafe_chars(serialization_format):
@@ -120,7 +120,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 built-in dict.
         """
         params = dict(
-            immutable_items=self.append_only,
+            append_only=self.append_only,
             base_class_for_values=self.base_class_for_values,
             serialization_format=self.serialization_format
         )
@@ -151,7 +151,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             bool: True if the store is append-only (contains immutable items
             that cannot be modified or deleted), False otherwise.
         """
-        return self.immutable_items
+        return self._append_only
 
 
     def __repr__(self) -> str:
@@ -243,7 +243,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
 
@@ -296,7 +296,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
         """
@@ -320,7 +320,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         Raises:
             KeyError: If attempting to modify an existing key when
-                immutable_items is True.
+                append_only is True.
             NotImplementedError: Subclasses must implement actual writing.
         """
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
@@ -338,7 +338,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 or NonEmptySafeStrTuple).
         Raises:
             KeyError: If attempting to delete an item when
-                immutable_items is True or if the key does not exist.
+                append_only is True or if the key does not exist.
         """
         if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
@@ -357,7 +357,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Raises:
-            KeyError: If immutable_items is True or if the key does not exist.
+            KeyError: If append_only is True or if the key does not exist.
             NotImplementedError: Subclasses must implement deletion.
         """
         self._process_delitem_args(key)
@@ -566,7 +566,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         """Remove all items from the dictionary.
 
         Raises:
-            KeyError: If items are immutable (immutable_items is True).
+            KeyError: If the dictionary is append-only.
         """
         if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
@@ -590,7 +590,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             bool: True if the item existed and was deleted; False otherwise.
 
         Raises:
-            KeyError: If items are immutable (immutable_items is True).
+            KeyError: If the dictionary is append-only.
         """
 
         if self.append_only:

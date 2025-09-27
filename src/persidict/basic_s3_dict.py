@@ -64,7 +64,7 @@ class BasicS3Dict(PersiDict):
                  region: str = None,
                  root_prefix: str = "",
                  serialization_format: str = "pkl",
-                 immutable_items: bool = False,
+                 append_only: bool = False,
                  base_class_for_values: Optional[type] = None,
                  *args, **kwargs):
         """Initialize a basic S3-backed persistent dictionary.
@@ -78,7 +78,7 @@ class BasicS3Dict(PersiDict):
                 stored. A trailing slash is automatically added if missing.
             serialization_format: File extension/format for stored values. Supported formats:
                 'pkl' (pickle), 'json' (jsonpickle), or custom text formats.
-            immutable_items: If True, prevents modification of existing items
+            append_only: If True, prevents modification of existing items
                 after they are initially stored.
             base_class_for_values: Optional base class that all stored values
                 must inherit from. When specified (and not str), serialization_format
@@ -90,11 +90,11 @@ class BasicS3Dict(PersiDict):
             The S3 bucket will be created if it doesn't exist and AWS permissions
             allow. Network connectivity and valid AWS credentials are required.
         """
-
-        super().__init__(immutable_items=immutable_items,
+        
+        super().__init__(append_only=append_only,
                          base_class_for_values=base_class_for_values,
                          serialization_format=serialization_format)
-
+        
         self.region = region
         if region is None:
             self.s3_client = boto3.client('s3')
@@ -156,7 +156,7 @@ class BasicS3Dict(PersiDict):
             "bucket_name": self.bucket_name,
             "root_prefix": self.root_prefix,
             "serialization_format": self.serialization_format,
-            "immutable_items": self.append_only,
+            "append_only": self.append_only,
             "base_class_for_values": self.base_class_for_values,
         }
         sorted_params = sort_dict_by_keys(params)
@@ -323,7 +323,7 @@ class BasicS3Dict(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
         """
@@ -373,7 +373,7 @@ class BasicS3Dict(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
         """
@@ -388,7 +388,7 @@ class BasicS3Dict(PersiDict):
                 or NonEmptyPersiDictKey).
 
         Raises:
-            KeyError: If immutable_items is True, or if the key does not exist.
+            KeyError: If append_only is True, or if the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
@@ -558,7 +558,7 @@ class BasicS3Dict(PersiDict):
             region=self.region,
             root_prefix=full_root_prefix,
             serialization_format=self.serialization_format,
-            immutable_items=self.append_only,
+            append_only=self.append_only,
             base_class_for_values=self.base_class_for_values)
 
         return new_dict

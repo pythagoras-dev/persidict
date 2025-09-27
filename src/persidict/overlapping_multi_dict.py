@@ -25,7 +25,7 @@ class OverlappingMultiDict:
         dict_type (Type[PersiDict]): A subclass of PersiDict used to create each 
             sub-dictionary.
         shared_subdicts_params (Dict[str, Any]): Parameters applied to every 
-            created sub-dictionary (e.g., base_dir, bucket, immutable_items, 
+            created sub-dictionary (e.g., base_dir, bucket, append_only,
             digest_len).
         individual_subdicts_params (Dict[str, Dict[str, Any]]): Mapping from 
             serialization_format (attribute name) to a dict of parameters that are specific 

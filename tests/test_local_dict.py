@@ -19,7 +19,7 @@ def test_init_and_get_params_defaults(tmp_path):
     ld = make_ld(base_dir=tmp_path)
     params = ld.get_params()
     assert params["serialization_format"] == "pkl"
-    assert params["immutable_items"] is False
+    assert params["append_only"] is False
     assert params["base_class_for_values"] is None
     # backend object identity is included
     assert params["backend"] is not None
@@ -77,7 +77,7 @@ def test_delete_if_exists_and_clear():
 
 
 def test_immutable_items_prohibits_overwrite_and_delete():
-    ld = make_ld(immutable_items=True)
+    ld = make_ld(append_only=True)
     k = ("root", "leaf")
     ld[k] = 5
     with pytest.raises(KeyError):
@@ -407,6 +407,6 @@ def test_timestamp_overwrite_vs_keep_current(monkeypatch):
 
 @pytest.mark.parametrize("serialization_format", ["pkl", "json"])
 def test_delete_if_exists_immutable_raises(serialization_format):
-    ld = make_ld(serialization_format=serialization_format, immutable_items=True)
+    ld = make_ld(serialization_format=serialization_format, append_only=True)
     with pytest.raises(KeyError):
         ld.delete_if_exists(("a",))

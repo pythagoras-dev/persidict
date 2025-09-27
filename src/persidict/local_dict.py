@@ -104,7 +104,7 @@ class LocalDict(PersiDict):
     API surface as other PersiDict implementations.
 
     Attributes:
-        immutable_items (bool): If True, items are write-once and cannot be
+        append_only (bool): If True, items are immutable and cannot be
             modified or deleted after initial creation.
         base_class_for_values (type | None): Optional base class that all
             stored values must inherit from. If None, any type is accepted (with
@@ -124,7 +124,7 @@ class LocalDict(PersiDict):
     def __init__(self,
                  backend: Optional[_RAMBackend] = None,
                  serialization_format: str = "pkl",
-                 immutable_items: bool = False,
+                 append_only: bool = False,
                  base_class_for_values: Optional[type] = None,
                  prune_interval: Optional[int] = 64, *args, **kwargs):
         """Initialize an in-memory persistent dictionary.
@@ -134,7 +134,7 @@ class LocalDict(PersiDict):
                 use. If None, a new empty backend is created.
             serialization_format (str): Logical serialization/format label under which
                 values are grouped (e.g., "pkl", "json"). Defaults to "pkl".
-            immutable_items (bool): If True, items become write-once and cannot
+            append_only (bool): If True, items are immutable and cannot
                 be modified or deleted after the first write. Defaults to False.
             base_class_for_values (type | None): Optional base class that all
                 stored values must inherit from. If None, any type is accepted
@@ -163,7 +163,7 @@ class LocalDict(PersiDict):
             self._prune_interval = None if pi <= 0 else pi
         self._ops_since_prune: int = 0
         PersiDict.__init__(self,
-                           immutable_items=immutable_items,
+                           append_only=append_only,
                            base_class_for_values=base_class_for_values,
                            serialization_format=serialization_format)
 
@@ -180,12 +180,12 @@ class LocalDict(PersiDict):
         """
         params = dict(
             backend=self._backend,
-            immutable_items=self.append_only,
+            append_only=self.append_only,
             base_class_for_values=self.base_class_for_values,
             serialization_format=self.serialization_format,
         )
         # PersiDict.get_params sorts keys; we can reuse it by temporarily
-        # creating the dict in the same form and letting parent handle sort.
+        # creating the dict in the same form and letting the parent handle sort.
         # But parent doesn't know about backend. We'll sort locally.
         return dict(sorted(params.items(), key=lambda kv: kv[0]))
 
@@ -370,7 +370,7 @@ class LocalDict(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If value is a PersiDict or does not match
                 base_class_for_values when it is set.
         """
@@ -388,7 +388,7 @@ class LocalDict(PersiDict):
             key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
 
         Raises:
-            KeyError: If immutable_items is True or the key does not exist.
+            KeyError: If append_only is True or the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
@@ -494,7 +494,7 @@ class LocalDict(PersiDict):
         # Create a new LocalDict rooted at this backend
         return LocalDict(backend=root_node,
                          serialization_format=self.serialization_format,
-                         immutable_items=self.immutable_items,
+                         append_only=self.append_only,
                          base_class_for_values=self.base_class_for_values,
                          prune_interval=self._prune_interval)
 

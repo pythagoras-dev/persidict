@@ -16,7 +16,7 @@ class FakeETagMain(PersiDict):
     - Supports required APIs used by ETaggableDictCached.
     """
     def __init__(self, *, base_class_for_values=None, serialization_format: str = "pkl"):
-        super().__init__(immutable_items=False,
+        super().__init__(append_only=False,
                          base_class_for_values=base_class_for_values,
                          serialization_format=serialization_format)
         # Provide digest_len attribute expected by cache adapter
@@ -115,9 +115,9 @@ def test_constructor_validations():
     good_cache = LocalDict()
     # immutable caches are not allowed
     with pytest.raises(ValueError):
-        MutableDictCached(main, LocalDict(immutable_items=True), good_cache)
+        MutableDictCached(main, LocalDict(append_only=True), good_cache)
     with pytest.raises(ValueError):
-        MutableDictCached(main, good_cache, LocalDict(immutable_items=True))
+        MutableDictCached(main, good_cache, LocalDict(append_only=True))
     # all must be PersiDict
     with pytest.raises(TypeError):
         MutableDictCached(main, {}, good_cache)  # type: ignore[arg-type]

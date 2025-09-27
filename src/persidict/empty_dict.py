@@ -78,7 +78,7 @@ class EmptyDict(PersiDict):
             str|None: Always returns None as no actual storage occurs.
 
         Raises:
-            KeyError: If attempting to modify when immutable_items is True.
+            KeyError: If attempting to modify when append_only is True.
             TypeError: If value doesn't match base_class_for_values when specified.
         """
         # Run base validations (immutable checks, key normalization,

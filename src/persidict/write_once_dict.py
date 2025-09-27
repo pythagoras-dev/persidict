@@ -1,10 +1,10 @@
 """Write-once dictionary with probabilistic consistency checking.
 
 This module provides WriteOnceDict, a wrapper around PersiDict that supports
-an alternative behavior of append-only dictionaries (immutable_items==True).
-It allows repeated writes to an existing key, but assumes that
+an alternative behavior of append-only dictionaries.
+It allows repeated writes to an existing key but assumes that
 all the subsequent writes have exactly the same value as the first one,
-so they can be safely ingnored. Random consistency checks ensure that
+so they can be safely ignored. Random consistency checks ensure that
 repeated writes contain the same values, helping detect data consistency issues.
 Setting the probability of random checks to 0 disables them.
 """
@@ -83,7 +83,7 @@ class WriteOnceDict(PersiDict):
 
         Args:
             wrapped_dict: The underlying persistent dictionary to wrap. If not
-                provided, a FileDirDict with immutable_items=True is created.
+                provided, a FileDirDict with append_only=True is created.
             p_consistency_checks: Probability in [0, 1] to perform a
                 consistency check when a key already exists. ``None`` means 0.0
                 (disabled).
@@ -93,17 +93,16 @@ class WriteOnceDict(PersiDict):
             ValueError: If ``wrapped_dict`` does not enforce immutable items.
         """
         if wrapped_dict is None:
-            wrapped_dict = FileDirDict(immutable_items=True)
+            wrapped_dict = FileDirDict(append_only=True)
         if not isinstance(wrapped_dict, PersiDict):
             raise TypeError("wrapped_dict must be a PersiDict instance")
-        if wrapped_dict.immutable_items is not True:
-            raise ValueError("wrapped_dict must be append-only "
-                             "(immutable_items==True)")
+        if wrapped_dict.append_only is not True:
+            raise ValueError("wrapped_dict must be append-only")
         self.p_consistency_checks = p_consistency_checks
         PersiDict.__init__(self,
             base_class_for_values=wrapped_dict.base_class_for_values,
             serialization_format=wrapped_dict.serialization_format,
-            immutable_items=True)
+            append_only=True)
         self._wrapped_dict = wrapped_dict
         self._consistency_checks_passed = 0
         self._consistency_checks_attempted = 0

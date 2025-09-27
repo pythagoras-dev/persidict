@@ -14,7 +14,7 @@ class AppendOnlyDictCached(PersiDict):
     - main_dict: the source of truth that actually persists data.
     - data_cache: a second PersiDict used purely as a cache for values.
 
-    Both the main dict and the cache must have immutable_items=True. Keys can
+    Both the main dict and the cache must have append_only=True. Keys can
     be added once but never modified or deleted. Because of that contract, the
     cache can be trusted when it already has a value for a key without
     re-validating the main dict.
@@ -55,22 +55,22 @@ class AppendOnlyDictCached(PersiDict):
 
         Raises:
             TypeError: If main_dict or data_cache are not PersiDict instances.
-            ValueError: If immutable_items is False for either dict, or the
+            ValueError: If append_only is False for either dict, or the
                 base_class_for_values between the two does not match.
         """
         if not isinstance(main_dict, PersiDict):
             raise TypeError("main_dict must be a PersiDict")
         if not isinstance(data_cache, PersiDict):
             raise TypeError("data_cache must be a PersiDict")
-        if (not main_dict.immutable_items) or (not data_cache.immutable_items):
-            raise ValueError("immutable_items must be set to True")
+        if (not main_dict.append_only) or (not data_cache.append_only):
+            raise ValueError("append_only must be set to True")
         if main_dict.base_class_for_values != data_cache.base_class_for_values:
             raise ValueError("main_dict and data_cache must have the same "
                              "base_class_for_values")
 
         # Initialize PersiDict base with parameters mirroring the main dict.
         super().__init__(
-            immutable_items=True,
+            append_only=True,
             base_class_for_values=main_dict.base_class_for_values,
             serialization_format=main_dict.serialization_format,
         )
@@ -94,7 +94,7 @@ class AppendOnlyDictCached(PersiDict):
         """
         key = NonEmptySafeStrTuple(key)
         if key in self._data_cache:
-        # Items, added to the main_dict, are expected to never be removed
+        # Items, added to the main_dict, are expected to never be removed.
         # Hence, it's OK to trust the cache without verifying the main dict
             return True
         else:
@@ -202,7 +202,7 @@ class AppendOnlyDictCached(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If the value fails base_class_for_values validation.
         """
         key = NonEmptySafeStrTuple(key)
@@ -228,7 +228,7 @@ class AppendOnlyDictCached(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If the value fails base_class_for_values validation.
         """
         key = NonEmptySafeStrTuple(key)

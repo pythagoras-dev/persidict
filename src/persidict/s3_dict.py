@@ -58,7 +58,7 @@ class S3Dict(PersiDict):
                  base_dir: str = S3DICT_DEFAULT_BASE_DIR,
                  serialization_format: str = "pkl",
                  digest_len: int = 8,
-                 immutable_items: bool = False,
+                 append_only: bool = False,
                  base_class_for_values: Optional[type] = None,
                  *args, **kwargs):
         """Initialize an S3-backed persistent dictionary.
@@ -74,7 +74,7 @@ class S3Dict(PersiDict):
                 local caching of S3 objects.
             serialization_format: File extension/format for stored values. Supported formats:
                 'pkl' (pickle), 'json' (jsonpickle), or custom text formats.
-            immutable_items: If True, prevents modification of existing items
+            append_only: If True, prevents modification of existing items
                 after they are initially stored.
             digest_len: Number of base32 MD5 hash characters appended to key
                 elements to prevent case-insensitive filename collisions. 
@@ -90,12 +90,12 @@ class S3Dict(PersiDict):
             allow. Network connectivity and valid AWS credentials are required.
         """
 
-        super().__init__(immutable_items=immutable_items,
+        super().__init__(append_only=append_only,
                          base_class_for_values=base_class_for_values,
                          serialization_format=serialization_format)
         individual_subdicts_params = {self.serialization_format: {}}
 
-        if not immutable_items:
+        if not append_only:
             self.etag_serialization_format = f"{self.serialization_format}_etag"
             individual_subdicts_params[self.etag_serialization_format] = {
                 "base_class_for_values": str}
@@ -104,7 +104,7 @@ class S3Dict(PersiDict):
             dict_type=FileDirDict,
             shared_subdicts_params={
                 "base_dir": base_dir,
-                "immutable_items": immutable_items,
+                "append_only": append_only,
                 "base_class_for_values": base_class_for_values,
                 "digest_len": digest_len
             },
@@ -326,7 +326,7 @@ class S3Dict(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
         """
@@ -367,7 +367,7 @@ class S3Dict(PersiDict):
                 or NonEmptyPersiDictKey.
 
         Raises:
-            KeyError: If immutable_items is True, or if the key does not exist.
+            KeyError: If append_only is True, or if the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
@@ -533,7 +533,7 @@ class S3Dict(PersiDict):
             root_prefix=full_root_prefix,
             base_dir=new_dir_path,
             serialization_format=self.serialization_format,
-            immutable_items=self.append_only,
+            append_only=self.append_only,
             base_class_for_values=self.base_class_for_values)
 
         return new_dict

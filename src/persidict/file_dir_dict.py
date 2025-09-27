@@ -121,7 +121,7 @@ class FileDirDict(PersiDict):
     def __init__(self
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
                  , serialization_format: str = "pkl"
-                 , immutable_items:bool = False
+                 , append_only:bool = False
                  , digest_len:int = 1
                  , base_class_for_values: Optional[type] = None):
         """Initialize a filesystem-backed persistent dictionary.
@@ -132,7 +132,7 @@ class FileDirDict(PersiDict):
             serialization_format (str): File extension/format to use for stored values.
                 - "pkl" or "json": arbitrary Python objects are supported.
                 - any other value: only strings are supported and stored as text.
-            immutable_items (bool): If True, existing items cannot be modified
+            append_only (bool): If True, existing items cannot be modified
                 or deleted.
             digest_len (int): Length of a hash suffix appended to each key path
                 element to avoid case-insensitive collisions. Use 0 to disable.
@@ -148,10 +148,9 @@ class FileDirDict(PersiDict):
             RuntimeError: If base_dir cannot be created or is not a directory.
         """
 
-        super().__init__(immutable_items = immutable_items
-                ,digest_len = digest_len
-                ,base_class_for_values = base_class_for_values
-                ,serialization_format = serialization_format)
+        super().__init__(append_only=append_only,
+                         base_class_for_values=base_class_for_values,
+                         serialization_format=serialization_format)
 
         if digest_len < 0:
             raise ValueError("digest_len must be non-negative")
@@ -223,7 +222,7 @@ class FileDirDict(PersiDict):
         """Remove all elements from the dictionary.
 
         Raises:
-            KeyError: If immutable_items is True.
+            KeyError: If append_only is True.
         """
 
         if self.append_only:
@@ -370,7 +369,7 @@ class FileDirDict(PersiDict):
         return FileDirDict(
             base_dir= full_dir_path
             , serialization_format=self.serialization_format
-            , immutable_items= self.append_only
+            , append_only= self.append_only
             , digest_len=self.digest_len
             , base_class_for_values=self.base_class_for_values)
 
@@ -629,7 +628,7 @@ class FileDirDict(PersiDict):
 
         Raises:
             KeyError: If attempting to modify an existing item when
-                immutable_items is True.
+                append_only is True.
             TypeError: If the value is a PersiDict or does not match
                 base_class_for_values when it is set.
         """
@@ -650,7 +649,7 @@ class FileDirDict(PersiDict):
                 or NonEmptySafeStrTuple).
 
         Raises:
-            KeyError: If immutable_items is True or if the key does not exist.
+            KeyError: If append_only is True or if the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)

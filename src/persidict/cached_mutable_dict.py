@@ -23,7 +23,7 @@ class MutableDictCached(PersiDict):
 
     Notes:
       - main_dict must fully support ETag operations; caches must be mutable
-        (immutable_items=False).
+        (append_only=False).
       - This class inherits type and serialization settings from main_dict.
     """
 
@@ -43,7 +43,7 @@ class MutableDictCached(PersiDict):
         Raises:
             TypeError: If any of main_dict, data_cache, or etag_cache is not a
                 PersiDict instance.
-            ValueError: If either cache is append-only (immutable_items=True) or
+            ValueError: If either cache is append-only (append_only=True) or
                 if main_dict does not fully support ETag operations.
 
         Notes:
@@ -58,12 +58,11 @@ class MutableDictCached(PersiDict):
         for k, v in inputs.items():
             if not isinstance(v, PersiDict):
                 raise TypeError(f"{k} must be a PersiDict")
-            if v.immutable_items:
-                raise ValueError(f"{k} can't be append-only "
-                                 "(immutable_items must be False)")
+            if v.append_only:
+                raise ValueError(f"{k} can't be append-only.")
 
         super().__init__(
-            immutable_items=main_dict.immutable_items,
+            append_only=main_dict.append_only,
             base_class_for_values=main_dict.base_class_for_values,
             serialization_format=main_dict.serialization_format,
         )

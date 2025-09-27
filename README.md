@@ -165,8 +165,8 @@ suitable for distributed environments.
 * **`base_class_for_values`**: An optional parameter for any `PersiDict` 
 that enforces type checking on all stored values, ensuring they are 
 instances of a specific class.
-* **`immutable_items`**: A boolean parameter that can make a `PersiDict` 
-"append only," preventing any modification or deletion of existing items.
+* **`append_only`**: A boolean parameter that makes items inside a `PersiDict` immutable, 
+preventing them from modification or deletion.
 * **`digest_len`**: An integer that specifies the length of a hash suffix 
 added to key components in `FileDirDict` to prevent collisions 
 on case-insensitive file systems.
