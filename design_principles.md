@@ -4,7 +4,7 @@
 
 ## 1. Familiar, `dict`‑like API
 
-`persidict` mirrors Python’s built‑in `dict` interface, so common operations like `__getitem__`, `__setitem__`, and `in` behave as you expect. The API is then extended with capabilities useful for persistence and distribution, such as `timestamp()`, `random_key()`, and `get_subdict()`.
+`persidict` mirrors Python’s built‑in `dict` interface, so common operations like `__getitem__`, `__setitem__`, and `___contains__` behave as you expect. The API is then extended with capabilities useful for persistence and distribution, such as `timestamp()`, `random_key()`, and `get_subdict()`.
 
 ## 2. Built for distributed use with optimistic concurrency
 
