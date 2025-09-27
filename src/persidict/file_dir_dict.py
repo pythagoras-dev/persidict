@@ -2,9 +2,9 @@
 
 FileDirDict stores each key-value pair in a separate file under a base
 directory. Keys determine directory structure and filename; values are
-serialized depending on ``file_type``.
+serialized depending on ``serialization_format``.
 
-- file_type="pkl" or "json": arbitrary Python objects via pickle/jsonpickle.
+- serialization_format="pkl" or "json": arbitrary Python objects via pickle/jsonpickle.
 - any other value: strings are stored as plain text.
 """
 from __future__ import annotations
@@ -118,10 +118,9 @@ class FileDirDict(PersiDict):
     _base_dir:str
     digest_len:int
 
-    # Let's rename file_type to encasement
     def __init__(self
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
-                 , file_type: str = "pkl"
+                 , serialization_format: str = "pkl"
                  , immutable_items:bool = False
                  , digest_len:int = 1
                  , base_class_for_values: Optional[type] = None):
@@ -130,7 +129,7 @@ class FileDirDict(PersiDict):
         Args:
             base_dir (str): Base directory where all files are stored. Created
                 if it does not exist.
-            file_type (str): File extension/format to use for stored values.
+            serialization_format (str): File extension/format to use for stored values.
                 - "pkl" or "json": arbitrary Python objects are supported.
                 - any other value: only strings are supported and stored as text.
             immutable_items (bool): If True, existing items cannot be modified
@@ -140,19 +139,19 @@ class FileDirDict(PersiDict):
                 If you decide to enable it (not 0), we recommend at least 4.
             base_class_for_values (Optional[type]): Optional base class that all
                 stored values must be instances of. If provided and not ``str``,
-                then file_type must be either "pkl" or "json".
+                then serialization_format must be either "pkl" or "json".
 
         Raises:
-            ValueError: If file_type contains unsafe characters; or
+            ValueError: If serialization_format contains unsafe characters; or
                 if configuration is inconsistent (e.g., non-str values
-                with unsupported file_type).
+                with unsupported serialization_format).
             RuntimeError: If base_dir cannot be created or is not a directory.
         """
 
         super().__init__(immutable_items = immutable_items
                 ,digest_len = digest_len
                 ,base_class_for_values = base_class_for_values
-                ,file_type = file_type)
+                ,serialization_format = serialization_format)
 
         if digest_len < 0:
             raise ValueError("digest_len must be non-negative")
@@ -215,7 +214,7 @@ class FileDirDict(PersiDict):
             code paths.
         """
 
-        suffix = "." + self.file_type
+        suffix = "." + self.serialization_format
         return sum(1 for _, _, files in os.walk(self._base_dir)
                    for f in files if f.endswith(suffix))
 
@@ -232,10 +231,10 @@ class FileDirDict(PersiDict):
 
         # we can't use shutil.rmtree() because
         # there may be overlapping dictionaries
-        # with different file_type-s
+        # with different serialization_format-s
         for subdir_info in os.walk(self._base_dir, topdown=False):
             (subdir_name, _, files) = subdir_info
-            suffix = "." + self.file_type
+            suffix = "." + self.serialization_format
             for f in files:
                 if f.endswith(suffix):
                     try:
@@ -260,7 +259,7 @@ class FileDirDict(PersiDict):
 
         Transforms a SafeStrTuple into either a directory path or a file path
         inside this dictionary's base directory. When is_file_path is True, the
-        final component is treated as a filename with the configured file_type
+        final component is treated as a filename with the configured serialization_format
         extension. When create_subdirs is True, missing intermediate directories
         are created.
 
@@ -270,7 +269,7 @@ class FileDirDict(PersiDict):
             create_subdirs (bool): If True, create any missing intermediate
                 directories.
             is_file_path (bool): If True, return a file path ending with
-                ".{file_type}"; otherwise return just the directory path for
+                ".{serialization_format}"; otherwise return just the directory path for
                 the key prefix.
 
         Returns:
@@ -291,7 +290,7 @@ class FileDirDict(PersiDict):
             os.makedirs(path_for_makedirs, exist_ok=True)
 
         if is_file_path:
-            file_name = key_components[-1] + "." + self.file_type
+            file_name = key_components[-1] + "." + self.serialization_format
             final_path = os.path.join(dir_path, file_name)
         else:
             final_path = dir_path
@@ -303,7 +302,7 @@ class FileDirDict(PersiDict):
             """Convert an absolute filesystem path back into a SafeStrTuple key.
 
             This function reverses _build_full_path, stripping base_dir, removing the
-            file_type extension if the path points to a file, and unsigning the key
+            serialization_format extension if the path points to a file, and unsigning the key
             components according to digest_len.
 
             Args:
@@ -335,7 +334,7 @@ class FileDirDict(PersiDict):
             path_components = rel_path.split(os.sep)
 
             # If it's a file path, remove the file extension from the last component
-            suffix = "." + self.file_type
+            suffix = "." + self.serialization_format
             if path_components[-1].endswith(suffix):
                 path_components[-1] = path_components[-1][:-len(suffix)]
 
@@ -370,7 +369,7 @@ class FileDirDict(PersiDict):
             is_file_path = False)
         return FileDirDict(
             base_dir= full_dir_path
-            , file_type=self.file_type
+            , serialization_format=self.serialization_format
             , immutable_items= self.append_only
             , digest_len=self.digest_len
             , base_class_for_values=self.base_class_for_values)
@@ -383,9 +382,9 @@ class FileDirDict(PersiDict):
             file_name (str): Absolute path to the file to read.
 
         Returns:
-            Any: The deserialized value according to file_type.
+            Any: The deserialized value according to serialization_format.
         """
-        file_open_mode = 'rb' if self.file_type == "pkl" else 'r'
+        file_open_mode = 'rb' if self.serialization_format == "pkl" else 'r'
         if os.name == 'nt':
             handle = CreateFileW(file_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, None, OPEN_EXISTING, 0, None)
             if int(handle) == INVALID_HANDLE_VALUE:
@@ -394,7 +393,7 @@ class FileDirDict(PersiDict):
 
             fd = None
             try:
-                if self.file_type == "pkl":
+                if self.serialization_format == "pkl":
                     fd_open_mode = os.O_RDONLY | os.O_BINARY
                 else:
                     fd_open_mode = os.O_RDONLY
@@ -412,9 +411,9 @@ class FileDirDict(PersiDict):
                 raise
 
             with f:
-                if self.file_type == "pkl":
+                if self.serialization_format == "pkl":
                     result = joblib.load(f)
-                elif self.file_type == "json":
+                elif self.serialization_format == "json":
                     result = jsonpickle.loads(f.read())
                 else:
                     result = f.read()
@@ -422,9 +421,9 @@ class FileDirDict(PersiDict):
             return result
         else:
             with open(file_name, file_open_mode) as f:
-                if self.file_type == "pkl":
+                if self.serialization_format == "pkl":
                     result = joblib.load(f)
-                elif self.file_type == "json":
+                elif self.serialization_format == "json":
                     result = jsonpickle.loads(f.read())
                 else:
                     result = f.read()
@@ -434,7 +433,7 @@ class FileDirDict(PersiDict):
     def _read_from_file(self,file_name:str) -> Any:
         """Read a value from a file with retry/backoff for concurrency.
 
-        Validates that the configured file_type is compatible with the allowed
+        Validates that the configured serialization_format is compatible with the allowed
         value types, then attempts to read the file using an exponential backoff
         to better tolerate concurrent writers.
 
@@ -442,17 +441,17 @@ class FileDirDict(PersiDict):
             file_name (str): Absolute path of the file to read.
 
         Returns:
-            Any: The deserialized value according to file_type.
+            Any: The deserialized value according to serialization_format.
 
         Raises:
-            ValueError: If file_type is incompatible with non-string values.
+            ValueError: If serialization_format is incompatible with non-string values.
             Exception: Propagates the last exception if all retries fail.
         """
 
-        if not (self.file_type in {"pkl", "json"} or issubclass(
+        if not (self.serialization_format in {"pkl", "json"} or issubclass(
             self.base_class_for_values, str)):
             raise ValueError("When base_class_for_values is not str,"
-                + " file_type must be pkl or json.")
+                + " serialization_format must be pkl or json.")
 
         n_retries = 12
         # extra protections to better handle concurrent writes
@@ -482,12 +481,12 @@ class FileDirDict(PersiDict):
         fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
 
         try:
-            if self.file_type == "pkl":
+            if self.serialization_format == "pkl":
                 with open(fd, 'wb') as f:
                     joblib.dump(value, f, compress='lz4')
                     f.flush()
                     os.fsync(f.fileno())
-            elif self.file_type == "json":
+            elif self.serialization_format == "json":
                 with open(fd, 'w') as f:
                     f.write(jsonpickle.dumps(value, indent=4))
                     f.flush()
@@ -539,7 +538,7 @@ class FileDirDict(PersiDict):
     def _save_to_file(self, file_name:str, value:Any) -> None:
         """Save a value to a file with retry/backoff.
 
-        Ensures the configured file_type is compatible with value types and then
+        Ensures the configured serialization_format is compatible with value types and then
         writes the value using an exponential backoff to better tolerate
         concurrent readers/writers.
 
@@ -548,14 +547,14 @@ class FileDirDict(PersiDict):
             value (Any): Value to serialize and save.
 
         Raises:
-            ValueError: If file_type is incompatible with non-string values.
+            ValueError: If serialization_format is incompatible with non-string values.
             Exception: Propagates the last exception if all retries fail.
         """
 
-        if not (self.file_type in {"pkl", "json"} or issubclass(
+        if not (self.serialization_format in {"pkl", "json"} or issubclass(
             self.base_class_for_values, str)):
             raise ValueError("When base_class_for_values is not str,"
-                + " file_type must be pkl or json.")
+                + " serialization_format must be pkl or json.")
 
         n_retries = 12
         # extra protections to better handle concurrent writes
@@ -589,7 +588,7 @@ class FileDirDict(PersiDict):
         """Retrieve the value stored for a key.
 
         Equivalent to obj[key]. Reads the corresponding file from the disk and
-        deserializes according to file_type.
+        deserializes according to serialization_format.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string or sequence of strings
@@ -621,7 +620,7 @@ class FileDirDict(PersiDict):
 
         Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
         Validates value type if base_class_for_values is set, then serializes
-        and writes to a file determined by the key and file_type.
+        and writes to a file determined by the key and serialization_format.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string or sequence of strings
@@ -686,7 +685,7 @@ class FileDirDict(PersiDict):
 
         self._process_generic_iter_args(result_type)
         walk_results = os.walk(self._base_dir)
-        ext_len = len(self.file_type) + 1
+        ext_len = len(self.serialization_format) + 1
 
         def splitter(dir_path: str):
             """Transform a relative dirname into SafeStrTuple components.
@@ -703,7 +702,7 @@ class FileDirDict(PersiDict):
 
         def step():
             """Generator that yields entries based on result_type."""
-            suffix = "." + self.file_type
+            suffix = "." + self.serialization_format
             for dir_name, _, files in walk_results:
                 for f in files:
                     if f.endswith(suffix):
@@ -769,7 +768,7 @@ class FileDirDict(PersiDict):
         """Return a uniformly random key from the dictionary, or None if empty.
 
         Performs a full directory traversal using reservoir sampling
-        (k=1) to select a random file matching the configured file_type without
+        (k=1) to select a random file matching the configured serialization_format without
         loading all keys into memory.
 
         Returns:
@@ -777,8 +776,8 @@ class FileDirDict(PersiDict):
         """
         # canonicalise extension once
         ext = None
-        if self.file_type:
-            ext = self.file_type
+        if self.serialization_format:
+            ext = self.serialization_format
             if not ext.startswith("."):
                 ext = "." + ext
 

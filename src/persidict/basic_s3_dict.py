@@ -63,7 +63,7 @@ class BasicS3Dict(PersiDict):
     def __init__(self, bucket_name: str = "my_bucket",
                  region: str = None,
                  root_prefix: str = "",
-                 file_type: str = "pkl",
+                 serialization_format: str = "pkl",
                  immutable_items: bool = False,
                  base_class_for_values: Optional[type] = None,
                  *args, **kwargs):
@@ -76,12 +76,12 @@ class BasicS3Dict(PersiDict):
                 client region from AWS configuration.
             root_prefix: Common S3 key prefix under which all objects are
                 stored. A trailing slash is automatically added if missing.
-            file_type: File extension/format for stored values. Supported formats:
+            serialization_format: File extension/format for stored values. Supported formats:
                 'pkl' (pickle), 'json' (jsonpickle), or custom text formats.
             immutable_items: If True, prevents modification of existing items
                 after they are initially stored.
             base_class_for_values: Optional base class that all stored values
-                must inherit from. When specified (and not str), file_type
+                must inherit from. When specified (and not str), serialization_format
                 must be 'pkl' or 'json' for proper serialization.
             *args: Additional positional arguments (ignored, reserved for compatibility).
             **kwargs: Additional keyword arguments (ignored, reserved for compatibility).
@@ -93,7 +93,7 @@ class BasicS3Dict(PersiDict):
 
         super().__init__(immutable_items=immutable_items,
                          base_class_for_values=base_class_for_values,
-                         file_type=file_type)
+                         serialization_format=serialization_format)
 
         self.region = region
         if region is None:
@@ -155,7 +155,7 @@ class BasicS3Dict(PersiDict):
             "region": self.region,
             "bucket_name": self.bucket_name,
             "root_prefix": self.root_prefix,
-            "file_type": self.file_type,
+            "serialization_format": self.serialization_format,
             "immutable_items": self.append_only,
             "base_class_for_values": self.base_class_for_values,
         }
@@ -198,12 +198,12 @@ class BasicS3Dict(PersiDict):
             or NonEmptySafeStrTuple).
 
         Returns:
-            str: The complete S3 object key including root_prefix and file_type
+            str: The complete S3 object key including root_prefix and serialization_format
             extension, with digest-based collision prevention applied if enabled.
         """
         key = NonEmptySafeStrTuple(key)
         key = sign_safe_str_tuple(key, 0)
-        objectname = self.root_prefix + "/".join(key) + "." + self.file_type
+        objectname = self.root_prefix + "/".join(key) + "." + self.serialization_format
         return objectname
 
 
@@ -264,9 +264,9 @@ class BasicS3Dict(PersiDict):
             s3_etag = response.get("ETag")
 
             try:
-                if self.file_type == 'json':
+                if self.serialization_format == 'json':
                     deserialized_value = jsonpickle.loads(body.read().decode('utf-8'))
-                elif self.file_type == 'pkl':
+                elif self.serialization_format == 'pkl':
                     with io.BytesIO(body.read()) as buffer:
                         deserialized_value = joblib.load(buffer)
                 else:
@@ -335,10 +335,10 @@ class BasicS3Dict(PersiDict):
         obj_name = self._build_full_objectname(key)
 
         # Serialize the value directly to S3
-        if self.file_type == 'json':
+        if self.serialization_format == 'json':
             serialized_data = jsonpickle.dumps(value, indent=4).encode('utf-8')
             content_type = 'application/json'
-        elif self.file_type == 'pkl':
+        elif self.serialization_format == 'pkl':
             with io.BytesIO() as buffer:
                 joblib.dump(value, buffer)
                 serialized_data = buffer.getvalue()
@@ -414,7 +414,7 @@ class BasicS3Dict(PersiDict):
         """
 
         num_files = 0
-        suffix = "." + self.file_type
+        suffix = "." + self.serialization_format
 
         paginator = self.s3_client.get_paginator("list_objects_v2")
         page_iterator = paginator.paginate(
@@ -458,8 +458,8 @@ class BasicS3Dict(PersiDict):
 
         self._process_generic_iter_args(result_type)
 
-        suffix = "." + self.file_type
-        ext_len = len(self.file_type) + 1
+        suffix = "." + self.serialization_format
+        ext_len = len(self.serialization_format) + 1
         prefix_len = len(self.root_prefix)
 
         def splitter(full_name: str) -> SafeStrTuple:
@@ -543,7 +543,7 @@ class BasicS3Dict(PersiDict):
         Returns:
             BasicS3Dict: A new BasicS3Dict instance with root_prefix
                 extended by the given key, sharing the parent's bucket,
-                region, file_type, and other configuration settings.
+                region, serialization_format, and other configuration settings.
         """
 
         key = SafeStrTuple(key)
@@ -557,7 +557,7 @@ class BasicS3Dict(PersiDict):
             bucket_name=self.bucket_name,
             region=self.region,
             root_prefix=full_root_prefix,
-            file_type=self.file_type,
+            serialization_format=self.serialization_format,
             immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values)
 

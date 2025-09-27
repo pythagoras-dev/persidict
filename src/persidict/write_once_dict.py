@@ -102,7 +102,7 @@ class WriteOnceDict(PersiDict):
         self.p_consistency_checks = p_consistency_checks
         PersiDict.__init__(self,
             base_class_for_values=wrapped_dict.base_class_for_values,
-            file_type=wrapped_dict.file_type,
+            serialization_format=wrapped_dict.serialization_format,
             immutable_items=True)
         self._wrapped_dict = wrapped_dict
         self._consistency_checks_passed = 0

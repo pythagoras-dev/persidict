@@ -15,10 +15,10 @@ class FakeETagMain(PersiDict):
     - ETag is a monotonically increasing string per write.
     - Supports required APIs used by ETaggableDictCached.
     """
-    def __init__(self, *, base_class_for_values=None, file_type: str = "pkl"):
+    def __init__(self, *, base_class_for_values=None, serialization_format: str = "pkl"):
         super().__init__(immutable_items=False,
                          base_class_for_values=base_class_for_values,
-                         file_type=file_type)
+                         serialization_format=serialization_format)
         # Provide digest_len attribute expected by cache adapter
         self.digest_len = 0
         self._store = {}
@@ -105,7 +105,7 @@ class FakeETagMain(PersiDict):
 def cached_env():
     main = FakeETagMain()
     data_cache = LocalDict()
-    etag_cache = LocalDict(file_type="json")  # store etags as str
+    etag_cache = LocalDict(serialization_format="json")  # store etags as str
     wrapper = MutableDictCached(main, data_cache, etag_cache)
     return main, data_cache, etag_cache, wrapper
 
@@ -316,7 +316,7 @@ def test_base_class_for_values_enforced_via_wrapper():
     # Main enforces dict values; caches accept any
     main = FakeETagMain(base_class_for_values=dict)
     data_cache = LocalDict()
-    etag_cache = LocalDict(file_type="json")
+    etag_cache = LocalDict(serialization_format="json")
     wrapper = MutableDictCached(main, data_cache, etag_cache)
 
     # Wrapper should mirror main's base_class_for_values

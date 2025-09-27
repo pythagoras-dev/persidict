@@ -11,8 +11,8 @@ from persidict.singletons import KEEP_CURRENT
 @pytest.fixture()
 def append_only_env(tmp_path):
     # Use FileDirDict because it exposes digest_len used by the wrapper
-    main = FileDirDict(base_dir=str(tmp_path / "main"), immutable_items=True, file_type="json")
-    cache = FileDirDict(base_dir=str(tmp_path / "cache"), immutable_items=True, file_type="json")
+    main = FileDirDict(base_dir=str(tmp_path / "main"), immutable_items=True, serialization_format="json")
+    cache = FileDirDict(base_dir=str(tmp_path / "cache"), immutable_items=True, serialization_format="json")
     wrapper = AppendOnlyDictCached(main, cache)
     return main, cache, wrapper
 
@@ -83,8 +83,8 @@ def test_set_item_get_etag_mirrors_to_cache(append_only_env):
 # --- Edge cases and error handling -----------------------------------------
 
 def test_constructor_validation_errors(tmp_path):
-    good = FileDirDict(base_dir=str(tmp_path / "m1"), immutable_items=True, file_type="json")
-    good2 = FileDirDict(base_dir=str(tmp_path / "m2"), immutable_items=True, file_type="json")
+    good = FileDirDict(base_dir=str(tmp_path / "m1"), immutable_items=True, serialization_format="json")
+    good2 = FileDirDict(base_dir=str(tmp_path / "m2"), immutable_items=True, serialization_format="json")
 
     # Type errors when passing non-PersiDict
     with pytest.raises(TypeError):
@@ -93,15 +93,15 @@ def test_constructor_validation_errors(tmp_path):
         AppendOnlyDictCached(main_dict=good, data_cache=None)  # type: ignore[arg-type]
 
     # ValueError if any is not immutable
-    not_immutable = FileDirDict(base_dir=str(tmp_path / "m3"), immutable_items=False, file_type="json")
+    not_immutable = FileDirDict(base_dir=str(tmp_path / "m3"), immutable_items=False, serialization_format="json")
     with pytest.raises(ValueError):
         AppendOnlyDictCached(main_dict=not_immutable, data_cache=good2)
     with pytest.raises(ValueError):
         AppendOnlyDictCached(main_dict=good, data_cache=not_immutable)
 
     # base_class_for_values mismatch
-    main_int = FileDirDict(base_dir=str(tmp_path / "m4"), immutable_items=True, file_type="json", base_class_for_values=int)
-    cache_float = FileDirDict(base_dir=str(tmp_path / "m5"), immutable_items=True, file_type="json", base_class_for_values=float)
+    main_int = FileDirDict(base_dir=str(tmp_path / "m4"), immutable_items=True, serialization_format="json", base_class_for_values=int)
+    cache_float = FileDirDict(base_dir=str(tmp_path / "m5"), immutable_items=True, serialization_format="json", base_class_for_values=float)
     with pytest.raises(ValueError):
         AppendOnlyDictCached(main_dict=main_int, data_cache=cache_float)
 
@@ -123,8 +123,8 @@ def test_attempt_to_modify_existing_key_raises(append_only_env):
 
 def test_value_type_validation(tmp_path):
     # Create a typed environment: only ints allowed
-    main = FileDirDict(base_dir=str(tmp_path / "typed_main"), immutable_items=True, file_type="json", base_class_for_values=int)
-    cache = FileDirDict(base_dir=str(tmp_path / "typed_cache"), immutable_items=True, file_type="json", base_class_for_values=int)
+    main = FileDirDict(base_dir=str(tmp_path / "typed_main"), immutable_items=True, serialization_format="json", base_class_for_values=int)
+    cache = FileDirDict(base_dir=str(tmp_path / "typed_cache"), immutable_items=True, serialization_format="json", base_class_for_values=int)
     wrapper = AppendOnlyDictCached(main, cache)
 
     wrapper[("ok",)] = 123

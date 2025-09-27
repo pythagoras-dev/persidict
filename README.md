@@ -158,10 +158,10 @@ suitable for distributed environments.
 
 ### 5.3 Key Parameters
 
-* **`file_type`**: A key parameter for `FileDirDict` and `S3Dict` that 
-determines the serialization format for values. 
-Common options are `"pkl"` (pickle) and `"json"`. 
-Any other value is treated as plain text for string storage.
+* **`serialization_format`**: A key parameter for `FileDirDict` and `S3Dict` that 
+        determines the serialization format used to store values. 
+        Common options are `"pkl"` (pickle) and `"json"`. 
+        Any other value is treated as plain text for string storage.
 * **`base_class_for_values`**: An optional parameter for any `PersiDict` 
 that enforces type checking on all stored values, ensuring they are 
 instances of a specific class.
@@ -184,7 +184,7 @@ It also allows for random consistency checks to ensure subsequent
 writes to the same key always match the original value.
 * **`OverlappingMultiDict`**: An advanced container that holds 
 multiple `PersiDict` instances sharing the same storage 
-but with different `file_type`s.
+but with different `serialization_format`s.
 * **`LocalDict`**: An in-memory `PersiDict` backed by 
 a RAM-only hierarchical store.
 * **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  

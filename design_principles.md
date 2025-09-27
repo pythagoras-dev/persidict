@@ -33,7 +33,7 @@ Keys in `persidict` are more than just strings; they are a core design feature:
 
 To accommodate a wide range of use cases, `persidict` offers flexibility in how data is stored:
 
-* **Multiple Formats**: You can choose the serialization format via the `file_type` parameter. The main options are `pkl` (for any Python object), `json` (for human-readable data), and plain text.
+* **Multiple Formats**: You can choose the serialization type via the `serialization_format` parameter. The options are `pkl` (for any Python object), `json` (for human-readable data), and plain text.
 * **Optional Type Safety**: For applications that require strict data validation, you can enforce that all values are instances of a specific class by setting the `base_class_for_values` parameter.
 
 ## 6. Layered Architecture and Composition

@@ -36,7 +36,7 @@ class AppendOnlyDictCached(PersiDict):
     Args:
       main_dict: The authoritative append-only PersiDict.
       data_cache: A PersiDict used as a value cache; must be append-only and
-        compatible with main_dict's base_class_for_values and file_type.
+        compatible with main_dict's base_class_for_values and serialization_format.
 
     Raises:
       TypeError: If main_dict or data_cache are not PersiDict instances.
@@ -72,7 +72,7 @@ class AppendOnlyDictCached(PersiDict):
         super().__init__(
             immutable_items=True,
             base_class_for_values=main_dict.base_class_for_values,
-            file_type=main_dict.file_type,
+            serialization_format=main_dict.serialization_format,
         )
 
         self._main: PersiDict = main_dict

@@ -56,19 +56,18 @@ class PersiDict(MutableMapping, ParameterizableClass):
         base_class_for_values (Optional[type]):
             Optional base class that all values must inherit from. If None, any
             type is accepted.
-        file_type (str):
+        serialization_format (str):
             File extension/format for stored values (e.g., "pkl", "json").
     """
 
     immutable_items:bool
     base_class_for_values:Optional[type]
-    file_type:str
+    serialization_format:str
 
-    # Let's rename file_type to encasement
     def __init__(self,
                  immutable_items: bool = False,
                  base_class_for_values: Optional[type] = None,
-                 file_type: str = "pkl",
+                 serialization_format: str = "pkl",
                  *args, **kwargs):
         """Initialize base parameters shared by all persistent dictionaries.
 
@@ -78,7 +77,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
             base_class_for_values (Optional[type]): Optional base class that values
                 must inherit from. If None, values are not type-restricted.
                 Defaults to None.
-            file_type (str): File extension/format for stored values.
+            serialization_format (str): File extension/format for stored values.
                 Defaults to "pkl".
             *args: Additional positional arguments (ignored in base class, reserved
                 for subclasses).
@@ -86,7 +85,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 for subclasses).
 
         Raises:
-            ValueError: If file_type is an empty string,
+            ValueError: If serialization_format is an empty string,
             or contains unsafe characters, or not 'jason' or 'pkl'
             for non-string values.
 
@@ -95,18 +94,18 @@ class PersiDict(MutableMapping, ParameterizableClass):
 
         self.immutable_items = bool(immutable_items)
 
-        if len(file_type) == 0:
-            raise ValueError("file_type must be a non-empty string")
-        if contains_unsafe_chars(file_type):
-            raise ValueError("file_type must contain only URL/filename-safe characters")
-        self.file_type = str(file_type)
+        if len(serialization_format) == 0:
+            raise ValueError("serialization_format must be a non-empty string")
+        if contains_unsafe_chars(serialization_format):
+            raise ValueError("serialization_format must contain only URL/filename-safe characters")
+        self.serialization_format = str(serialization_format)
 
         if not isinstance(base_class_for_values, (type, type(None))):
             raise TypeError("base_class_for_values must be a type or None")
         if (base_class_for_values is None or
                 not issubclass(base_class_for_values, str)):
-            if file_type not in {"json", "pkl"}:
-                raise ValueError("For non-string values file_type must be either 'pkl' or 'json'.")
+            if serialization_format not in {"json", "pkl"}:
+                raise ValueError("For non-string values serialization_format must be either 'pkl' or 'json'.")
         self.base_class_for_values = base_class_for_values
 
         ParameterizableClass.__init__(self)
@@ -123,7 +122,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         params = dict(
             immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values,
-            file_type=self.file_type
+            serialization_format=self.serialization_format
         )
         sorted_params = sort_dict_by_keys(params)
         return sorted_params

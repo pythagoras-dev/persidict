@@ -18,19 +18,19 @@ class _RAMBackend:
     is used by LocalDict to provide a PersiDict-compliant interface without any
     disk or network I/O. Keys are sequences of safe strings. Each path segment
     maps to a child RAMBackend node, while leaf entries are stored in a values
-    bucket per file_type.
+    bucket per serialization_format.
 
     Attributes:
         subdicts (dict[str, _RAMBackend]):
             Mapping of first-level key segment to a child RAMBackend representing
             the corresponding subtree.
         values (dict[str, dict[str, tuple[Any, float]]]):
-            Mapping of file_type to a dictionary of leaf-name -> (value, timestamp)
+            Mapping of serialization_format to a dictionary of leaf-name -> (value, timestamp)
             pairs. The timestamp is a POSIX float seconds value (time.time()).
 
     Notes:
         - This backend is intentionally minimal and does not enforce character
-          safety of key segments or file_type; that validation is handled by
+          safety of key segments or serialization_format; that validation is handled by
           higher-level classes (e.g., PersiDict/LocalDict).
         - Not thread-safe or process-safe. If used concurrently, external
           synchronization is required.
@@ -41,11 +41,11 @@ class _RAMBackend:
         """Initialize an empty in-memory tree.
 
         Creates empty containers for child subtrees and for value buckets
-        grouped by file_type. No arguments; the backend starts empty.
+        grouped by serialization_format. No arguments; the backend starts empty.
 
         Attributes initialized:
             subdicts: Empty mapping for first-level child nodes.
-            values: Empty mapping for per-file_type value buckets.
+            values: Empty mapping for per-serialization_format value buckets.
         """
         self.subdicts: dict[str, _RAMBackend] = {}
         self.values: dict[str, dict[str, tuple[Any, float]]] = {}
@@ -71,25 +71,25 @@ class _RAMBackend:
             self.subdicts[name] = child_backend
         return child_backend
 
-    def get_values_bucket(self, file_type: str) -> dict[str, tuple[Any, float]]:
-        """Return the per-file_type bucket for leaf values, creating if absent.
+    def get_values_bucket(self, serialization_format: str) -> dict[str, tuple[Any, float]]:
+        """Return the per-serialization_format bucket for leaf values, creating if absent.
 
         The bucket maps a leaf key (final segment string) to a tuple of
         (value, timestamp). The timestamp is the POSIX time when the value was
         last written.
 
         Args:
-            file_type (str): Object type label under which values are
+            serialization_format (str): Object type label under which values are
                 grouped (e.g., "pkl", "json"). No validation is performed here.
 
         Returns:
-            dict[str, tuple[Any, float]]: The mutable mapping for this file_type.
+            dict[str, tuple[Any, float]]: The mutable mapping for this serialization_format.
             Modifications affect the backend state directly.
         """
-        bucket = self.values.get(file_type)
+        bucket = self.values.get(serialization_format)
         if bucket is None:
             bucket = {}
-            self.values[file_type] = bucket
+            self.values[serialization_format] = bucket
         return bucket
 
 
@@ -100,7 +100,7 @@ class LocalDict(PersiDict):
     memory using a simple tree structure (RAMBackend). It is useful for tests
     and ephemeral workloads where durability is not required. Keys are
     hierarchical sequences of safe strings (SafeStrTuple). Values are stored
-    per file_type and tracked with modification timestamps, providing the same
+    per serialization_format and tracked with modification timestamps, providing the same
     API surface as other PersiDict implementations.
 
     Attributes:
@@ -108,8 +108,8 @@ class LocalDict(PersiDict):
             modified or deleted after initial creation.
         base_class_for_values (type | None): Optional base class that all
             stored values must inherit from. If None, any type is accepted (with
-            file_type restrictions enforced by the base class).
-        file_type (str): Logical serialization/format label (e.g., "pkl",
+            serialization_format restrictions enforced by the base class).
+        serialization_format (str): Logical serialization/format label (e.g., "pkl",
             "json") used as a namespace for values and timestamps within the
             backend.
         _backend (_RAMBackend): The in-memory tree that actually stores data.
@@ -123,7 +123,7 @@ class LocalDict(PersiDict):
 
     def __init__(self,
                  backend: Optional[_RAMBackend] = None,
-                 file_type: str = "pkl",
+                 serialization_format: str = "pkl",
                  immutable_items: bool = False,
                  base_class_for_values: Optional[type] = None,
                  prune_interval: Optional[int] = 64, *args, **kwargs):
@@ -132,13 +132,13 @@ class LocalDict(PersiDict):
         Args:
             backend (_RAMBackend | None): Optional existing RAMBackend tree to
                 use. If None, a new empty backend is created.
-            file_type (str): Logical serialization/format label under which
+            serialization_format (str): Logical serialization/format label under which
                 values are grouped (e.g., "pkl", "json"). Defaults to "pkl".
             immutable_items (bool): If True, items become write-once and cannot
                 be modified or deleted after the first write. Defaults to False.
             base_class_for_values (type | None): Optional base class that all
                 stored values must inherit from. If None, any type is accepted
-                (subject to file_type restrictions). Defaults to None.
+                (subject to serialization_format restrictions). Defaults to None.
             prune_interval (int | None): If None or <= 0, disables pruning.
                 Otherwise, run pruning only once every N destructive
                 operations (deletions/clears). Higher values reduce pruning
@@ -146,7 +146,7 @@ class LocalDict(PersiDict):
                 the next prune. Defaults to 64.
 
         Raises:
-            ValueError: Propagated from PersiDict if file_type is empty, has
+            ValueError: Propagated from PersiDict if serialization_format is empty, has
                 unsafe characters, or is incompatible with value type policy.
             TypeError: Propagated from PersiDict if base_class_for_values has an
                 invalid type.
@@ -165,7 +165,7 @@ class LocalDict(PersiDict):
         PersiDict.__init__(self,
                            immutable_items=immutable_items,
                            base_class_for_values=base_class_for_values,
-                           file_type=file_type)
+                           serialization_format=serialization_format)
 
     def get_params(self):
         """Return constructor parameters needed to recreate this instance.
@@ -182,7 +182,7 @@ class LocalDict(PersiDict):
             backend=self._backend,
             immutable_items=self.append_only,
             base_class_for_values=self.base_class_for_values,
-            file_type=self.file_type,
+            serialization_format=self.serialization_format,
         )
         # PersiDict.get_params sorts keys; we can reuse it by temporarily
         # creating the dict in the same form and letting parent handle sort.
@@ -192,33 +192,33 @@ class LocalDict(PersiDict):
     # No base_url/base_dir override: keep defaults (None)
 
     def __len__(self) -> int:
-        """Return the total number of items stored for this file_type.
+        """Return the total number of items stored for this serialization_format.
 
         Counts all keys across the entire in-memory tree that belong to the
-        current file_type namespace.
+        current serialization_format namespace.
 
         Returns:
             int: Total number of items.
         """
         def count(node: _RAMBackend) -> int:
-            total = len(node.values.get(self.file_type, {}))
+            total = len(node.values.get(self.serialization_format, {}))
             for child in node.subdicts.values():
                 total += count(child)
             return total
         return count(self._backend)
 
     def clear(self) -> None:
-        """Remove all items under this file_type across the entire tree.
+        """Remove all items under this serialization_format across the entire tree.
 
-        Only entries stored for the current file_type are removed; data for
-        other file types remains intact.
+        Only entries stored for the current serialization_format are removed; data for
+        other serialization formats remains intact.
         """
-        # Override for efficiency (optional). Remove only our file_type data.
+        # Override for efficiency (optional). Remove only our serialization_format data.
         if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
 
         def clear_ft(node: _RAMBackend):
-            node.values.pop(self.file_type, None)
+            node.values.pop(self.serialization_format, None)
             for ch in node.subdicts.values():
                 clear_ft(ch)
         clear_ft(self._backend)
@@ -241,10 +241,10 @@ class LocalDict(PersiDict):
             self._ops_since_prune = 0
 
     def _prune_empty_subtrees(self, node: Optional[_RAMBackend] = None) -> bool:
-        """Remove empty per-file_type buckets and prunes empty subtrees.
+        """Remove empty per-serialization_format buckets and prunes empty subtrees.
 
         This walks the in-memory tree and:
-          - Deletes value buckets that became empty (no leaves for any file_type).
+          - Deletes value buckets that became empty (no leaves for any serialization_format).
           - Recursively deletes child subdicts that become empty after pruning.
 
         A node is considered empty if it has no children (subdicts) and no
@@ -263,7 +263,7 @@ class LocalDict(PersiDict):
         for name, child in list(node.subdicts.items()):
             if self._prune_empty_subtrees(child):
                 del node.subdicts[name]
-        # Next, drop empty value buckets for any file_type
+        # Next, drop empty value buckets for any serialization_format
         for ft, bucket in list(node.values.items()):
             if not bucket:  # empty dict
                 del node.values[ft]
@@ -278,7 +278,7 @@ class LocalDict(PersiDict):
 
         This helper walks all segments of the key except the last one to find
         the corresponding RAMBackend node that contains the leaf bucket for this
-        file_type.
+        serialization_format.
 
         Behavior:
             - When create_if_missing is True (default), missing intermediate
@@ -313,7 +313,7 @@ class LocalDict(PersiDict):
         return backend_node, key[-1]
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
-        """Return True if the key exists in the current file_type namespace.
+        """Return True if the key exists in the current serialization_format namespace.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
@@ -325,7 +325,7 @@ class LocalDict(PersiDict):
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
             return False
-        bucket = parent_node.values.get(self.file_type, {})
+        bucket = parent_node.values.get(self.serialization_format, {})
         return leaf in bucket
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
@@ -346,7 +346,7 @@ class LocalDict(PersiDict):
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
             raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.file_type, {})
+        bucket = parent_node.values.get(self.serialization_format, {})
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
         value = bucket[leaf][0]
@@ -378,7 +378,7 @@ class LocalDict(PersiDict):
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
         parent_node, leaf = self._navigate_to_parent(key)
-        bucket = parent_node.get_values_bucket(self.file_type)
+        bucket = parent_node.get_values_bucket(self.serialization_format)
         bucket[leaf] = (deepcopy(value), time.time())
 
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
@@ -395,7 +395,7 @@ class LocalDict(PersiDict):
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
             raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.file_type, {})
+        bucket = parent_node.values.get(self.serialization_format, {})
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
         del bucket[leaf]
@@ -428,7 +428,7 @@ class LocalDict(PersiDict):
 
         def walk(prefix: tuple[str, ...], node: _RAMBackend):
             # yield values at this level
-            bucket = node.values.get(self.file_type, {})
+            bucket = node.values.get(self.serialization_format, {})
             for leaf, (val, ts) in bucket.items():
                 full_key = SafeStrTuple((*prefix, leaf))
                 to_return: list[Any] = []
@@ -465,7 +465,7 @@ class LocalDict(PersiDict):
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
         if parent_node is None:
             raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.file_type, {})
+        bucket = parent_node.values.get(self.serialization_format, {})
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
         return bucket[leaf][1]
@@ -493,7 +493,7 @@ class LocalDict(PersiDict):
             root_node = root_node.child(segment)
         # Create a new LocalDict rooted at this backend
         return LocalDict(backend=root_node,
-                         file_type=self.file_type,
+                         serialization_format=self.serialization_format,
                          immutable_items=self.immutable_items,
                          base_class_for_values=self.base_class_for_values,
                          prune_interval=self._prune_interval)

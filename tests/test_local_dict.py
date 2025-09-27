@@ -9,16 +9,16 @@ from persidict.singletons import KEEP_CURRENT, DELETE_CURRENT
 MIN_SLEEP = 0.02
 
 
-def make_ld(*, file_type: str = "pkl", base_dir=None, **kwargs):
+def make_ld(*, serialization_format: str = "pkl", base_dir=None, **kwargs):
     # base_dir is accepted for API compatibility with other backends/fixtures
     # but LocalDict is purely in-memory and ignores it.
-    return LocalDict(file_type=file_type, **kwargs)
+    return LocalDict(serialization_format=serialization_format, **kwargs)
 
 
 def test_init_and_get_params_defaults(tmp_path):
     ld = make_ld(base_dir=tmp_path)
     params = ld.get_params()
-    assert params["file_type"] == "pkl"
+    assert params["serialization_format"] == "pkl"
     assert params["immutable_items"] is False
     assert params["base_class_for_values"] is None
     # backend object identity is included
@@ -26,12 +26,12 @@ def test_init_and_get_params_defaults(tmp_path):
     assert params["backend"] is ld.get_params()["backend"]
 
 
-def test_file_type_validation_and_repr():
+def test_serialization_format_validation_and_repr():
     # repr contains class name and params (and does not raise)
-    ld = make_ld(file_type="json")
+    ld = make_ld(serialization_format="json")
     s = repr(ld)
     assert "LocalDict(" in s
-    assert "file_type='json'" in s
+    assert "serialization_format='json'" in s
 
 
 def test_basic_crud_and_len_contains_timestamp():
@@ -100,9 +100,9 @@ def test_type_enforcement_base_class_for_values():
     with pytest.raises(TypeError):
         ld[("bad",)] = object()
 
-    # For string-only base, non-json/pkl file_type must have raised in ctor;
+    # For string-only base, non-json/pkl serialization_format must have raised in ctor;
     # confirm that json works for strings
-    ld_str = make_ld(file_type="json", base_class_for_values=str)
+    ld_str = make_ld(serialization_format="json", base_class_for_values=str)
     ld_str[("s",)] = "hello"
 
 
@@ -114,8 +114,8 @@ def test_no_nested_persidict_values():
 
 
 def test_setdefault_and_equality():
-    ld1 = make_ld(file_type="json")
-    ld2 = make_ld(file_type="json", backend=ld1.get_params()["backend"])  # same backend
+    ld1 = make_ld(serialization_format="json")
+    ld2 = make_ld(serialization_format="json", backend=ld1.get_params()["backend"])  # same backend
     # setdefault returns default when absent
     v = ld1.setdefault(("a",), {"x": 1})
     assert v == {"x": 1}
@@ -123,8 +123,8 @@ def test_setdefault_and_equality():
     assert ld1.setdefault(("a",), {"y": 2}) == {"x": 1}
 
     # equality for PersiDict instances compares params, not content
-    assert (ld1 == ld2)  # same params (same backend, file_type, etc.)
-    ld3 = make_ld(file_type="json")
+    assert (ld1 == ld2)  # same params (same backend, serialization_format, etc.)
+    ld3 = make_ld(serialization_format="json")
     assert not (ld1 == ld3)  # different backend
 
 
@@ -207,9 +207,9 @@ def test_random_key_behavior():
     assert seen.issubset(set(keys))
 
 
-@pytest.mark.parametrize("file_type", ["pkl", "json"])
-def test_subdict_and_isolation_with_parent(file_type):
-    ld = make_ld(file_type=file_type)
+@pytest.mark.parametrize("serialization_format", ["pkl", "json"])
+def test_subdict_and_isolation_with_parent(serialization_format):
+    ld = make_ld(serialization_format=serialization_format)
     ld[("root", "x")] = 1
     ld[("root", "y")] = 2
     ld[("other", "z")] = 3
@@ -236,19 +236,19 @@ def test_subdict_and_isolation_with_parent(file_type):
     assert ("root", "y") not in set(map(tuple, ld.keys()))
 
 
-def test_file_type_buckets_and_shared_backend():
+def test_serialization_format_buckets_and_shared_backend():
     base = make_ld()
     base[("k", "1")] = 1
     backend = base.get_params()["backend"]
 
-    # Different file_type sees different bucket on same backend
-    ld_json = make_ld(file_type="json", backend=backend)
+    # Different serialization_format sees different bucket on same backend
+    ld_json = make_ld(serialization_format="json", backend=backend)
     assert len(ld_json) == 0
     with pytest.raises(KeyError):
         _ = ld_json[("k", "1")]
 
-    # Same file_type shares content
-    ld_same = make_ld(file_type=base.file_type, backend=backend)
+    # Same serialization_format shares content
+    ld_same = make_ld(serialization_format=base.serialization_format, backend=backend)
     assert len(ld_same) == 1
     assert ld_same[("k", "1")] == 1
 
@@ -328,15 +328,15 @@ def test_delete_current_on_missing_is_noop():
     ld[k] = DELETE_CURRENT  # should not raise
     assert k not in ld
 
-@pytest.mark.parametrize("file_type", ["pkl", "json"])
-def test_roundtrip_basic_by_file_type(file_type):
-    ld = make_ld(file_type=file_type)
+@pytest.mark.parametrize("serialization_format", ["pkl", "json"])
+def test_roundtrip_basic_by_serialization_format(serialization_format):
+    ld = make_ld(serialization_format=serialization_format)
     k = ("a", "b")
     v = {"x": 1}
     ld[k] = v
     assert ld[k] == v
     # For pkl, also verify custom class instance round-trip
-    if file_type == "pkl":
+    if serialization_format == "pkl":
         class MyObj:
             def __init__(self, a):
                 self.a = a
@@ -347,9 +347,9 @@ def test_roundtrip_basic_by_file_type(file_type):
         assert isinstance(got, MyObj) and got.a == 42
 
 @pytest.mark.parametrize("bad", ["", "bad/ty%pe", "../etc", "\x00", 123, None])
-def test_file_type_validation(bad):
+def test_serialization_format_validation(bad):
     with pytest.raises((TypeError, ValueError)):
-        make_ld(file_type=bad)  # type: ignore[arg-type]
+        make_ld(serialization_format=bad)  # type: ignore[arg-type]
 
 
 def test_subdict_deep_prefix_isolation():
@@ -367,7 +367,7 @@ def test_subdict_deep_prefix_isolation():
 
 
 def test_setdefault_mutation_does_not_persist():
-    ld = make_ld(file_type="json")
+    ld = make_ld(serialization_format="json")
     d = {"x": 1}
     got = ld.setdefault(("a",), d)
     got["y"] = 2
@@ -405,8 +405,8 @@ def test_timestamp_overwrite_vs_keep_current(monkeypatch):
     assert ld.timestamp(k) == 1002.0
 
 
-@pytest.mark.parametrize("file_type", ["pkl", "json"])
-def test_delete_if_exists_immutable_raises(file_type):
-    ld = make_ld(file_type=file_type, immutable_items=True)
+@pytest.mark.parametrize("serialization_format", ["pkl", "json"])
+def test_delete_if_exists_immutable_raises(serialization_format):
+    ld = make_ld(serialization_format=serialization_format, immutable_items=True)
     with pytest.raises(KeyError):
         ld.delete_if_exists(("a",))

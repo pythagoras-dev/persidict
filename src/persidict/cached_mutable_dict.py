@@ -48,7 +48,7 @@ class MutableDictCached(PersiDict):
 
         Notes:
             The adapter inherits base settings (base_class_for_values,
-            file_type, and immutability) from main_dict to ensure compatibility.
+            serialization_format, and immutability) from main_dict to ensure compatibility.
         """
 
         inputs = dict(main_dict=main_dict
@@ -65,7 +65,7 @@ class MutableDictCached(PersiDict):
         super().__init__(
             immutable_items=main_dict.immutable_items,
             base_class_for_values=main_dict.base_class_for_values,
-            file_type=main_dict.file_type,
+            serialization_format=main_dict.serialization_format,
         )
 
         self._main_dict = main_dict
