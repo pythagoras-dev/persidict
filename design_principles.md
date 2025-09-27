@@ -1,6 +1,6 @@
 # Core Design Principles of `persidict`
 
-`persidict` is built on a set of core assumptions and design trade-offs that make it well-suited for distributed computing environments. Understanding these principles is key to using the library effectively.
+`persidict` is built on a small set of explicit assumptions and trade‑offs that make it well‑suited for distributed computing. Understanding these principles will help you use the library effectively.
 
 ## 1. Familiar, `dict`‑like API
 
