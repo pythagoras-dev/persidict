@@ -5,7 +5,11 @@ Your help is greatly appreciated. These guidelines will help you get started.
 
 ## Getting Started
 
-1.  **Fork and Clone:**
+1. **Learn the Foundations:**
+   Familiarize yourself with the project's [design](design_principles.md) principles.
+
+
+2. **Fork and Clone:**
     ```bash
     git clone https://github.com/your-username/persidict.git
     cd parameterizable
