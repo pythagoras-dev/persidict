@@ -10,7 +10,7 @@ storing each value as its own file or S3 object. Keys are limited to
 text strings or sequences of strings.
 
 In contrast to traditional persistent dictionaries (e.g., Python’s `shelve)`, 
-`persidict` is designed for distributed environments where multiple processes 
+`persidict` is [designed](design_principles.md) for distributed environments where multiple processes 
 on different machines concurrently work with the same store.
 
 ## 2. Why Use It?
