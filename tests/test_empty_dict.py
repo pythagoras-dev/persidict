@@ -51,9 +51,9 @@ def test_empty_dict_delete_operations():
     with pytest.raises(KeyError):
         del empty_dict["non_existent"]
     
-    # Test delete_if_exists (should return False)
-    assert empty_dict.delete_if_exists("any_key") == False
-    assert empty_dict.delete_if_exists(("complex", "key")) == False
+    # Test discard (should return False)
+    assert empty_dict.discard("any_key") == False
+    assert empty_dict.discard(("complex", "key")) == False
 
 
 def test_empty_dict_timestamp_operations():
@@ -152,4 +152,4 @@ def test_empty_dict_consistency():
     for i in range(10):
         assert f"key_{i}" not in empty_dict
         assert empty_dict.get(f"key_{i}") is None
-        assert empty_dict.delete_if_exists(f"key_{i}") == False
+        assert empty_dict.discard(f"key_{i}") == False

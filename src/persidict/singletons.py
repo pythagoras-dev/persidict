@@ -178,7 +178,7 @@ any change.
 Example:
     >>> d = PersiDict()
     >>> d['key'] = 'value'
-    >>> d['key'] = DELETE_CURRENT  # same as d.delete_if_exists('key')
+    >>> d['key'] = DELETE_CURRENT  # same as d.discard('key')
 """
 
 

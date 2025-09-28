@@ -60,11 +60,11 @@ def test_basic_crud_and_len_contains_timestamp():
         ld.timestamp(k1)
 
 
-def test_delete_if_exists_and_clear():
+def test_discard_and_clear():
     ld = make_ld()
     ld[("x",)] = 10
-    assert ld.delete_if_exists(("x",)) is True
-    assert ld.delete_if_exists(("x",)) is False
+    assert ld.discard(("x",)) is True
+    assert ld.discard(("x",)) is False
 
     # clear removes everything
     for i in range(3):
@@ -87,7 +87,7 @@ def test_immutable_items_prohibits_overwrite_and_delete():
     with pytest.raises(KeyError):
         ld.clear()
     with pytest.raises(KeyError):
-        ld.delete_if_exists(k)
+        ld.discard(k)
 
 
 def test_type_enforcement_base_class_for_values():
@@ -406,7 +406,7 @@ def test_timestamp_overwrite_vs_keep_current(monkeypatch):
 
 
 @pytest.mark.parametrize("serialization_format", ["pkl", "json"])
-def test_delete_if_exists_immutable_raises(serialization_format):
+def test_discard_immutable_raises(serialization_format):
     ld = make_ld(serialization_format=serialization_format, append_only=True)
     with pytest.raises(KeyError):
-        ld.delete_if_exists(("a",))
+        ld.discard(("a",))

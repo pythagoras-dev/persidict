@@ -238,8 +238,8 @@ class S3Dict(PersiDict):
             return True
         except ClientError as e:
             if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
-                self.main_cache.delete_if_exists(key)
-                self.etag_cache.delete_if_exists(key)
+                self.main_cache.discard(key)
+                self.etag_cache.discard(key)
                 return False
             else:
                 raise
@@ -356,7 +356,7 @@ class S3Dict(PersiDict):
             self.etag_cache[key] = head.get("ETag")
         except ClientError:
             # Remove stale ETag on failure to force fresh downloads later
-            self.etag_cache.delete_if_exists(key)
+            self.etag_cache.discard(key)
 
 
     def __delitem__(self, key: NonEmptyPersiDictKey):
@@ -373,8 +373,8 @@ class S3Dict(PersiDict):
         self._process_delitem_args(key)
         obj_name = self._build_full_objectname(key)
         self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
-        self.etag_cache.delete_if_exists(key)
-        self.main_cache.delete_if_exists(key)
+        self.etag_cache.discard(key)
+        self.main_cache.discard(key)
 
 
     def __len__(self) -> int:

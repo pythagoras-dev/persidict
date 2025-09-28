@@ -263,7 +263,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         key = NonEmptySafeStrTuple(key)
 
         if value is DELETE_CURRENT:
-            self.delete_if_exists(key)
+            self.discard(key)
             return EXECUTION_IS_COMPLETE
 
         if self.base_class_for_values is not None:
@@ -578,7 +578,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 pass
 
 
-    def delete_if_exists(self, key:NonEmptyPersiDictKey) -> bool:
+    def discard(self, key: NonEmptyPersiDictKey) -> bool:
         """Delete an item without raising an exception if it doesn't exist.
 
         This method is absent in the original dict API.
@@ -603,6 +603,14 @@ class PersiDict(MutableMapping, ParameterizableClass):
             return True
         except KeyError:
             return False
+
+    def delete_if_exists(self, key: NonEmptyPersiDictKey) -> bool:
+        """Backward-compatible wrapper for discard().
+
+        This method is kept for backward compatibility; new code should use
+        discard(). Behavior is identical to discard().
+        """
+        return self.discard(key)
 
     def get_subdict(self, prefix_key:PersiDictKey) -> PersiDict:
         """Get a sub-dictionary containing items with the given prefix key.

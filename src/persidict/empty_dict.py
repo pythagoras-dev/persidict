@@ -139,9 +139,13 @@ class EmptyDict(PersiDict):
         raise KeyError(key)
 
 
-    def delete_if_exists(self, key: NonEmptyPersiDictKey) -> bool:
+    def discard(self, key: NonEmptyPersiDictKey) -> bool:
         """Always returns False as the key never exists."""
         return False
+
+    def delete_if_exists(self, key: NonEmptyPersiDictKey) -> bool:
+        """Backward-compatible wrapper for discard()."""
+        return self.discard(key)
 
 
     def random_key(self) -> NonEmptySafeStrTuple|None:

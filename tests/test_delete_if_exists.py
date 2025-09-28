@@ -8,7 +8,7 @@ from data_for_mutable_tests import mutable_tests
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_delete_if_exists(tmpdir, DictToTest, kwargs, rundom=None):
+def test_discard(tmpdir, DictToTest, kwargs, rundom=None):
     dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
     dict_to_test.clear()
 
@@ -26,7 +26,7 @@ def test_delete_if_exists(tmpdir, DictToTest, kwargs, rundom=None):
     all_keys = good_keys + bad_keys
     random.shuffle(all_keys)
     for k in all_keys:
-        num_successful_deletions += dict_to_test.delete_if_exists(k)
+        num_successful_deletions += dict_to_test.discard(k)
 
     assert num_successful_deletions == len(good_keys)
     dict_to_test.clear()

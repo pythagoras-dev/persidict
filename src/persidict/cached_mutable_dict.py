@@ -127,7 +127,7 @@ class MutableDictCached(PersiDict):
             etag: The ETag string to store, or None to remove any cached ETag.
         """
         if etag is None:
-            self._etag_cache.delete_if_exists(key)
+            self._etag_cache.discard(key)
         else:
             self._etag_cache[key] = etag
 
@@ -231,15 +231,15 @@ class MutableDictCached(PersiDict):
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Delete key from main dict and purge caches if present.
 
-        Deletion is delegated to the main dict using delete_if_exists.
+        Deletion is delegated to the main dict using discard().
         Cached value and ETag for the key (if any) are removed.
 
         Args:
             key: Non-empty key to delete.
         """
         key = NonEmptySafeStrTuple(key)
-        self._main_dict.delete_if_exists(key)
-        self._etag_cache.delete_if_exists(key)
-        self._data_cache.delete_if_exists(key)
+        self._main_dict.discard(key)
+        self._etag_cache.discard(key)
+        self._data_cache.discard(key)
 
 

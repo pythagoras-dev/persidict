@@ -127,7 +127,7 @@ You can also constrain values to a specific class.
 * **Order**: Insertion order is not preserved.
 * **Additional Methods**: `PersiDict` provides extra methods not in the standard 
 dict API, such as `timestamp()`, `etag()`, `random_key()`, `newest_keys()`
-, `subdicts()`, `delete_if_exists()`, `get_params()` and more.
+, `subdicts()`, `discard()`, `get_params()` and more.
 * **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
 and `DELETE_CURRENT` to delete a value during an assignment.
 
@@ -215,7 +215,7 @@ from the dictionary when assigned to a key.
 | `newest_values(max_n=None)` | `list[Any]` | Returns a list of values corresponding to the newest keys. |
 | `get_subdict(prefix_key)` | `PersiDict` | Returns a new `PersiDict` instance that provides a view into a subset of keys sharing a common prefix. |
 | `subdicts()` | `dict[str, PersiDict]` | Returns a dictionary mapping all first-level key prefixes to their corresponding sub-dictionary views. |
-| `delete_if_exists(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
+| `discard(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
 | `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `parameterizable` API. |
 
 ## 7. Installation
