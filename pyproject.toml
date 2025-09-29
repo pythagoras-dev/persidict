@@ -29,7 +29,8 @@ dependencies = [
     "lz4",
     "joblib",
     "jsonpickle",
-    "deepdiff"
+    "deepdiff",
+    "boto3"
 ]
 
 [project.urls]
