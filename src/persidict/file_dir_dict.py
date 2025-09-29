@@ -10,7 +10,6 @@ serialized depending on ``serialization_format``.
 from __future__ import annotations
 
 import os
-import pathlib
 import random
 import tempfile
 import time
