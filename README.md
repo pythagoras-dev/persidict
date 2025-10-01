@@ -92,11 +92,11 @@ an AWS S3 bucket. The usage is identical, allowing you to switch
 between local and cloud storage with minimal code changes.
 
 ```python
-from persidict import S3Dict_Legacy
+from persidict import S3Dict
 
 # Create a dictionary that will be stored in an S3 bucket.
 # The bucket will be created if it doesn't exist.
-cloud_config = S3Dict_Legacy(bucket_name="my-app-config-bucket")
+cloud_config = S3Dict(bucket_name="my-app-config-bucket")
 
 # Use it just like a FileDirDict.
 cloud_config["api_key"] = "ABC-123-XYZ"

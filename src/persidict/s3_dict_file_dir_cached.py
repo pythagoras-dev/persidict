@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+import parameterizable
 from parameterizable import sort_dict_by_keys
 
 from .basic_s3_dict import BasicS3Dict
@@ -206,4 +207,9 @@ class S3Dict_FileDirCached(PersiDict):
             return True
         except KeyError:
             return False
-        
+
+
+S3Dict = S3Dict_FileDirCached # Alias for backward compatibility
+
+
+parameterizable.register_parameterizable_class(S3Dict_FileDirCached)

@@ -8,6 +8,6 @@ def test_file_dir_dict_registration():
 
 @mock_aws
 def test_s3_dict_registration():
-    from persidict import S3Dict_Legacy
-    assert is_registered(S3Dict_Legacy)
-    smoketest_parameterizable_class(S3Dict_Legacy)
+    from persidict import S3Dict
+    assert is_registered(S3Dict)
+    smoketest_parameterizable_class(S3Dict)

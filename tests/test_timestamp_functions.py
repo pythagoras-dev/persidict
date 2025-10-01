@@ -1,5 +1,5 @@
 from moto import mock_aws
-from persidict import FileDirDict, S3Dict_Legacy
+from persidict import FileDirDict, S3Dict
 from persidict.safe_str_tuple import SafeStrTuple
 from minimum_sleep import min_sleep
 
@@ -54,7 +54,7 @@ def test_file_dir_dict_timestamp_functions(tmpdir):
 @mock_aws
 def test_s3_dict_timestamp_functions(tmpdir):
     """Test timestamp functions specifically for S3Dict_Legacy with longer delays."""
-    d = S3Dict_Legacy(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
+    d = S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     
     # Add items with longer delays for S3Dict_Legacy timestamp precision
     for i, v in enumerate("abc"):  # Use fewer items to reduce test time

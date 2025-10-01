@@ -70,6 +70,6 @@ Pick a composition that matches your use case:
 
 - Development/testing: `LocalDict` or `FileDirDict` for simplicity.
 - Production, single machine: `MutableDictCached(FileDirDict(...))` for performance.
-- Production, distributed: `MutableDictCached(S3Dict(...))` for scalability.
+- Production, distributed: `MutableDictCached(BasicS3Dict(...))` for scalability.
 - Append‑only workloads: `AppendOnlyDictCached` for maximum performance.
 - Content‑addressed scenarios: `WriteOnceDict` to avoid redundant writes.

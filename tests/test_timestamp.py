@@ -1,7 +1,7 @@
 import time
 
 from moto import mock_aws
-from persidict import FileDirDict, S3Dict_Legacy
+from persidict import FileDirDict, S3Dict
 
 
 @mock_aws
@@ -9,7 +9,7 @@ def test_timestamp(tmpdir):
     """test timestamp methods."""
     for d in [
         FileDirDict(base_dir= tmpdir.mkdir("LOCAL"))
-        ,S3Dict_Legacy(base_dir = tmpdir.mkdir("AWS"), bucket_name ="mybucket")
+        ,S3Dict(base_dir = tmpdir.mkdir("AWS"), bucket_name ="mybucket")
         ]:
         for v in "abcdefg":
             d[v] = 5*v
