@@ -11,7 +11,7 @@ Classes:
     FileDirDict: A dictionary that stores key-value pairs as files on a
         local hard drive. Keys compose filenames, values are stored as
         pickle or JSON objects.
-    S3Dict: A dictionary that stores key-value pairs as S3 objects on AWS.
+    S3Dict_Legacy: A dictionary that stores key-value pairs as S3 objects on AWS.
         Keys compose object names, values are stored as pickle or JSON S3 objects.
     BasicS3Dict: A basic S3-backed dictionary with direct S3 operations.
     WriteOnceDict: A write-once wrapper that prevents modification of existing
@@ -38,7 +38,8 @@ from .safe_chars import *
 from .safe_str_tuple import *
 from .persi_dict import PersiDict, PersiDictKey
 from .file_dir_dict import FileDirDict
-from .s3_dict import S3Dict
+from .s3_dict import S3Dict_Legacy
+from .s3_dict_new import S3Dict_FileDirCached
 from .basic_s3_dict import BasicS3Dict
 from .write_once_dict import WriteOnceDict
 from .empty_dict import EmptyDict

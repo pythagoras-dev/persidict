@@ -231,14 +231,17 @@ class MutableDictCached(PersiDict):
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Delete key from main dict and purge caches if present.
 
-        Deletion is delegated to the main dict using discard().
+        Deletion is delegated to the main dict using del.
         Cached value and ETag for the key (if any) are removed.
 
         Args:
             key: Non-empty key to delete.
+            
+        Raises:
+            KeyError: If the key does not exist in the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        self._main_dict.discard(key)
+        del self._main_dict[key]  # This will raise KeyError if key doesn't exist
         self._etag_cache.discard(key)
         self._data_cache.discard(key)
 

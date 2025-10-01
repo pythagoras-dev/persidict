@@ -604,6 +604,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
         except KeyError:
             return False
 
+
     def delete_if_exists(self, key: NonEmptyPersiDictKey) -> bool:
         """Backward-compatible wrapper for discard().
 

@@ -19,11 +19,11 @@ from .overlapping_multi_dict import OverlappingMultiDict
 
 S3DICT_DEFAULT_BASE_DIR = "__s3_dict__"
 
-class S3Dict(PersiDict):
+class S3Dict_Legacy(PersiDict):
     """A persistent dictionary that stores key-value pairs as S3 objects with local caching.
     
     Each key-value pair is stored as a separate S3 object in the specified bucket.
-    S3Dict provides intelligent local caching to minimize S3 API calls and improve
+    S3Dict_Legacy provides intelligent local caching to minimize S3 API calls and improve
     performance by using conditional requests with ETags to detect changes.
     
     A key can be either a string (object name without file extension) or a sequence
@@ -31,7 +31,7 @@ class S3Dict(PersiDict):
     object name). Values can be instances of any Python type and are serialized
     to S3 objects.
     
-    S3Dict supports multiple serialization formats:
+    S3Dict_Legacy supports multiple serialization formats:
     - Binary storage using pickle ('pkl' format)  
     - Human-readable text using jsonpickle ('json' format)
     - Plain text for string values (other formats)
@@ -500,7 +500,7 @@ class S3Dict(PersiDict):
         return step()
 
 
-    def get_subdict(self, key: PersiDictKey) -> S3Dict:
+    def get_subdict(self, key: PersiDictKey) -> S3Dict_Legacy:
         """Create a subdictionary scoped to items with the specified prefix.
 
         Returns an empty subdictionary if no items exist under the prefix.
@@ -512,7 +512,7 @@ class S3Dict(PersiDict):
                 used to scope items stored under this dictionary.
 
         Returns:
-            S3Dict: A new S3Dict instance with root_prefix extended by the given
+            S3Dict_Legacy: A new S3Dict instance with root_prefix extended by the given
             key, sharing the parent's bucket, region, serialization_format, and other
             configuration settings.
         """
@@ -527,7 +527,7 @@ class S3Dict(PersiDict):
         new_dir_path = self.main_cache._build_full_path(
             key, create_subdirs=True, is_file_path=False)
 
-        new_dict = S3Dict(
+        new_dict = S3Dict_Legacy(
             bucket_name=self.bucket_name,
             region=self.region,
             root_prefix=full_root_prefix,
@@ -559,6 +559,3 @@ class S3Dict(PersiDict):
         obj_name = self._build_full_objectname(key)
         response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
         return response["LastModified"].timestamp()
-
-
-parameterizable.register_parameterizable_class(S3Dict)
