@@ -13,9 +13,8 @@ from __future__ import annotations
 import time
 
 from deepdiff import DeepDiff
-from parameterizable import register_parameterizable_class, sort_dict_by_keys
+from parameterizable import sort_dict_by_keys #,register_parameterizable_class
 
-from . import SafeStrTuple
 from .singletons import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .file_dir_dict import FileDirDict
@@ -347,4 +346,4 @@ class WriteOnceDict(PersiDict):
         return result
 
 
-register_parameterizable_class(WriteOnceDict)
+# register_parameterizable_class(WriteOnceDict)

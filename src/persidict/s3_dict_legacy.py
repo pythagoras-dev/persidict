@@ -561,5 +561,5 @@ class S3Dict_Legacy(PersiDict):
         return response["LastModified"].timestamp()
 
 
-parameterizable.register_parameterizable_class(S3Dict_Legacy)
+# parameterizable.register_parameterizable_class(S3Dict_Legacy)
 

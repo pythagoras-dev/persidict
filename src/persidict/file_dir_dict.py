@@ -810,4 +810,4 @@ class FileDirDict(PersiDict):
             winner = add_long_path_prefix(winner)
             return self._build_key_from_full_path(winner)
 
-parameterizable.register_parameterizable_class(FileDirDict)
+# parameterizable.register_parameterizable_class(FileDirDict)

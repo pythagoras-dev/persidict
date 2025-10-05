@@ -592,4 +592,4 @@ class BasicS3Dict(PersiDict):
             else:
                 raise
 
-parameterizable.register_parameterizable_class(BasicS3Dict)
+# parameterizable.register_parameterizable_class(BasicS3Dict)
