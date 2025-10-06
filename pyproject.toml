@@ -25,12 +25,12 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 dependencies = [
-    "parameterizable",
+    "parameterizable==0.100.0",
     "lz4",
     "joblib",
     "jsonpickle",
     "deepdiff",
-    "boto3"
+    "boto3",
 ]
 
 [project.urls]

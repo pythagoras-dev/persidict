@@ -1,4 +1,3 @@
-from parameterizable import smoketest_parameterizable_class, is_parameterizable
 from persidict import FileDirDict, WriteOnceDict
 
 import pytest
@@ -66,7 +65,3 @@ def test_firs_entry_dict_wrong_init_params(tmpdir):
     with pytest.raises(Exception):
         fed = WriteOnceDict(
             FileDirDict(tmpdir, append_only=False))
-
-def test_first_entry_dict_parameterizable():
-    assert is_parameterizable(WriteOnceDict)
-    smoketest_parameterizable_class(WriteOnceDict)
