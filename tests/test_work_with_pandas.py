@@ -19,17 +19,17 @@ def test_work_with_pandas(tmpdir, DictToTest, kwargs):
     model_dict["z"] = pd.DataFrame({"a": [1, 2, 3, 4, 5]})
     assert (dict_to_test["z"] == model_dict["z"]).sum().sum() == 5
 
-    # dict_to_test["zz"] = pd.Series([1, 2, 3, 4, 5, 6])
-    # model_dict["zz"] = pd.Series([1, 2, 3, 4, 5, 6])
-    # assert (dict_to_test["zz"] == model_dict["zz"]).sum() == 6
-    #
-    # dict_to_test["zzz"] = pd.Index([1, 2, 3, 4])
-    # model_dict["zzz"] = pd.Index([1, 2, 3, 4])
-    # assert (dict_to_test["zzz"] == model_dict["zzz"]).sum() == 4
-    #
-    # dict_to_test["zzzz"] = pd.RangeIndex(0, 15)
-    # model_dict["zzzz"] = pd.RangeIndex(0, 15)
-    # assert (dict_to_test["zzzz"] == model_dict["zzzz"]).sum() == 15
+    dict_to_test["zz"] = pd.Series([1, 2, 3, 4, 5, 6])
+    model_dict["zz"] = pd.Series([1, 2, 3, 4, 5, 6])
+    assert (dict_to_test["zz"] == model_dict["zz"]).sum() == 6
+
+    dict_to_test["zzz"] = pd.Index([1, 2, 3, 4])
+    model_dict["zzz"] = pd.Index([1, 2, 3, 4])
+    assert (dict_to_test["zzz"] == model_dict["zzz"]).sum() == 4
+
+    dict_to_test["zzzz"] = pd.RangeIndex(0, 15)
+    model_dict["zzzz"] = pd.RangeIndex(0, 15)
+    assert (dict_to_test["zzzz"] == model_dict["zzzz"]).sum() == 15
 
     #TODO: add MultiIndex tests
 
