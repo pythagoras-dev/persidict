@@ -34,6 +34,10 @@ Note:
     All persistent dictionaries support multiple serialization formats, including
     pickle and JSON, with automatic type handling and collision-safe key encoding.
 """
+
+from importlib import metadata as _md
+__version__ = _md.version("persidict")
+
 from .safe_chars import *
 from .safe_str_tuple import *
 from .persi_dict import PersiDict, PersiDictKey
