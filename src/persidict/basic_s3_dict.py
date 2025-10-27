@@ -1,3 +1,13 @@
+"""Basic S3-backed persistent dictionary.
+
+This module provides `BasicS3Dict`, a concrete implementation of the
+`PersiDict` interface that stores each dictionary entry as a separate
+object in Amazon S3. It is designed for simple, low-overhead persistence
+without local caching, while exposing a familiar mapping-like API.
+
+See individual method docstrings for details on semantics and exceptions.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Optional
