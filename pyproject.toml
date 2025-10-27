@@ -37,6 +37,7 @@ dependencies = [
     "boto3",
     "sphinx-rtd-theme",
     "furo",
+    "sphinx-book-theme",
 ]
 
 [project.urls]

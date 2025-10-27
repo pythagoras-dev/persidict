@@ -1,6 +1,7 @@
 sphinx
 sphinx-rtd-theme
 pydata_sphinx_theme
+sphinx-book-theme
 furo
 # Runtime dependencies needed to import persidict modules
 parameterizable
