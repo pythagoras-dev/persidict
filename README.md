@@ -1,7 +1,7 @@
 # persidict
 
 [![PyPI version](https://img.shields.io/pypi/v/persidict.svg)](https://pypi.org/project/persidict/)
-[![Python versions](https://img.shields.io/pypi/pyversions/persidict.svg)](https://pypi.org/project/persidict/)
+[![Python versions](https://img.shields.io/pypi/pyversions/persidict.svg)](https://github.com/pythagoras-dev/persidict)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Downloads](https://static.pepy.tech/badge/persidict)](https://pepy.tech/project/persidict)
 [![Documentation Status](https://app.readthedocs.org/projects/persidict/badge/?version=latest)](https://persidict.readthedocs.io/en/latest/)
