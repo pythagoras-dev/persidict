@@ -1,3 +1,23 @@
+"""Read-through cached, append-only persistent dictionary adapter.
+
+This module provides `AppendOnlyDictCached`, an append-only facade that
+combines two concrete `PersiDict` implementations:
+
+- `main_dict`: the authoritative store (source of truth) where data is
+  actually persisted;
+- `data_cache`: a secondary `PersiDict` that is used strictly as a cache for
+  values.
+
+Because both backends are append-only (items may be added once and never
+modified or deleted), the cache can be trusted once it has a value for a key.
+Reads go to the cache first and fall back to the main dict on a miss, at which
+point the cache is populated. Writes always go to the main dict first and are
+mirrored to the cache after validation performed by the `PersiDict` base.
+
+The adapter delegates iteration, length, timestamps, and base properties to the
+main dict to keep semantics consistent with the authoritative store.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -8,40 +28,40 @@ from .singletons import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
 class AppendOnlyDictCached(PersiDict):
-    """Append-only dict facade with a read-through cache.
+    """Append-only `PersiDict` facade with a read-through cache.
 
-    This adapter wraps two concrete PersiDict instances:
-    - main_dict: the source of truth that actually persists data.
-    - data_cache: a second PersiDict used purely as a cache for values.
-
-    Both the main dict and the cache must have append_only=True. Keys can
-    be added once but never modified or deleted. Because of that contract, the
-    cache can be trusted when it already has a value for a key without
-    re-validating the main dict.
+    This adapter composes two concrete `PersiDict` instances and presents them
+    as a single append-only mapping. It trusts the cache because both backends
+    are append-only: once a key is written it will never be modified or
+    deleted.
 
     Behavior summary:
-    - Reads: __getitem__ first tries the cache, falls back to the main dict and
-      populates the cache on a miss.
-    - Membership: __contains__ returns True if the key is in the cache; else it
-      checks the main dict.
-    - Writes: __setitem__ writes to the main dict and mirrors the value into
-      the cache after argument validation by the PersiDict base.
-    - set_item_get_etag delegates the write to the main dict, mirrors the value
-      into the cache, and returns the ETag from the main dict.
-    - Deletion is not supported and will raise TypeError (append-only).
-    - Iteration, length, timestamps, base_url and base_dir are delegated to the
-      main dict. get_item_if_new_etag is delegated too, and on change the
-      value is cached.
+    - Reads: `__getitem__` first tries the cache, falls back to the main dict,
+      then populates the cache on a miss.
+    - Membership: `__contains__` returns True immediately if the key is in the
+      cache; otherwise it checks the main dict.
+    - Writes: `__setitem__` writes to the main dict and then mirrors the value
+      into the cache (after base validation performed by `PersiDict`).
+    - `set_item_get_etag`: delegates the write to the main dict, mirrors the
+      value into the cache, and returns the ETag from the main dict.
+    - Deletion: not supported (append-only), will raise `TypeError`.
+    - Iteration/length/timestamps: delegated to the main dict.
+
+    Attributes:
+      _main: The authoritative append-only `PersiDict` instance.
+      _data_cache: The append-only `PersiDict` used purely as a value cache.
 
     Args:
-      main_dict: The authoritative append-only PersiDict.
-      data_cache: A PersiDict used as a value cache; must be append-only and
-        compatible with main_dict's base_class_for_values and serialization_format.
+      main_dict: The authoritative append-only `PersiDict`.
+      data_cache: A `PersiDict` used as a cache; must be append-only and
+        compatible with `main_dict` (same `base_class_for_values` and
+        `serialization_format`).
 
     Raises:
-      TypeError: If main_dict or data_cache are not PersiDict instances.
-      ValueError: If either dict is not immutable (append-only) or their
-        base_class_for_values differ.
+      TypeError: If `main_dict` or `data_cache` are not `PersiDict` instances.
+      ValueError: If either dict is not append-only or their
+        `base_class_for_values` differ.
+
     """
 
     def __init__(self,
@@ -101,7 +121,11 @@ class AppendOnlyDictCached(PersiDict):
             return key in self._main
 
     def __len__(self) -> int:
-        """int: Number of items, delegated to the main dict."""
+        """Return the number of items.
+
+        Returns:
+            int: Number of items in the dictionary, delegated to the main dict.
+        """
         return len(self._main)
 
     def _generic_iter(self, result_type: set[str]):

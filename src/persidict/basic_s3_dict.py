@@ -165,7 +165,18 @@ class BasicS3Dict(PersiDict):
 
 
     def etag(self, key:NonEmptyPersiDictKey) -> str|None:
-        """Get an ETag for a key."""
+        """Get an ETag for a key.
+
+        Args:
+            key: Dictionary key (string or sequence of strings
+                or NonEmptySafeStrTuple).
+
+        Returns:
+            str|None: The ETag value for the S3 object, or None if not available.
+
+        Raises:
+            KeyError: If the key does not exist in S3.
+        """
         key = NonEmptySafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
         try:
