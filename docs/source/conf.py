@@ -7,8 +7,12 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'persidict'
-copyright = '2025, Vlad (Volodymyr) Pavlov'
-author = 'Vlad (Volodymyr) Pavlov'
+copyright = '2020-2025 Vlad (Volodymyr) Pavlov et al.'
+author = 'Vlad (Volodymyr) Pavlov et al'
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../src'))
 
 
 # -- General configuration ---------------------------------------------------
