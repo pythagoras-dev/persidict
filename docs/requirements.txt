@@ -7,4 +7,6 @@ joblib
 jsonpickle
 deepdiff
 boto3
+numpy
+pandas
 
