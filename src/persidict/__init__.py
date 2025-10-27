@@ -62,6 +62,8 @@ from .cached_mutable_dict import MutableDictCached
 from .local_dict import LocalDict
 
 __all__ = [
+    # Version
+    '__version__',
     # Core classes
     'PersiDict',
     'PersiDictKey',
