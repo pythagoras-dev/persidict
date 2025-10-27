@@ -1,4 +1,4 @@
-"""S3Dict_FileDirCached implementation that mimics S3Dict_Legacy but uses BasicS3Dict, FileDirDict, and cached classes."""
+"""S3Dict_FileDirCached implementation that uses BasicS3Dict, FileDirDict, and cached classes."""
 
 from __future__ import annotations
 

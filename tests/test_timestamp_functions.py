@@ -53,13 +53,13 @@ def test_file_dir_dict_timestamp_functions(tmpdir):
 
 @mock_aws
 def test_s3_dict_timestamp_functions(tmpdir):
-    """Test timestamp functions specifically for S3Dict_Legacy with longer delays."""
+    """Test timestamp functions with longer delays."""
     d = S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
     
-    # Add items with longer delays for S3Dict_Legacy timestamp precision
+    # Add items with longer delays timestamp precision
     for i, v in enumerate("abc"):  # Use fewer items to reduce test time
         d[v] = f"value_{v}"
-        min_sleep(d)  # Longer delay needed for S3Dict_Legacy
+        min_sleep(d)  # Longer delay
     
     # Test basic functionality
     oldest_keys = d.oldest_keys()

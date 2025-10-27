@@ -76,13 +76,7 @@ persidict.s3\_dict\_file\_dir\_cached module
    :show-inheritance:
    :undoc-members:
 
-persidict.s3\_dict\_legacy module
----------------------------------
 
-.. automodule:: persidict.s3_dict_legacy
-   :members:
-   :show-inheritance:
-   :undoc-members:
 
 persidict.safe\_chars module
 ----------------------------
