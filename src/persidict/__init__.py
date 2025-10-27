@@ -41,7 +41,10 @@ Note:
 """
 
 from importlib import metadata as _md
-__version__ = _md.version("persidict")
+try:
+    __version__ = _md.version("persidict")
+except _md.PackageNotFoundError:
+    __version__ = "unknown"
 
 from .safe_chars import *
 from .safe_str_tuple import *
