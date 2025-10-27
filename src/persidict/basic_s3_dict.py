@@ -602,5 +602,3 @@ class BasicS3Dict(PersiDict):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
             else:
                 raise
-
-# parameterizable.register_parameterizable_class(BasicS3Dict)

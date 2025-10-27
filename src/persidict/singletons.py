@@ -18,7 +18,6 @@ Examples:
 from typing import Any
 
 from parameterizable import ParameterizableClass
-    # , register_parameterizable_class)
 
 
 class Singleton(ParameterizableClass):
@@ -139,13 +138,6 @@ class ExecutionIsCompleteFlag(StatusFlag):
         instance.
     """
     pass
-
-
-# register_parameterizable_class(KeepCurrentFlag)
-# register_parameterizable_class(DeleteCurrentFlag)
-# register_parameterizable_class(ContinueNormalExecutionFlag)
-# register_parameterizable_class(ExecutionIsCompleteFlag)
-# register_parameterizable_class(ETagHasNotChangedFlag)
 
 _KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT = KeepCurrentFlag()

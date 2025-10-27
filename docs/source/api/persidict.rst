@@ -122,6 +122,4 @@ Module contents
 ---------------
 
 .. automodule:: persidict
-   :members:
    :show-inheritance:
-   :undoc-members:

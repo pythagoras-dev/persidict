@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 
 from deepdiff import DeepDiff
-from parameterizable import sort_dict_by_keys #,register_parameterizable_class
+from parameterizable import sort_dict_by_keys
 
 from .singletons import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
@@ -61,13 +61,6 @@ class WriteOnceDict(PersiDict):
     and you want to check this assumption (detect divergent values)
     without paying the full cost of always comparing values.
 
-    Attributes:
-        p_consistency_checks (float): Probability in [0, 1] of performing a
-            consistency check for a key that has been previously set.
-        consistency_checks_attempted (int): Number of checks that were
-            attempted.
-        consistency_checks_passed (int): Number of checks that succeeded.
-        consistency_checks_failed (int): Derived as attempted - passed.
 
     """
     _wrapped_dict: PersiDict
@@ -344,6 +337,3 @@ class WriteOnceDict(PersiDict):
         subdict = self._wrapped_dict.get_subdict(prefix_key)
         result = WriteOnceDict(subdict, self.p_consistency_checks)
         return result
-
-
-# register_parameterizable_class(WriteOnceDict)

@@ -4,6 +4,7 @@ This package provides a unified interface for persistent dictionary-like
 storage with various backends including filesystem and AWS S3.
 
 Classes:
+
     PersiDict: Abstract base class defining the unified interface for all
         persistent dictionaries.
     NonEmptySafeStrTuple: A flat tuple of URL/filename-safe strings that
@@ -11,24 +12,30 @@ Classes:
     FileDirDict: A dictionary that stores key-value pairs as files on a
         local hard drive. Keys compose filenames, values are stored as
         pickle or JSON objects.
+
     BasicS3Dict: A basic S3-backed dictionary with direct S3 operations.
+
     WriteOnceDict: A write-once wrapper that prevents modification of existing
         items after initial storage.
     EmptyDict: Equivalent of null device in OS - accepts all writes but discards
         them, returns nothing on reads. Always appears empty regardless of
         operations performed. Useful for testing, debugging, or as a placeholder.
+
     OverlappingMultiDict: A dictionary that can handle overlapping key spaces.
 
 Functions:
+
     get_safe_chars(): Returns a set of URL/filename-safe characters permitted
         in keys.
     replace_unsafe_chars(): Replaces forbidden characters in a string with
         safe alternatives.
 
 Constants:
+
     KEEP_CURRENT, DELETE_CURRENT: Special joker values for conditional operations.
 
 Note:
+
     All persistent dictionaries support multiple serialization formats, including
     pickle and JSON, with automatic type handling and collision-safe key encoding.
 """

@@ -210,6 +210,3 @@ class S3Dict_FileDirCached(PersiDict):
 
 
 S3Dict = S3Dict_FileDirCached # Alias for backward compatibility
-
-
-# parameterizable.register_parameterizable_class(S3Dict_FileDirCached)

@@ -497,6 +497,3 @@ class LocalDict(PersiDict):
                          append_only=self.append_only,
                          base_class_for_values=self.base_class_for_values,
                          prune_interval=self._prune_interval)
-
-
-# parameterizable.register_parameterizable_class(LocalDict)

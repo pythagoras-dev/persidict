@@ -36,6 +36,7 @@ class AppendOnlyDictCached(PersiDict):
     deleted.
 
     Behavior summary:
+
     - Reads: `__getitem__` first tries the cache, falls back to the main dict,
       then populates the cache on a miss.
     - Membership: `__contains__` returns True immediately if the key is in the
