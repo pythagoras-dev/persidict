@@ -1,0 +1,10 @@
+sphinx
+sphinx-rtd-theme
+# Runtime dependencies needed to import persidict modules
+parameterizable
+lz4
+joblib
+jsonpickle
+deepdiff
+boto3
+
