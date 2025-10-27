@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "persidict"
-version = "0.105.18"
+version = "0.105.19"
 description = "Simple persistent key-value store for Python. Values are stored as files on a disk or as S3 objects on AWS cloud."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,16 +42,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/pythagoras-dev/persidict"
+Docs = "https://persidict.readthedocs.io/"
 
 [project.optional-dependencies]
-dev = [
-    "numpy",
-    "pandas",
-    "boto3",
-    "moto",
-    "pytest"
-]
-
 aws = [
     "boto3"
 ]
@@ -62,4 +55,12 @@ docs = [
     "sphinx-rtd-theme",
     "pydata_sphinx_theme",
     "furo",
+]
+
+dev = [
+    "numpy",
+    "pandas",
+    "boto3",
+    "moto",
+    "pytest"
 ]
