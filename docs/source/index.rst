@@ -6,7 +6,7 @@ persidict documentation
    :alt: PyPI version
 
 .. image:: https://img.shields.io/pypi/pyversions/persidict.svg
-   :target: https://pypi.org/project/persidict/
+   :target: https://github.com/pythagoras-dev/persidict
    :alt: Python versions
 
 .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
