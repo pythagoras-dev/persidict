@@ -61,5 +61,9 @@ dev = [
     "pandas",
     "boto3",
     "moto",
-    "pytest"
+    "pytest",
+    "sphinx",
+    "sphinx-rtd-theme",
+    "pydata_sphinx_theme",
+    "furo",
 ]
