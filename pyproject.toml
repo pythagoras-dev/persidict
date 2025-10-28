@@ -49,7 +49,6 @@ aws = [
     "boto3"
 ]
 
-[dependency-groups]
 docs = [
     "sphinx",
     "sphinx-rtd-theme",
