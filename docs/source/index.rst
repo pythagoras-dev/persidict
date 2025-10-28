@@ -21,6 +21,15 @@ persidict documentation
    :target: https://persidict.readthedocs.io/en/latest/
    :alt: Documentation Status
 
+.. image:: https://img.shields.io/badge/code_style-pep8-blue.svg
+   :target: https://peps.python.org/pep-0008/
+   :alt: Code style: pep8
+
+.. image:: https://img.shields.io/badge/docstrings_style-Google-blue
+   :target: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+   :alt: Docstring Style: Google
+
+
 **persidict** is a lightweight persistent key-value store for Python designed for distributed
 environments where multiple processes on different machines concurrently work with the same store.
 
