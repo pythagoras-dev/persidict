@@ -1,6 +1,26 @@
 persidict documentation
 =======================
 
+.. image:: https://img.shields.io/pypi/v/persidict.svg
+   :target: https://pypi.org/project/persidict/
+   :alt: PyPI version
+
+.. image:: https://img.shields.io/pypi/pyversions/persidict.svg
+   :target: https://pypi.org/project/persidict/
+   :alt: Python versions
+
+.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+   :target: https://github.com/pythagoras-dev/persidict/blob/master/LICENSE
+   :alt: License: MIT
+
+.. image:: https://static.pepy.tech/badge/persidict
+   :target: https://pepy.tech/project/persidict
+   :alt: Downloads
+
+.. image:: https://app.readthedocs.org/projects/persidict/badge/?version=latest
+   :target: https://persidict.readthedocs.io/en/latest/
+   :alt: Documentation Status
+
 **persidict** is a lightweight persistent key-value store for Python designed for distributed
 environments where multiple processes on different machines concurrently work with the same store.
 
