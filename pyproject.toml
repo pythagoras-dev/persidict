@@ -37,7 +37,7 @@ dependencies = [
     "boto3",
     "sphinx-rtd-theme",
     "furo",
-    "sphinx-book-theme",
+    "sphinx-book-theme"
 ]
 
 [project.urls]
@@ -62,6 +62,7 @@ dev = [
     "boto3",
     "moto",
     "pytest",
+    "coverage",
     "sphinx",
     "sphinx-rtd-theme",
     "pydata_sphinx_theme",
