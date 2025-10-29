@@ -9,12 +9,12 @@ persidict documentation
    :target: https://github.com/pythagoras-dev/persidict
    :alt: Python versions
 
-.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+.. image:: https://img.shields.io/badge/License-MIT-blue.svg
    :target: https://github.com/pythagoras-dev/persidict/blob/master/LICENSE
    :alt: License: MIT
 
-.. image:: https://static.pepy.tech/badge/persidict
-   :target: https://pepy.tech/project/persidict
+.. image:: https://img.shields.io/pypi/dm/persidict?color=blue
+   :target: https://pypistats.org/packages/persidict
    :alt: Downloads
 
 .. image:: https://app.readthedocs.org/projects/persidict/badge/?version=latest
