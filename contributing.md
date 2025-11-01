@@ -6,7 +6,8 @@ Your help is greatly appreciated. These guidelines will help you get started.
 ## Getting Started
 
 1. **Learn the Foundations:**
-   Familiarize yourself with the project's [design](design_principles.md) principles.
+   Familiarize yourself with the project's [design](design_principles.md) 
+   principles and [docstrings and comments](docstrings_and_comments.md) guidelines.
 
 
 2. **Fork and Clone:**
