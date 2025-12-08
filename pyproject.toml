@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "persidict"
-version = "0.105.25"
+version = "0.105.26"
 description = "Simple persistent key-value store for Python. Values are stored as files on a disk or as S3 objects on AWS cloud."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,10 +34,7 @@ dependencies = [
     "joblib",
     "jsonpickle",
     "deepdiff",
-    "boto3",
-    "sphinx-rtd-theme",
-    "furo",
-    "sphinx-book-theme"
+    "boto3"
 ]
 
 [project.urls]
@@ -51,7 +48,6 @@ aws = [
 
 docs = [
     "sphinx",
-    "sphinx-rtd-theme",
     "pydata_sphinx_theme",
     "furo",
 ]
@@ -64,7 +60,5 @@ dev = [
     "pytest",
     "coverage",
     "sphinx",
-    "sphinx-rtd-theme",
     "pydata_sphinx_theme",
-    "furo",
 ]
