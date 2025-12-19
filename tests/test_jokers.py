@@ -64,10 +64,10 @@ def test_jokers_access_jsparams_handles_jokers():
     jsparams = dumpjs(payload)
     accessed = access_jsparams(jsparams, "keep", "delete", "nested")
 
-    assert loadjs(json.dumps(accessed["keep"])) is KEEP_CURRENT
-    assert loadjs(json.dumps(accessed["delete"])) is DELETE_CURRENT
+    assert loadjs(dumpjs(accessed["keep"])) is KEEP_CURRENT
+    assert loadjs(dumpjs(accessed["delete"])) is DELETE_CURRENT
 
-    nested = loadjs(json.dumps(accessed["nested"]))
+    nested = loadjs(dumpjs(accessed["nested"]))
     assert nested["keep"] is KEEP_CURRENT
 
 
