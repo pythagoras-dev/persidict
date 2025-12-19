@@ -1,5 +1,7 @@
 
-from parameterizable import dumpjs, loadjs
+import json
+
+from parameterizable import access_jsparams, dumpjs, loadjs, update_jsparams
 from persidict.singletons import (
     DELETE_CURRENT,
     DeleteCurrentFlag,
@@ -50,3 +52,37 @@ def test_jokers_dumpjs_loadjs_in_collections():
     assert restored["delete"] is DELETE_CURRENT
     assert restored["list"][0] is KEEP_CURRENT
     assert restored["list"][1] is DELETE_CURRENT
+
+
+def test_jokers_access_jsparams_handles_jokers():
+    payload = {
+        "keep": KEEP_CURRENT,
+        "delete": DELETE_CURRENT,
+        "nested": {"keep": KEEP_CURRENT},
+    }
+
+    jsparams = dumpjs(payload)
+    accessed = access_jsparams(jsparams, "keep", "delete", "nested")
+
+    assert loadjs(json.dumps(accessed["keep"])) is KEEP_CURRENT
+    assert loadjs(json.dumps(accessed["delete"])) is DELETE_CURRENT
+
+    nested = loadjs(json.dumps(accessed["nested"]))
+    assert nested["keep"] is KEEP_CURRENT
+
+
+def test_jokers_update_jsparams_preserves_jokers():
+    payload = {
+        "keep": KEEP_CURRENT,
+        "delete": DELETE_CURRENT,
+        "note": "old",
+    }
+
+    jsparams = dumpjs(payload)
+
+    updated_jsparams = update_jsparams(jsparams, note="new")
+    restored = loadjs(updated_jsparams)
+
+    assert restored["keep"] is KEEP_CURRENT
+    assert restored["delete"] is DELETE_CURRENT
+    assert restored["note"] == "new"
