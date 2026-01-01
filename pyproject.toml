@@ -29,7 +29,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 dependencies = [
-    "parameterizable",
+    "mixinforge",
     "lz4",
     "joblib",
     "jsonpickle",

@@ -19,8 +19,7 @@ import joblib
 import jsonpickle
 import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
-import parameterizable
-from parameterizable import sort_dict_by_keys
+from mixinforge import sort_dict_by_keys
 
 from .singletons import Joker, EXECUTION_IS_COMPLETE
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
@@ -170,8 +169,8 @@ class FileDirDict(PersiDict):
     def get_params(self):
         """Return configuration parameters of the dictionary.
 
-        This method is needed to support the Parameterizable API and is absent
-        in the standard dict API.
+        This method is needed to support the ParameterizableMixin API and
+        is absent in the standard dict API.
 
         Returns:
             dict: A mapping of parameter names to values including base_dir

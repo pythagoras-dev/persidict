@@ -18,8 +18,7 @@ import joblib
 import jsonpickle
 from botocore.exceptions import ClientError
 
-import parameterizable
-from parameterizable.dict_sorter import sort_dict_by_keys
+from mixinforge import sort_dict_by_keys
 
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple

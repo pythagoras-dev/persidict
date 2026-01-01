@@ -4,8 +4,6 @@ import time
 from copy import deepcopy
 from typing import Any, Optional, Iterable
 
-import parameterizable
-
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .singletons import EXECUTION_IS_COMPLETE

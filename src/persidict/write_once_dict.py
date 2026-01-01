@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 
 from deepdiff import DeepDiff
-from parameterizable import sort_dict_by_keys
+from mixinforge import sort_dict_by_keys
 
 from .singletons import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
 from .persi_dict import PersiDict, NonEmptyPersiDictKey

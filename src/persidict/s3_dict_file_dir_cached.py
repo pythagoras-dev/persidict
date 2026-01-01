@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-import parameterizable
-from parameterizable import sort_dict_by_keys
+from mixinforge import sort_dict_by_keys
 
 from .basic_s3_dict import BasicS3Dict
 from .file_dir_dict import FileDirDict, FILEDIRDICT_DEFAULT_BASE_DIR

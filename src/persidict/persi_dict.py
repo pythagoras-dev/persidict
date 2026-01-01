@@ -19,7 +19,7 @@ from __future__ import annotations
 from abc import abstractmethod
 import heapq
 import random
-from parameterizable import ParameterizableClass, sort_dict_by_keys
+from mixinforge import ParameterizableMixin, sort_dict_by_keys
 from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
@@ -41,7 +41,7 @@ If a string (or a sequence of strings) is passed to a PersiDict as a key,
 it will be automatically converted into SafeStrTuple.
 """
 
-class PersiDict(MutableMapping, ParameterizableClass):
+class PersiDict(MutableMapping, ParameterizableMixin):
     """Abstract dict-like interface for durable key-value stores.
 
     Keys are URL/filename-safe sequences of strings (SafeStrTuple). Concrete
@@ -108,7 +108,7 @@ class PersiDict(MutableMapping, ParameterizableClass):
                 raise ValueError("For non-string values serialization_format must be either 'pkl' or 'json'.")
         self.base_class_for_values = base_class_for_values
 
-        ParameterizableClass.__init__(self)
+        ParameterizableMixin.__init__(self)
 
 
     def get_params(self):

@@ -17,10 +17,10 @@ Examples:
 """
 from typing import Any
 
-from parameterizable import ParameterizableClass
+from mixinforge import ParameterizableMixin
 
 
-class Singleton(ParameterizableClass):
+class Singleton(ParameterizableMixin):
     """Base class for singleton classes.
 
     This class implements a singleton pattern where each subclass maintains
@@ -29,7 +29,7 @@ class Singleton(ParameterizableClass):
     _instances: dict[type, "Singleton"] = {}
 
     def get_params(self) -> dict[str, Any]:
-        """Return parameters for parameterizable API.
+        """Return parameters for parameterizableMixin API.
 
         Returns:
             dict[str, Any]: Always an empty dict for joker flags.

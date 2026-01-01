@@ -1,7 +1,7 @@
 
 import json
 
-from parameterizable import access_jsparams, dumpjs, loadjs, update_jsparams
+from mixinforge import access_jsparams, dumpjs, loadjs, update_jsparams
 from persidict.singletons import (
     DELETE_CURRENT,
     DeleteCurrentFlag,
