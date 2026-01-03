@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/persidict.svg)](https://pypi.org/project/persidict/)
 [![Python versions](https://img.shields.io/pypi/pyversions/persidict.svg)](https://github.com/pythagoras-dev/persidict)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/pythagoras-dev/persidict/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/persidict?color=blue)](https://pypistats.org/packages/persidict)
 [![Documentation Status](https://app.readthedocs.org/projects/persidict/badge/?version=latest)](https://persidict.readthedocs.io/en/latest/)
 [![Code style: pep8](https://img.shields.io/badge/code_style-pep8-blue.svg)](https://peps.python.org/pep-0008/)
