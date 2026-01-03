@@ -4,7 +4,7 @@ pydata_sphinx_theme
 sphinx-book-theme
 furo
 # Runtime dependencies needed to import persidict modules
-parameterizable
+mixinforge
 lz4
 joblib
 jsonpickle

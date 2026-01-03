@@ -303,7 +303,7 @@ Utility Methods
        Deletes key if it exists, returns True; otherwise returns False
 
    get_params() -> dict
-       Returns configuration parameters (parameterizable API)
+       Returns configuration parameters (mixinforge API)
 
 ETag Operations
 ^^^^^^^^^^^^^^^
@@ -451,7 +451,7 @@ Dependencies
 
 Core dependencies:
 
-* parameterizable
+* mixinforge
 * jsonpickle
 * joblib
 * lz4

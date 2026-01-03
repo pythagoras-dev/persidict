@@ -225,7 +225,7 @@ from the dictionary when assigned to a key.
 | `get_subdict(prefix_key)` | `PersiDict` | Returns a new `PersiDict` instance that provides a view into a subset of keys sharing a common prefix. |
 | `subdicts()` | `dict[str, PersiDict]` | Returns a dictionary mapping all first-level key prefixes to their corresponding sub-dictionary views. |
 | `discard(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
-| `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `parameterizable` API. |
+| `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `mixinforge` API. |
 
 ## 7. Installation
 
@@ -257,7 +257,7 @@ pip install persidict[dev]
 
 `persidict` has the following core dependencies:
 
-* [parameterizable](https://pypi.org/project/parameterizable/)
+* [mixinforge](https://pypi.org/project/mixinforge/)
 * [jsonpickle](https://jsonpickle.github.io)
 * [joblib](https://joblib.readthedocs.io)
 * [lz4](https://python-lz4.readthedocs.io)

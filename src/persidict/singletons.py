@@ -17,37 +17,23 @@ Examples:
 """
 from typing import Any
 
-from mixinforge import ParameterizableMixin
+from mixinforge import SingletonMixin
 
 
-class Singleton(ParameterizableMixin):
+class Singleton(SingletonMixin):
     """Base class for singleton classes.
 
     This class implements a singleton pattern where each subclass maintains
     exactly one instance that is returned on every instantiation.
     """
-    _instances: dict[type, "Singleton"] = {}
 
     def get_params(self) -> dict[str, Any]:
-        """Return parameters for parameterizableMixin API.
+        """Return parameters for mixinforge API.
 
         Returns:
             dict[str, Any]: Always an empty dict for joker flags.
         """
         return {}
-
-    def __new__(cls):
-        """Create or return the singleton instance for the subclass.
-        
-        Args:
-            cls: The class for which to create or retrieve the singleton instance.
-            
-        Returns:
-            Joker: The singleton instance for the specified class.
-        """
-        if cls not in Singleton._instances:
-            Singleton._instances[cls] = super().__new__(cls)
-        return Singleton._instances[cls]
 
 
 class Joker(Singleton):
