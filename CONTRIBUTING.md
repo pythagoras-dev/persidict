@@ -6,8 +6,10 @@ Your help is greatly appreciated. These guidelines will help you get started.
 ## Getting Started
 
 1. **Learn the Foundations:**
-   Familiarize yourself with the project's [design](https://github.com/pythagoras-dev/persidict/blob/master/design_principles.md) 
-   principles and [docstrings and comments](https://github.com/pythagoras-dev/persidict/blob/master/docstrings_and_comments.md) guidelines.
+   Familiarize yourself with the project's [design](https://github.com/pythagoras-dev/persidict/blob/master/design_principles.md)
+   principles, [docstrings and comments](https://github.com/pythagoras-dev/persidict/blob/master/docstrings_and_comments.md) guidelines,
+   [type hints](https://github.com/pythagoras-dev/persidict/blob/master/type_hints.md) guidelines,
+   and [unit testing](https://github.com/pythagoras-dev/persidict/blob/master/unit_tests.md) guide.
 
 
 2. **Fork and Clone:**

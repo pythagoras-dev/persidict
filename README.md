@@ -273,8 +273,12 @@ For development and testing, the following packages are used:
 * [moto](http://getmoto.org)
 
 ## 9. Contributing
-Contributions are welcome! Please see the contributing [guide](https://github.com/pythagoras-dev/persidict/blob/master/CONTRIBUTING.md) for more details 
+Contributions are welcome! Please see the contributing [guide](https://github.com/pythagoras-dev/persidict/blob/master/CONTRIBUTING.md) for more details
 on how to get started, run tests, and submit pull requests.
+
+For guidance on code quality, refer to:
+* [Type hints guidelines](https://github.com/pythagoras-dev/persidict/blob/master/type_hints.md)
+* [Unit testing guide](https://github.com/pythagoras-dev/persidict/blob/master/unit_tests.md)
 
 ## 10. License
 `persidict` is licensed under the MIT License. See the [LICENSE](https://github.com/pythagoras-dev/persidict/blob/master/LICENSE) file for more details.
