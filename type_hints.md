@@ -18,7 +18,7 @@ and allow static type checkers to catch bugs before runtime.
 
 ## Modern Python syntax
 
-Use modern type hint syntax available in Python 3.10+:
+Use modern type hint syntax available in Python 3.11+:
 
 **Union types** with `|`:
 ```python
