@@ -72,12 +72,12 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         """Initialize base parameters shared by all persistent dictionaries.
 
         Args:
-            append_only (bool): If True, items cannot be modified or deleted.
+            append_only: If True, items cannot be modified or deleted.
                 Defaults to False.
-            base_class_for_values (Optional[type]): Optional base class that values
+            base_class_for_values: Optional base class that values
                 must inherit from. If None, values are not type-restricted.
                 Defaults to None.
-            serialization_format (str): File extension/format for stored values.
+            serialization_format: File extension/format for stored values.
                 Defaults to "pkl".
             *args: Additional positional arguments (ignored in base class, reserved
                 for subclasses).
@@ -492,11 +492,11 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         and return that default.
 
         Args:
-            key (PersiDictKey): Key (string, sequence of strings, or SafeStrTuple).
-            default (Any): Value to insert if the key is not present. Defaults to None.
+            key: Key (string, sequence of strings, or SafeStrTuple).
+            default: Value to insert if the key is not present. Defaults to None.
 
         Returns:
-            Any: Existing value if key is present; otherwise the provided default value.
+            Existing value if key is present; otherwise the provided default value.
 
         Raises:
             TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT).
@@ -517,10 +517,10 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         Otherwise, attempts to compare as a mapping by comparing all keys and values.
 
         Args:
-            other (PersiDict): Another dictionary-like object to compare against.
+            other: Another dictionary-like object to compare against.
 
         Returns:
-            bool: True if the dictionaries are considered equal, False otherwise.
+            True if the dictionaries are considered equal, False otherwise.
         """
         try:
             if type(self) is type(other) :
@@ -718,18 +718,18 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         return f"{self.timestamp(key):.6f}"
 
 
-    def oldest_keys(self, max_n=None) -> list[NonEmptySafeStrTuple]:
+    def oldest_keys(self, max_n: int|None=None) -> list[NonEmptySafeStrTuple]:
         """Return up to max_n oldest keys in the dictionary.
 
         This method is absent in the original Python dict API.
 
         Args:
-            max_n (int | None): Maximum number of keys to return. If None,
+            max_n: Maximum number of keys to return. If None,
                 return all keys sorted by age (oldest first). Values <= 0
                 yield an empty list. Defaults to None.
 
         Returns:
-            list[SafeStrTuple]: The oldest keys, oldest first.
+            The oldest keys, oldest first.
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp
@@ -752,12 +752,12 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         This method is absent in the original Python dict API.
 
         Args:
-            max_n (int | None): Maximum number of values to return. If None,
+            max_n: Maximum number of values to return. If None,
                 return values for all keys sorted by age (oldest first). Values
                 <= 0 yield an empty list.
 
         Returns:
-            list[Any]: Values corresponding to the oldest keys.
+            Values corresponding to the oldest keys.
         """
         return [self[k] for k in self.oldest_keys(max_n)]
 
@@ -768,12 +768,12 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         This method is absent in the original Python dict API.
 
         Args:
-            max_n (int | None): Maximum number of keys to return. If None,
+            max_n: Maximum number of keys to return. If None,
                 return all keys sorted by age (newest first). Values <= 0
                 yield an empty list. Defaults to None.
 
         Returns:
-            list[SafeStrTuple]: The newest keys, newest first.
+            The newest keys, newest first.
         """
         if max_n is None:
             # If we need all keys, sort them all by timestamp in reverse order
@@ -796,11 +796,11 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         This method is absent in the original Python dict API.
 
         Args:
-            max_n (int | None): Maximum number of values to return. If None,
+            max_n: Maximum number of values to return. If None,
                 return values for all keys sorted by age (newest first). Values
                 <= 0 yield an empty list.
 
         Returns:
-            list[Any]: Values corresponding to the newest keys.
+            Values corresponding to the newest keys.
         """
         return [self[k] for k in self.newest_keys(max_n)]

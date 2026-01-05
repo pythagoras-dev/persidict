@@ -18,9 +18,9 @@ def get_safe_chars() -> set[str]:
     """Get the set of allowed characters.
 
     Returns:
-        set[str]: A copy of the set of characters considered safe for
-            building file names and URL components. Includes ASCII letters,
-            digits, and the characters ()_-~.= .
+        A copy of the set of characters considered safe for
+        building file names and URL components. Includes ASCII letters,
+        digits, and the characters ()_-~.= .
     """
     return SAFE_CHARS_SET.copy()
 
@@ -31,12 +31,12 @@ def replace_unsafe_chars(a_str: str, replace_with: str) -> str:
     replacement substring.
 
     Args:
-        a_str (str): Input string that may contain unsafe characters.
-        replace_with (str): The substring to use for every unsafe character
+        a_str: Input string that may contain unsafe characters.
+        replace_with: The substring to use for every unsafe character
             encountered in a_str.
 
     Returns:
-        str: The transformed string where all unsafe characters are replaced
+        The transformed string where all unsafe characters are replaced
         by the provided replacement substring.
     """
     safe_chars = get_safe_chars()
@@ -48,11 +48,11 @@ def contains_unsafe_chars(a_str: str) -> bool:
     """Check if a string contains unsafe characters.
 
     Args:
-        a_str (str): Input string to check for unsafe characters.
+        a_str: Input string to check for unsafe characters.
 
     Returns:
-        bool: True if the string contains any character not in the safe
-            character set, False otherwise.
+        True if the string contains any character not in the safe
+        character set, False otherwise.
     """
     safe_chars = get_safe_chars()
     return any(c not in safe_chars for c in a_str)

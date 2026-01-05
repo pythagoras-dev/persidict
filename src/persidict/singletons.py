@@ -133,7 +133,7 @@ This flag can be assigned to a key in a PersiDict to indicate that any existing
 value for that key should not be modified during an update operation.
 
 If assigned to a key that does not exist, the operation will succeed without
-eny change.
+any change.
 
 Example:
     >>> d = PersiDict()

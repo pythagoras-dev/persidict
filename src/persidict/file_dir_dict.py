@@ -48,16 +48,16 @@ if os.name == 'nt':
 
     def add_long_path_prefix(path: str) -> str:
         """Add the '\\\\?\\' prefix to a path on Windows to support long paths.
-        
+
         Handles both regular paths and UNC paths correctly.
 
         Args:
-            path (str): The original file or directory path.
+            path: The original file or directory path.
 
         Returns:
-            str: The modified path with the appropriate prefix if on Windows
-                and not already present; otherwise, the original path.
-                UNC paths get '\\\\?\\UNC\\' prefix, regular paths get '\\\\?\\'.
+            The modified path with the appropriate prefix if on Windows
+            and not already present; otherwise, the original path.
+            UNC paths get '\\\\?\\UNC\\' prefix, regular paths get '\\\\?\\'.
         """
         if path.startswith('\\\\?\\'):
             return path
@@ -69,16 +69,16 @@ if os.name == 'nt':
 
     def drop_long_path_prefix(path: str) -> str:
         """Remove the '\\\\?\\' prefix from a path on Windows if present.
-        
+
         Handles both regular paths and UNC paths correctly.
 
         Args:
-            path (str): The file or directory path, possibly with the '\\\\?\\' prefix.
+            path: The file or directory path, possibly with the '\\\\?\\' prefix.
 
         Returns:
-            str: The path without the '\\\\?\\' prefix if it was present; otherwise,
-                the original path. UNC paths are converted back from '\\\\?\\UNC\\' 
-                format to '\\\\' format.
+            The path without the '\\\\?\\' prefix if it was present; otherwise,
+            the original path. UNC paths are converted back from '\\\\?\\UNC\\'
+            format to '\\\\' format.
         """
         if path.startswith('\\\\?\\UNC\\'):
             # UNC path: \\?\UNC\server\share -> \\server\share
@@ -125,17 +125,17 @@ class FileDirDict(PersiDict):
         """Initialize a filesystem-backed persistent dictionary.
 
         Args:
-            base_dir (str): Base directory where all files are stored. Created
+            base_dir: Base directory where all files are stored. Created
                 if it does not exist.
-            serialization_format (str): File extension/format to use for stored values.
+            serialization_format: File extension/format to use for stored values.
                 - "pkl" or "json": arbitrary Python objects are supported.
                 - any other value: only strings are supported and stored as text.
-            append_only (bool): If True, existing items cannot be modified
+            append_only: If True, existing items cannot be modified
                 or deleted.
-            digest_len (int): Length of a hash suffix appended to each key path
+            digest_len: Length of a hash suffix appended to each key path
                 element to avoid case-insensitive collisions. Use 0 to disable.
                 If you decide to enable it (not 0), we recommend at least 4.
-            base_class_for_values (Optional[type]): Optional base class that all
+            base_class_for_values: Optional base class that all
                 stored values must be instances of. If provided and not ``str``,
                 then serialization_format must be either "pkl" or "json".
 
@@ -261,18 +261,18 @@ class FileDirDict(PersiDict):
         are created.
 
         Args:
-            key (SafeStrTuple): The key to convert. It will be temporarily
+            key: The key to convert. It will be temporarily
                 signed according to digest_len to produce collision-safe names.
-            create_subdirs (bool): If True, create any missing intermediate
+            create_subdirs: If True, create any missing intermediate
                 directories.
-            is_file_path (bool): If True, return a file path ending with
+            is_file_path: If True, return a file path ending with
                 ".{serialization_format}"; otherwise return just the directory path for
                 the key prefix.
 
         Returns:
-            str: An absolute path within base_dir corresponding to the key. On
-                Windows, this path is prefixed with '\\\\?\\' to support paths
-                longer than 260 characters.
+            An absolute path within base_dir corresponding to the key. On
+            Windows, this path is prefixed with '\\\\?\\' to support paths
+            longer than 260 characters.
         """
 
         key = sign_safe_str_tuple(key, self.digest_len)

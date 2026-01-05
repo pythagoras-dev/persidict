@@ -52,11 +52,11 @@ class _RAMBackend:
         """Return a child node for the given path segment, creating if missing.
 
         Args:
-            name (str): A single safe string segment representing the first-level
+            name: A single safe string segment representing the first-level
                 part of a hierarchical key.
 
         Returns:
-            _RAMBackend: The existing or newly created child backend for the
+            The existing or newly created child backend for the
             provided segment.
 
         Notes:
@@ -77,11 +77,11 @@ class _RAMBackend:
         last written.
 
         Args:
-            serialization_format (str): Object type label under which values are
+            serialization_format: Object type label under which values are
                 grouped (e.g., "pkl", "json"). No validation is performed here.
 
         Returns:
-            dict[str, tuple[Any, float]]: The mutable mapping for this serialization_format.
+            The mutable mapping for this serialization_format.
             Modifications affect the backend state directly.
         """
         bucket = self.values.get(serialization_format)

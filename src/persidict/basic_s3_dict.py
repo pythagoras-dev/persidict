@@ -28,13 +28,13 @@ from .singletons import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
 
 
 def not_found_error(e:ClientError) -> bool:
-    """Helper function to check if a ClientError indicates a missing S3 object.
+    """Check if a ClientError indicates a missing S3 object.
 
     Args:
         e: The ClientError exception to check.
 
     Returns:
-        bool: True if the error indicates a missing object (404, NoSuchKey),
+        True if the error indicates a missing object (404, NoSuchKey),
         False otherwise.
     """
     status = e.response['ResponseMetadata']['HTTPStatusCode']

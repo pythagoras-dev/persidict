@@ -45,15 +45,15 @@ class OverlappingMultiDict:
         """Initialize the container and create sub-dictionaries.
 
         Args:
-            dict_type (Type[PersiDict]): A subclass of PersiDict that will be 
+            dict_type: A subclass of PersiDict that will be
                 instantiated for each serialization_format provided via individual_subdicts_params.
-            shared_subdicts_params (Dict[str, Any]): Parameters shared by all 
+            shared_subdicts_params: Parameters shared by all
                 sub-dicts (e.g., base_dir, bucket).
-            **individual_subdicts_params (Dict[str, Dict[str, Any]]): Keyword 
-                arguments where each key is a serialization_format (also the attribute name 
-                to be created) and each value is a dict of parameters specific to 
-                that sub-dict. These are merged with shared_subdicts_params when 
-                constructing the sub-dict. The resulting dict also receives 
+            **individual_subdicts_params: Keyword
+                arguments where each key is a serialization_format (also the attribute name
+                to be created) and each value is a dict of parameters specific to
+                that sub-dict. These are merged with shared_subdicts_params when
+                constructing the sub-dict. The resulting dict also receives
                 serialization_format=<key>.
 
         Raises:
