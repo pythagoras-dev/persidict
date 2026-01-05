@@ -6,7 +6,7 @@ from typing import Any, Optional, Iterable
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
-from .singletons import EXECUTION_IS_COMPLETE
+from .jokers_and_status_flags import EXECUTION_IS_COMPLETE
 
 
 class _RAMBackend:

@@ -24,9 +24,9 @@ from typing import Any, Sequence, Optional
 from collections.abc import MutableMapping
 
 from . import NonEmptySafeStrTuple
-from .singletons import (KEEP_CURRENT, DELETE_CURRENT, Joker,
-                         CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
-                         ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED)
+from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
+                                      CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
+                                      ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 

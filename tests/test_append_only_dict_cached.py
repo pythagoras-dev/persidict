@@ -4,8 +4,8 @@ import pytest
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
 from persidict.persi_dict import PersiDict
-from persidict.singletons import ETAG_HAS_NOT_CHANGED
-from persidict.singletons import KEEP_CURRENT
+from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED
+from persidict.jokers_and_status_flags import KEEP_CURRENT
 
 
 @pytest.fixture()

@@ -3,7 +3,7 @@ import pytest
 
 from persidict import LocalDict
 from persidict.safe_str_tuple import SafeStrTuple
-from persidict.singletons import KEEP_CURRENT, DELETE_CURRENT
+from persidict.jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT
 
 # LocalDict uses time.time(), a small sleep ensures distinct timestamps
 MIN_SLEEP = 0.02

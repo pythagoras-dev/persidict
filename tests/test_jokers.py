@@ -2,7 +2,7 @@
 import json
 
 from mixinforge import access_jsparams, dumpjs, loadjs, update_jsparams
-from persidict.singletons import (
+from persidict.jokers_and_status_flags import (
     DELETE_CURRENT,
     DeleteCurrentFlag,
     KEEP_CURRENT,

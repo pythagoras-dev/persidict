@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .safe_str_tuple import NonEmptySafeStrTuple
-from .singletons import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
+from .jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
 class MutableDictCached(PersiDict):

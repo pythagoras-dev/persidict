@@ -23,8 +23,8 @@ from mixinforge import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey
-from .singletons import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
-                         ETAG_HAS_NOT_CHANGED)
+from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
+                                      ETAG_HAS_NOT_CHANGED)
 
 
 def not_found_error(e:ClientError) -> bool:

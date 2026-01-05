@@ -15,7 +15,7 @@ import time
 from deepdiff import DeepDiff
 from mixinforge import sort_dict_by_keys
 
-from .singletons import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
+from .jokers_and_status_flags import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
 from .persi_dict import PersiDict, NonEmptyPersiDictKey
 from .file_dir_dict import FileDirDict
 import random

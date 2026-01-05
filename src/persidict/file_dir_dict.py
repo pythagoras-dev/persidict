@@ -21,7 +21,7 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 from mixinforge import sort_dict_by_keys
 
-from .singletons import Joker, EXECUTION_IS_COMPLETE
+from .jokers_and_status_flags import Joker, EXECUTION_IS_COMPLETE
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
