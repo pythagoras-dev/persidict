@@ -15,28 +15,10 @@ Examples:
     >>> d[key] = KEEP_CURRENT  # Do not alter existing value
     >>> d[key] = DELETE_CURRENT  # Remove key if present
 """
-from typing import Any
-
 from mixinforge import SingletonMixin
 
 
-class Singleton(SingletonMixin):
-    """Base class for singleton classes.
-
-    This class implements a singleton pattern where each subclass maintains
-    exactly one instance that is returned on every instantiation.
-    """
-
-    def get_params(self) -> dict[str, Any]:
-        """Return parameters for mixinforge API.
-
-        Returns:
-            dict[str, Any]: Always an empty dict for joker flags.
-        """
-        return {}
-
-
-class Joker(Singleton):
+class Joker(SingletonMixin):
     """Base class for joker flags.
 
     Subclasses represent value-less commands that
@@ -78,7 +60,7 @@ class DeleteCurrentFlag(Joker):
     pass
 
 
-class StatusFlag(Singleton):
+class StatusFlag(SingletonMixin):
     """Base class for process status flags.
 
     Subclasses represent status flags that can be used to control
@@ -93,6 +75,10 @@ class ETagHasNotChangedFlag(StatusFlag):
         This flag can be used in contexts where a notification is needed
         to indicate that an ETag (entity tag) has not changed, typically in
         web or caching scenarios.
+
+    Note:
+        This is a singleton class; constructing it repeatedly returns the same
+        instance.
     """
 
     pass
