@@ -608,7 +608,7 @@ All PersiDict classes support generic type parameters for static type checking:
 **Why two mechanisms?** Generic parameters are for static type checking only
 (mypy, pyright). For runtime type enforcement, use ``base_class_for_values``.
 These are kept separate because many type hints—such as ``Callable``, ``Literal``,
-``TypedDict``, and ``Protocol``—cannot be checked at runtime via ``isinstance()``.
+``TypedDict``, and ``NewType``—cannot be checked at runtime via ``isinstance()``.
 
 Multiple Serialization Formats
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

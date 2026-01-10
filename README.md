@@ -144,9 +144,9 @@ d["name"] = "Alice"  # Raises TypeError at runtime
 ```
 
 These mechanisms are kept separate because many type hints cannot be checked
-at runtime. For example, `Callable[[int], str]`, `Literal["a", "b"]`, and
-`TypedDict` have no `isinstance` equivalent. Use generics for development-time
-safety; use `base_class_for_values` when you need runtime validation.
+at runtime. For example, `Callable[[int], str]`, `Literal["a", "b"]`,
+`TypedDict`, and `NewType` have no `isinstance` equivalent. Use generics for
+development-time safety; use `base_class_for_values` when you need runtime validation.
 
 ## 4. Comparison With Python Built-in Dictionaries
 
