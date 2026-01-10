@@ -118,7 +118,9 @@ print(f"API Key: {cloud_config['api_key']}")
 
 ### 3.3 Using Type Hints
 
-persidict supports generic type parameters for improved static type checking:
+persidict supports two complementary type safety mechanisms:
+
+**Static type checking** with generic parameters (checked by mypy/pyright):
 
 ```python
 from persidict import FileDirDict
@@ -133,7 +135,18 @@ from persidict import LocalDict
 cache: LocalDict[str] = LocalDict()
 ```
 
-For runtime type enforcement, use the `base_class_for_values` parameter.
+**Runtime type enforcement** with `base_class_for_values` (checked via isinstance):
+
+```python
+d = FileDirDict(base_dir="./data", base_class_for_values=int)
+d["count"] = 42      # OK
+d["name"] = "Alice"  # Raises TypeError at runtime
+```
+
+These mechanisms are kept separate because many type hints cannot be checked
+at runtime. For example, `Callable[[int], str]`, `Literal["a", "b"]`, and
+`TypedDict` have no `isinstance` equivalent. Use generics for development-time
+safety; use `base_class_for_values` when you need runtime validation.
 
 ## 4. Comparison With Python Built-in Dictionaries
 
