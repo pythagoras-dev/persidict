@@ -20,8 +20,19 @@ from abc import abstractmethod
 import heapq
 import random
 from mixinforge import ParameterizableMixin, sort_dict_by_keys
-from typing import Any, Sequence, Optional
+from typing import Any, Sequence, Optional, TypeVar, Iterator
 from collections.abc import MutableMapping
+
+ValueType = TypeVar('ValueType')
+"""Generic type variable for dictionary values.
+
+This TypeVar is used to make PersiDict and its subclasses generic over
+the value type, enabling static type checking with tools like mypy.
+
+Example:
+    d: FileDirDict[int] = FileDirDict(base_dir="./data")
+    val: int = d["key"]  # Type checker knows this is int
+"""
 
 from . import NonEmptySafeStrTuple
 from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
@@ -41,7 +52,7 @@ If a string (or a sequence of strings) is passed to a PersiDict as a key,
 it will be automatically converted into SafeStrTuple.
 """
 
-class PersiDict(MutableMapping, ParameterizableMixin):
+class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], ParameterizableMixin):
     """Abstract dict-like interface for durable key-value stores.
 
     Keys are URL/filename-safe sequences of strings (SafeStrTuple). Concrete
@@ -127,14 +138,14 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def __copy__(self) -> 'PersiDict':
+    def __copy__(self) -> 'PersiDict[ValueType]':
         """Return a shallow copy of the dictionary.
 
         This creates a new PersiDict instance with the same parameters, pointing
         to the same underlying storage. This is analogous to `dict.copy()`.
 
         Returns:
-            PersiDict: A new PersiDict instance that is a shallow copy of this one.
+            PersiDict[ValueType]: A new PersiDict instance that is a shallow copy of this one.
         """
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
@@ -189,7 +200,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
 
 
     def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
-                                 ) -> tuple[Any, str|None]|ETagHasNotChangedFlag:
+                                 ) -> tuple[ValueType, str|None]|ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
         This method is absent in the original dict API.
@@ -217,21 +228,21 @@ class PersiDict(MutableMapping, ParameterizableMixin):
 
 
     @abstractmethod
-    def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key:NonEmptyPersiDictKey) -> ValueType:
         """Retrieve the value for a key.
 
         Args:
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            Any: The stored value.
+            ValueType: The stored value.
         """
         raise NotImplementedError("PersiDict is an abstract base class"
                                   " and cannot retrieve items directly")
 
 
 
-    def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: Any
+    def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                               ) -> StatusFlag:
         """Perform the first steps for setting an item.
 
@@ -274,7 +285,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         return CONTINUE_NORMAL_EXECUTION
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> str|None:
         """Store a value for a key directly in the dict and return the new ETag.
 
         Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
@@ -308,7 +319,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         return self.etag(key)
 
     @abstractmethod
-    def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
+    def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Set the value for a key.
 
         Special values KEEP_CURRENT and DELETE_CURRENT are interpreted as
@@ -421,70 +432,70 @@ class PersiDict(MutableMapping, ParameterizableMixin):
                                   " and cannot iterate items directly")
 
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[NonEmptySafeStrTuple]:
         """Iterate over keys.
 
         Returns:
-            Iterator[SafeStrTuple]: Iterator of keys.
+            Iterator[NonEmptySafeStrTuple]: Iterator of keys.
         """
         return self._generic_iter({"keys"})
 
 
-    def keys(self):
+    def keys(self) -> Iterator[NonEmptySafeStrTuple]:
         """Return an iterator over keys.
 
         Returns:
-            Iterator[SafeStrTuple]: Keys iterator.
+            Iterator[NonEmptySafeStrTuple]: Keys iterator.
         """
         return self._generic_iter({"keys"})
 
 
-    def keys_and_timestamps(self):
+    def keys_and_timestamps(self) -> Iterator[tuple[NonEmptySafeStrTuple, float]]:
         """Return an iterator over (key, timestamp) pairs.
 
         Returns:
-            Iterator[tuple[SafeStrTuple, float]]: Keys and POSIX timestamps.
+            Iterator[tuple[NonEmptySafeStrTuple, float]]: Keys and POSIX timestamps.
         """
         return self._generic_iter({"keys", "timestamps"})
 
 
-    def values(self):
+    def values(self) -> Iterator[ValueType]:
         """Return an iterator over values.
 
         Returns:
-            Iterator[Any]: Values iterator.
+            Iterator[ValueType]: Values iterator.
         """
         return self._generic_iter({"values"})
 
 
-    def values_and_timestamps(self):
+    def values_and_timestamps(self) -> Iterator[tuple[ValueType, float]]:
         """Return an iterator over (value, timestamp) pairs.
 
         Returns:
-            Iterator[tuple[Any, float]]: Values and POSIX timestamps.
+            Iterator[tuple[ValueType, float]]: Values and POSIX timestamps.
         """
         return self._generic_iter({"values", "timestamps"})
 
 
-    def items(self):
+    def items(self) -> Iterator[tuple[NonEmptySafeStrTuple, ValueType]]:
         """Return an iterator over (key, value) pairs.
 
         Returns:
-            Iterator[tuple[SafeStrTuple, Any]]: Items iterator.
+            Iterator[tuple[NonEmptySafeStrTuple, ValueType]]: Items iterator.
         """
         return self._generic_iter({"keys", "values"})
 
 
-    def items_and_timestamps(self):
+    def items_and_timestamps(self) -> Iterator[tuple[NonEmptySafeStrTuple, ValueType, float]]:
         """Return an iterator over (key, value, timestamp) triples.
 
         Returns:
-            Iterator[tuple[SafeStrTuple, Any, float]]: Items and timestamps.
+            Iterator[tuple[NonEmptySafeStrTuple, ValueType, float]]: Items and timestamps.
         """
         return self._generic_iter({"keys", "values", "timestamps"})
 
 
-    def setdefault(self, key: NonEmptyPersiDictKey, default: Any = None) -> Any:
+    def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
 
         Behaves like the built-in dict.setdefault() method: if the key exists,
@@ -613,7 +624,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
         """
         return self.discard(key)
 
-    def get_subdict(self, prefix_key:PersiDictKey) -> PersiDict:
+    def get_subdict(self, prefix_key:PersiDictKey) -> 'PersiDict[ValueType]':
         """Get a sub-dictionary containing items with the given prefix key.
 
         Items whose keys start with the provided prefix are visible through the
@@ -628,7 +639,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
                 identifying the sub-dict to expose.
 
         Returns:
-            PersiDict: A dictionary-like view restricted to keys under the
+            PersiDict[ValueType]: A dictionary-like view restricted to keys under the
                 provided prefix.
 
         Raises:
@@ -641,13 +652,13 @@ class PersiDict(MutableMapping, ParameterizableMixin):
                 " and cannot create sub-dictionaries directly")
 
 
-    def subdicts(self) -> dict[str, PersiDict]:
+    def subdicts(self) -> dict[str, 'PersiDict[ValueType]']:
         """Return a mapping of first-level keys to sub-dictionaries.
 
         This method is absent in the original dict API.
 
         Returns:
-            dict[str, PersiDict]: A mapping from a top-level key segment to a
+            dict[str, PersiDict[ValueType]]: A mapping from a top-level key segment to a
                 sub-dictionary restricted to the corresponding keyspace.
         """
         all_keys = {k[0] for k in self.keys()}
@@ -746,7 +757,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
             return [key for key,_ in smallest_pairs]
 
 
-    def oldest_values(self, max_n=None) -> list[Any]:
+    def oldest_values(self, max_n: int | None = None) -> list[ValueType]:
         """Return up to max_n oldest values in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -790,7 +801,7 @@ class PersiDict(MutableMapping, ParameterizableMixin):
             return [key for key,_ in largest_pairs]
 
 
-    def newest_values(self, max_n=None) -> list[Any]:
+    def newest_values(self, max_n: int | None = None) -> list[ValueType]:
         """Return up to max_n newest values in the dictionary.
 
         This method is absent in the original Python dict API.

@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import Any, Iterator
 
 from .safe_str_tuple import NonEmptySafeStrTuple
-from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
+from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
 
 
-class EmptyDict(PersiDict):
+class EmptyDict(PersiDict[ValueType]):
     """
     An equivalent of the null device in OS - accepts all writes but discards them,
     returns nothing on reads. Always appears empty regardless of operations performed on it.
@@ -37,13 +37,13 @@ class EmptyDict(PersiDict):
         return False
 
 
-    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Always raises KeyError as EmptyDict contains nothing."""
         raise KeyError(key)
 
 
     def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
-                                 ) -> tuple[Any, str|None]:
+                                 ) -> tuple[ValueType, str|None]:
         """Always raises KeyError as EmptyDict contains nothing.
 
         Args:
@@ -59,7 +59,7 @@ class EmptyDict(PersiDict):
         raise KeyError(key)
 
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Accepts any write operation, discards the data (like /dev/null)."""
         # Run base validations (immutable checks, key normalization,
         # type checks, jokers) to ensure API consistency, then discard.
@@ -67,7 +67,7 @@ class EmptyDict(PersiDict):
         # Do nothing - discard the write like /dev/null
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
         """Accepts any write operation, discards the data, returns None as etag.
 
         Args:
@@ -124,12 +124,12 @@ class EmptyDict(PersiDict):
         pass
 
 
-    def get(self, key: NonEmptyPersiDictKey, default: Any = None) -> Any:
+    def get(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType | None:
         """Always returns the default value since key is never found."""
         return default
 
 
-    def setdefault(self, key: NonEmptyPersiDictKey, default: Any = None) -> Any:
+    def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType | None:
         """Always returns the default value without storing it."""
         return default
 
@@ -159,7 +159,7 @@ class EmptyDict(PersiDict):
         return params
 
 
-    def get_subdict(self, prefix_key: PersiDictKey) -> 'EmptyDict':
+    def get_subdict(self, prefix_key: PersiDictKey) -> 'EmptyDict[ValueType]':
         """Returns a new EmptyDict as subdictionary.
 
         Args:

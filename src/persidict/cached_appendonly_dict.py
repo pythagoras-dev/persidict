@@ -22,12 +22,12 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .persi_dict import PersiDict, NonEmptyPersiDictKey
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
-class AppendOnlyDictCached(PersiDict):
+class AppendOnlyDictCached(PersiDict[ValueType]):
     """Append-only `PersiDict` facade with a read-through cache.
 
     This adapter composes two concrete `PersiDict` instances and presents them
@@ -66,8 +66,8 @@ class AppendOnlyDictCached(PersiDict):
     """
 
     def __init__(self,
-                 main_dict: PersiDict,
-                 data_cache: PersiDict) -> None:
+                 main_dict: PersiDict[ValueType],
+                 data_cache: PersiDict[ValueType]) -> None:
         """Initialize the adapter with a main dict and a value cache.
 
         Args:
@@ -96,8 +96,8 @@ class AppendOnlyDictCached(PersiDict):
             serialization_format=main_dict.serialization_format,
         )
 
-        self._main: PersiDict = main_dict
-        self._data_cache: PersiDict = data_cache
+        self._main: PersiDict[ValueType] = main_dict
+        self._data_cache: PersiDict[ValueType] = data_cache
 
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
@@ -159,7 +159,7 @@ class AppendOnlyDictCached(PersiDict):
 
 
 
-    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Retrieve a value using a read-through cache.
 
         Tries the cache first; on a miss, reads from the main dict, stores the
@@ -213,7 +213,7 @@ class AppendOnlyDictCached(PersiDict):
             self._data_cache[key] = value
         return res
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value in the main dict and mirror it into the cache.
 
         The PersiDict base validates special joker values and the
@@ -236,7 +236,7 @@ class AppendOnlyDictCached(PersiDict):
         self._main[key] = value
         self._data_cache[key] = value
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> Optional[str]:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[str]:
         """Store a value and return the ETag from the main dict.
 
         After validation via _process_setitem_args, the value is written to the

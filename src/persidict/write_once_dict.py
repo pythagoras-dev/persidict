@@ -16,7 +16,7 @@ from deepdiff import DeepDiff
 from mixinforge import sort_dict_by_keys
 
 from .jokers_and_status_flags import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
-from .persi_dict import PersiDict, NonEmptyPersiDictKey
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .file_dir_dict import FileDirDict
 import random
 import sys
@@ -47,7 +47,7 @@ def _get_md5_signature(x: Any) -> str:
     hash_signature = hasher.hash(x)
     return str(hash_signature)
 
-class WriteOnceDict(PersiDict):
+class WriteOnceDict(PersiDict[ValueType]):
     """Dictionary wrapper that preserves the first value written for each key.
 
     Subsequent writes to an existing key are allowed but ignored as they are
@@ -63,13 +63,13 @@ class WriteOnceDict(PersiDict):
 
 
     """
-    _wrapped_dict: PersiDict
+    _wrapped_dict: PersiDict[ValueType]
     _p_consistency_checks: float | None
     _consistency_checks_attempted: int
     _consistency_checks_passed: int
 
     def __init__(self,
-                 wrapped_dict: PersiDict | None = None,
+                 wrapped_dict: PersiDict[ValueType] | None = None,
                  p_consistency_checks: float | None = None):
         """Initialize a WriteOnceDict.
 
@@ -183,10 +183,10 @@ class WriteOnceDict(PersiDict):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
-    def __setitem__(self, key:NonEmptyPersiDictKey, value):
+    def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set a value for a key, preserving the first assignment.
 
         If the key is new, the value is stored. If the key already exists,
@@ -249,7 +249,7 @@ class WriteOnceDict(PersiDict):
         """
         return item in self._wrapped_dict
 
-    def __getitem__(self, key:NonEmptyPersiDictKey):
+    def __getitem__(self, key:NonEmptyPersiDictKey) -> ValueType:
         """Retrieve a value by key.
 
         Args:
@@ -323,7 +323,7 @@ class WriteOnceDict(PersiDict):
             "and does not support deletion.")
 
 
-    def get_subdict(self, prefix_key: NonEmptyPersiDictKey) -> WriteOnceDict:
+    def get_subdict(self, prefix_key: NonEmptyPersiDictKey) -> 'WriteOnceDict[ValueType]':
         """Return a WriteOnceDict view over a sub-keyspace.
 
         Args:

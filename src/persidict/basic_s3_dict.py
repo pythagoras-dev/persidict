@@ -22,7 +22,7 @@ from mixinforge import sort_dict_by_keys
 
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
-from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
                                       ETAG_HAS_NOT_CHANGED)
 
@@ -45,7 +45,7 @@ def not_found_error(e:ClientError) -> bool:
         return error_code in ('NoSuchKey', '404', 'NotFound')
 
 
-class BasicS3Dict(PersiDict):
+class BasicS3Dict(PersiDict[ValueType]):
     """A persistent dictionary that stores key-value pairs as S3 objects.
     
     Each key-value pair is stored as a separate S3 object in the specified bucket.
@@ -251,7 +251,7 @@ class BasicS3Dict(PersiDict):
                 raise
 
     def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
-                                 ) -> tuple[Any,str|None] | ETagHasNotChangedFlag:
+                                 ) -> tuple[ValueType, str|None] | ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
         This method is absent in the original dict API.
@@ -306,7 +306,7 @@ class BasicS3Dict(PersiDict):
                 raise
 
 
-    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Retrieve the value stored for a key directly from S3.
 
         Args:
@@ -378,7 +378,7 @@ class BasicS3Dict(PersiDict):
         )
         return response.get("ETag")
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value for a key directly in S3.
 
         Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
@@ -549,7 +549,7 @@ class BasicS3Dict(PersiDict):
         return step()
 
 
-    def get_subdict(self, key:PersiDictKey) -> 'BasicS3Dict':
+    def get_subdict(self, key:PersiDictKey) -> 'BasicS3Dict[ValueType]':
         """Create a subdictionary scoped to items with the specified prefix.
 
         Returns an empty subdictionary if no items exist under the prefix.

@@ -35,8 +35,10 @@ Python dictionaries with methods like `__getitem__`, `__setitem__`,
 in distributed environments.
 * **Flexible Serialization**: Store values as pickles (`pkl`), 
 JSON (`json`), or plain text.
-* **Type Safety**: Optionally enforce that all values in a dictionary are 
+* **Type Safety**: Optionally enforce that all values in a dictionary are
 instances of a specific class.
+* **Generic Type Parameters**: Use `FileDirDict[MyClass]` for static type
+checking with mypy/pyright.
 * **Advanced Functionality**: Includes features like write-once dictionaries, 
 timestamping of entries, and tools for handling file-system-safe keys.
 * **Hierarchical Keys**: Keys can be sequences of strings, 
@@ -113,6 +115,25 @@ cloud_config["timeout_seconds"] = 30
 print(f"API Key: {cloud_config['api_key']}")
 # >>> API Key: ABC-123-XYZ
 ```
+
+### 3.3 Using Type Hints
+
+persidict supports generic type parameters for improved static type checking:
+
+```python
+from persidict import FileDirDict
+
+# Create a typed dictionary
+d: FileDirDict[int] = FileDirDict(base_dir="./data")
+d["count"] = 42
+val: int = d["count"]  # Type checker knows this is int
+
+# Works with any PersiDict implementation
+from persidict import LocalDict
+cache: LocalDict[str] = LocalDict()
+```
+
+For runtime type enforcement, use the `base_class_for_values` parameter.
 
 ## 4. Comparison With Python Built-in Dictionaries
 
@@ -276,14 +297,13 @@ For development and testing, the following packages are used:
 ## Project Statistics
 
 <!-- MIXINFORGE_STATS_START -->
-
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 4931 | 3919 | 8850 |
-| Source Lines Of Code (SLOC) | 1861 | 2543 | 4404 |
+| Lines Of Code (LOC) | 4942 | 3956 | 8898 |
+| Source Lines Of Code (SLOC) | 1869 | 2559 | 4428 |
 | Classes | 20 | 7 | 27 |
-| Functions / Methods | 207 | 194 | 401 |
-| Files | 15 | 37 | 52 |
+| Functions / Methods | 207 | 195 | 402 |
+| Files | 15 | 38 | 53 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing

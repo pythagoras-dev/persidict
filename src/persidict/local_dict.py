@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 from typing import Any, Optional, Iterable
 
-from .persi_dict import PersiDict, NonEmptyPersiDictKey
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .jokers_and_status_flags import EXECUTION_IS_COMPLETE
 
@@ -91,7 +91,7 @@ class _RAMBackend:
         return bucket
 
 
-class LocalDict(PersiDict):
+class LocalDict(PersiDict[ValueType]):
     """In-memory PersiDict backed by a RAM-only hierarchical store.
 
     LocalDict mirrors FileDirDict semantics but keeps all data in process
@@ -326,7 +326,7 @@ class LocalDict(PersiDict):
         bucket = parent_node.values.get(self.serialization_format, {})
         return leaf in bucket
 
-    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Retrieve the value stored for a key.
 
         Args:
@@ -355,7 +355,7 @@ class LocalDict(PersiDict):
                     f" but it is {type(value)} instead.")
         return value
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value for a key.
 
         Interprets joker values (KEEP_CURRENT, DELETE_CURRENT) using the base
@@ -468,7 +468,7 @@ class LocalDict(PersiDict):
             raise KeyError(f"Key {key} not found")
         return bucket[leaf][1]
 
-    def get_subdict(self, prefix_key: Iterable[str] | SafeStrTuple) -> PersiDict:
+    def get_subdict(self, prefix_key: Iterable[str] | SafeStrTuple) -> 'LocalDict[ValueType]':
         """Return a view rooted at the given key prefix.
 
         The returned LocalDict shares the same underlying RAMBackend, but its

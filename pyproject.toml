@@ -35,9 +35,9 @@ dependencies = [
     "jsonpickle",
     "deepdiff",
     "boto3",
-    "pytest>=9.0.2",
-    "uv>=0.9.24",
-    "pandas>=2.3.3",
+    "pytest",
+    "uv",
+    "pandas",
 ]
 
 [project.urls]
@@ -64,6 +64,7 @@ dev = [
     "coverage",
     "sphinx",
     "pydata_sphinx_theme",
+    "mypy",
 ]
 
 
@@ -81,6 +82,11 @@ python_files = ["test_*.py", "*_live_action.py"]
 markers = [
     """live_actions: marks tests as live actions that operate on the actual project (deselect with '-m \"not live_actions\"')""",
 ]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_ignores = true
 
 [tool.coverage.run]
 source = ["src/persidict"]

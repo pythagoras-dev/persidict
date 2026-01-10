@@ -60,6 +60,7 @@ Key Features
 * **Distributed-Ready**: Optimistic concurrency model designed for multi-process, multi-machine access
 * **Flexible Serialization**: Support for pickle, JSON, or plain text storage formats
 * **Type Safety**: Optional enforcement that all values are instances of a specific class
+* **Generic Type Parameters**: Static type checking with ``FileDirDict[MyClass]`` syntax
 * **Advanced Features**: Write-once dictionaries, timestamps, ETags, hierarchical keys, caching layers
 * **Hierarchical Keys**: Keys can be sequences of strings, creating directory-like structures
 
@@ -587,6 +588,26 @@ Type Safety
 
    # df_store["text"] = "hello"  # Raises TypeError!
 
+Generic Type Parameters
+^^^^^^^^^^^^^^^^^^^^^^^
+
+All PersiDict classes support generic type parameters for static type checking:
+
+.. code-block:: python
+
+   from persidict import FileDirDict, LocalDict
+
+   # Typed dictionaries
+   scores: FileDirDict[int] = FileDirDict(base_dir="./scores")
+   scores["player1"] = 100
+   val: int = scores["player1"]  # Type checker knows this is int
+
+   # Works with all implementations
+   cache: LocalDict[str] = LocalDict()
+
+Note: Generic parameters are for static type checking only (mypy, pyright).
+For runtime type enforcement, use ``base_class_for_values``.
+
 Multiple Serialization Formats
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -624,7 +645,6 @@ Project Statistics
 
 .. MIXINFORGE_STATS_START
 
-
 .. list-table::
    :header-rows: 1
    :widths: 40 20 20 20
@@ -634,25 +654,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 4931
-     - 3919
-     - 8850
+     - 4942
+     - 3956
+     - 8898
    * - Source Lines Of Code (SLOC)
-     - 1861
-     - 2543
-     - 4404
+     - 1869
+     - 2559
+     - 4428
    * - Classes
      - 20
      - 7
      - 27
    * - Functions / Methods
      - 207
-     - 194
-     - 401
+     - 195
+     - 402
    * - Files
      - 15
-     - 37
-     - 52
+     - 38
+     - 53
 
 .. MIXINFORGE_STATS_END
 

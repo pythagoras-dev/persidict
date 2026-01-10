@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .persi_dict import PersiDict, NonEmptyPersiDictKey
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
-class MutableDictCached(PersiDict):
+class MutableDictCached(PersiDict[ValueType]):
     """PersiDict adapter with read-through caching and ETag validation.
 
     This adapter composes three concrete PersiDict instances:
@@ -28,9 +28,9 @@ class MutableDictCached(PersiDict):
     """
 
     def __init__(self,
-                 main_dict: PersiDict,
-                 data_cache: PersiDict,
-                 etag_cache: PersiDict) -> None:
+                 main_dict: PersiDict[ValueType],
+                 data_cache: PersiDict[ValueType],
+                 etag_cache: PersiDict[str]) -> None:
         """Initialize with a main dict and two caches (data and ETag).
 
         Args:
@@ -67,9 +67,9 @@ class MutableDictCached(PersiDict):
             serialization_format=main_dict.serialization_format,
         )
 
-        self._main_dict = main_dict
-        self._data_cache = data_cache
-        self._etag_cache = etag_cache
+        self._main_dict: PersiDict[ValueType] = main_dict
+        self._data_cache: PersiDict[ValueType] = data_cache
+        self._etag_cache: PersiDict[str] = etag_cache
 
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
@@ -131,7 +131,7 @@ class MutableDictCached(PersiDict):
         else:
             self._etag_cache[key] = etag
 
-    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Return the value for key using ETag-aware read-through caching.
 
         The method looks up the previously cached ETag for the key and asks the
@@ -188,7 +188,7 @@ class MutableDictCached(PersiDict):
         return res
 
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any):
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set value for key via main dict and keep caches in sync.
 
         This method writes to the main dict and mirrors the value
@@ -204,7 +204,7 @@ class MutableDictCached(PersiDict):
         self.set_item_get_etag(key, value)
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> Optional[str]:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[str]:
         """Set item and return its ETag, updating caches.
 
         This method delegates the actual write to the main dict.

@@ -24,7 +24,7 @@ from mixinforge import sort_dict_by_keys
 from .jokers_and_status_flags import Joker, EXECUTION_IS_COMPLETE
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
-from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
+from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
 
 if os.name == 'nt':
     import msvcrt
@@ -100,7 +100,7 @@ jsonpickle_pandas.register_handlers()
 
 FILEDIRDICT_DEFAULT_BASE_DIR = "__file_dir_dict__"
 
-class FileDirDict(PersiDict):
+class FileDirDict(PersiDict[ValueType]):
     """ A persistent Dict that stores key-value pairs in local files.
 
     A new file is created for each key-value pair.
@@ -344,7 +344,7 @@ class FileDirDict(PersiDict):
             return key
 
 
-    def get_subdict(self, key:PersiDictKey) -> FileDirDict:
+    def get_subdict(self, key:PersiDictKey) -> 'FileDirDict[ValueType]':
         """Get a subdictionary containing items with the same prefix key.
 
         For non-existing prefix key, an empty sub-dictionary is returned.
@@ -581,7 +581,7 @@ class FileDirDict(PersiDict):
         return os.path.isfile(filename)
 
 
-    def __getitem__(self, key:NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key:NonEmptyPersiDictKey) -> ValueType:
         """Retrieve the value stored for a key.
 
         Equivalent to obj[key]. Reads the corresponding file from the disk and
@@ -612,7 +612,7 @@ class FileDirDict(PersiDict):
         return result
 
 
-    def __setitem__(self, key:NonEmptyPersiDictKey, value:Any):
+    def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Store a value for a key on the disk.
 
         Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.

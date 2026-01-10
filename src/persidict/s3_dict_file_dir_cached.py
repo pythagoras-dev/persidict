@@ -10,7 +10,7 @@ from .basic_s3_dict import BasicS3Dict
 from .file_dir_dict import FileDirDict, FILEDIRDICT_DEFAULT_BASE_DIR
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
-from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .overlapping_multi_dict import OverlappingMultiDict
 
@@ -19,7 +19,7 @@ from .overlapping_multi_dict import OverlappingMultiDict
 S3DICT_NEW_DEFAULT_BASE_DIR = "__s3_dict__"
 
 
-class S3Dict_FileDirCached(PersiDict):
+class S3Dict_FileDirCached(PersiDict[ValueType]):
     """S3-backed persistent dictionary using BasicS3Dict with local caching.
     
     This class mimics the interface and behavior of S3Dict_Legacy but internally uses
@@ -141,11 +141,11 @@ class S3Dict_FileDirCached(PersiDict):
         """Check if key exists in the dictionary."""
         return self._cached_dict.__contains__(key)
     
-    def __getitem__(self, key: NonEmptyPersiDictKey) -> Any:
+    def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Get item from dictionary."""
         return self._cached_dict.__getitem__(key)
     
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: Any) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set item in dictionary."""
         self._cached_dict.__setitem__(key, value)
     
@@ -161,7 +161,7 @@ class S3Dict_FileDirCached(PersiDict):
         """Generic iteration over dictionary items."""
         return self._cached_dict._generic_iter(result_type)
     
-    def get_subdict(self, key: PersiDictKey):
+    def get_subdict(self, key: PersiDictKey) -> 'S3Dict_FileDirCached[ValueType]':
         """Get a subdictionary for the given key prefix."""
         return self._main_dict.get_subdict(key)
     
@@ -178,7 +178,7 @@ class S3Dict_FileDirCached(PersiDict):
             # For append-only dicts, just get the item
             return self._cached_dict.__getitem__(key)
     
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any):
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[str]:
         """Set item and return ETag (for mutable dicts)."""
         if hasattr(self._cached_dict, 'set_item_get_etag'):
             return self._cached_dict.set_item_get_etag(key, value)

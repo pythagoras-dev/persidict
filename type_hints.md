@@ -102,6 +102,35 @@ def validate_session(context: AuthContext) -> bool:
     ...
 ```
 
+## Generic Type Parameters
+
+All PersiDict classes support generic type parameters for static type checking:
+
+```python
+from persidict import FileDirDict, LocalDict
+
+# Specify the value type for static type checking
+d: FileDirDict[int] = FileDirDict(base_dir="./data")
+d["key"] = 42
+val: int = d["key"]  # Type checker knows this is int
+
+# Works with all PersiDict implementations
+cache: LocalDict[str] = LocalDict()
+cache["name"] = "Alice"
+name: str = cache["name"]
+
+# Iterator types are also properly typed
+for v in d.values():
+    x: int = v  # Type checker knows v is int
+
+for k, v in cache.items():
+    y: str = v  # Type checker knows v is str
+```
+
+This enables static type checking without runtime overhead. The generic parameter
+is for static type checkers only (mypy, pyright). For runtime type enforcement,
+use the `base_class_for_values` parameter.
+
 ---
 
 ## Summary
