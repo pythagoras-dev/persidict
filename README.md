@@ -1,6 +1,6 @@
 # persidict
 
-[![PyPI version](https://img.shields.io/pypi/v/persidict.svg)](https://pypi.org/project/persidict/)
+[![PyPi version](https://img.shields.io/pypi/v/persidict.svg?color=green)](https://pypi.org/project/persidict/)
 [![Python versions](https://img.shields.io/pypi/pyversions/persidict.svg)](https://github.com/pythagoras-dev/persidict)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/pythagoras-dev/persidict/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/persidict?color=blue)](https://pypistats.org/packages/persidict)

@@ -1,7 +1,7 @@
 persidict documentation
 =======================
 
-.. image:: https://img.shields.io/pypi/v/persidict.svg
+.. image:: https://img.shields.io/pypi/v/persidict.svg?color=green
    :target: https://pypi.org/project/persidict/
    :alt: PyPI version
 
