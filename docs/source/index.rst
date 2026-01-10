@@ -619,6 +619,45 @@ API Reference
 
    api/modules
 
+Project Statistics
+------------------
+
+.. MIXINFORGE_STATS_START
+
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 20 20 20
+
+   * - Metric
+     - Main code
+     - Unit Tests
+     - Total
+   * - Lines Of Code (LOC)
+     - 4931
+     - 3919
+     - 8850
+   * - Source Lines Of Code (SLOC)
+     - 1861
+     - 2543
+     - 4404
+   * - Classes
+     - 20
+     - 7
+     - 27
+   * - Functions / Methods
+     - 207
+     - 194
+     - 401
+   * - Files
+     - 15
+     - 37
+     - 52
+
+.. MIXINFORGE_STATS_END
+
+
+
 Contributing
 ------------
 

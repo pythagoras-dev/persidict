@@ -272,6 +272,20 @@ For development and testing, the following packages are used:
 * [pytest](https://pytest.org)
 * [moto](http://getmoto.org)
 
+
+## Project Statistics
+
+<!-- MIXINFORGE_STATS_START -->
+
+| Metric | Main code | Unit Tests | Total |
+|--------|-----------|------------|-------|
+| Lines Of Code (LOC) | 4931 | 3919 | 8850 |
+| Source Lines Of Code (SLOC) | 1861 | 2543 | 4404 |
+| Classes | 20 | 7 | 27 |
+| Functions / Methods | 207 | 194 | 401 |
+| Files | 15 | 37 | 52 |
+<!-- MIXINFORGE_STATS_END -->
+
 ## 9. Contributing
 Contributions are welcome! Please see the contributing [guide](https://github.com/pythagoras-dev/persidict/blob/master/CONTRIBUTING.md) for more details
 on how to get started, run tests, and submit pull requests.

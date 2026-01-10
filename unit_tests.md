@@ -67,6 +67,8 @@ fixtures_and_data:
   - `uv pip install -e ".[dev]" --system`
   - (or `pip install -e ".[dev]"`)
 - Run tests: `pytest -q`
+- Run only live actions: `pytest -m live_actions`
+- Run tests excluding live actions: `pytest -m "not live_actions"`
 - Optional coverage using `coverage` (HTML report in `htmlcov/`):
   - `coverage run -m pytest`
   - `coverage html` (open `htmlcov/index.html`)
@@ -316,3 +318,22 @@ maintainable when AI/LLM agents generate or modify code.
 - Use concise, intention-revealing names.
 - Commit message prefix for test changes: `TST:` (see
   `contributing.md`).
+
+## Live Actions
+
+Live actions are "tests" that operate on actual project files to perform and
+validate maintenance operations (e.g., updating documentation stats, clearing
+caches).
+
+**Key rules:**
+- Mark with `@pytest.mark.live_actions`
+- Must be idempotent (safe to run multiple times)
+- Operate on real files (no mocking or tmp_path)
+- File names: `*_live_action.py` (not `test_*.py`)
+- Location: `tests/__live_actions__/`
+
+**Commands:**
+```bash
+pytest -m live_actions              # Run only live actions
+pytest -m "not live_actions"        # Exclude live actions
+```
