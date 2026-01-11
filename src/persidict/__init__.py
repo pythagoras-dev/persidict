@@ -40,11 +40,7 @@ Note:
     pickle and JSON, with automatic type handling and collision-safe key encoding.
 """
 
-from importlib import metadata as _md
-try:
-    __version__ = _md.version("persidict")
-except _md.PackageNotFoundError:
-    __version__ = "unknown"
+from ._version_info import __version__
 
 from .safe_chars import *
 from .safe_str_tuple import *
