@@ -7,7 +7,7 @@ and filesystems.
 """
 from __future__ import annotations
 from collections.abc import Sequence, Mapping, Hashable
-from typing import Any
+from typing import Any, Self
 from .safe_chars import SAFE_CHARS_SET, SAFE_STRING_MAX_LENGTH
 
 
@@ -212,6 +212,14 @@ class SafeStrTuple(Sequence, Hashable):
             SafeStrTuple: A new instance with elements in reverse order.
         """
         return SafeStrTuple(*reversed(self.strings))
+
+    def __copy__(self) -> Self:
+        """Return self since immutable objects need no copying."""
+        return self
+
+    def __deepcopy__(self, memo: dict) -> Self:
+        """Return self since immutable objects need no deep copying."""
+        return self
 
 class NonEmptySafeStrTuple(SafeStrTuple):
     """A SafeStrTuple that must contain at least one string.
