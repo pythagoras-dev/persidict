@@ -12,7 +12,7 @@ from moto import mock_aws
 
 from persidict import FileDirDict, LocalDict, SafeStrTuple
 
-from data_for_mutable_tests import mutable_tests
+from .data_for_mutable_tests import mutable_tests
 
 
 # =============================================================================

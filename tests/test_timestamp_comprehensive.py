@@ -3,7 +3,7 @@ import pytest
 from moto import mock_aws
 from persidict import FileDirDict, S3Dict
 from persidict.safe_str_tuple import SafeStrTuple
-from minimum_sleep import min_sleep
+from .minimum_sleep import min_sleep
 
 
 def to_str_list(safe_tuple_list):

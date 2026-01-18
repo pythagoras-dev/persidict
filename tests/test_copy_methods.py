@@ -18,7 +18,7 @@ from persidict import (
     NonEmptySafeStrTuple,
 )
 
-from data_for_mutable_tests import mutable_tests
+from .data_for_mutable_tests import mutable_tests
 
 
 # =============================================================================

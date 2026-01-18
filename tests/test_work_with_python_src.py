@@ -3,7 +3,7 @@ import inspect
 import pytest
 from moto import mock_aws
 
-from data_for_mutable_tests import mutable_tests
+from .data_for_mutable_tests import mutable_tests
 
 
 def demo_function(a:int=0, b:str="", c:float=0.0, d:bool=False):

@@ -305,6 +305,15 @@ For development and testing, the following packages are used:
 * [numpy](https://numpy.org)
 * [pytest](https://pytest.org)
 * [moto](http://getmoto.org)
+* [polars](https://pola.rs)
+* [scipy](https://scipy.org)
+* [pyarrow](https://arrow.apache.org/docs/python/)
+* [Pillow](https://pillow.readthedocs.io)
+* [networkx](https://networkx.org)
+* [sympy](https://www.sympy.org)
+* [shapely](https://shapely.readthedocs.io)
+* [astropy](https://www.astropy.org)
+* [torch](https://pytorch.org)
 
 
 ## Project Statistics
@@ -312,11 +321,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 4954 | 4612 | 9566 |
-| Source Lines Of Code (SLOC) | 1874 | 2939 | 4813 |
-| Classes | 20 | 7 | 27 |
-| Functions / Methods | 209 | 225 | 434 |
-| Files | 16 | 41 | 57 |
+| Lines Of Code (LOC) | 4954 | 5528 | 10482 |
+| Source Lines Of Code (SLOC) | 1874 | 3498 | 5372 |
+| Classes | 20 | 8 | 28 |
+| Functions / Methods | 209 | 285 | 494 |
+| Files | 16 | 57 | 73 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing

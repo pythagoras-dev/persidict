@@ -1,7 +1,7 @@
 import pytest
 from moto import mock_aws
 
-from data_for_mutable_tests import mutable_tests
+from .data_for_mutable_tests import mutable_tests
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

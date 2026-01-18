@@ -266,7 +266,7 @@ def test_etag_matches_main(append_only_env):
 
 def test_iterators_with_timestamps_delegate(append_only_env):
     # Ensure timestamps differ by sleeping between writes
-    from minimum_sleep import min_sleep
+    from .minimum_sleep import min_sleep
 
     main, cache, wrapper = append_only_env
 

@@ -468,6 +468,15 @@ Development/testing:
 * numpy
 * pytest
 * moto
+* polars
+* scipy
+* pyarrow
+* Pillow
+* networkx
+* sympy
+* shapely
+* astropy
+* torch
 
 Quick Start Examples
 --------------------
@@ -657,24 +666,24 @@ Project Statistics
      - Total
    * - Lines Of Code (LOC)
      - 4954
-     - 4612
-     - 9566
+     - 5528
+     - 10482
    * - Source Lines Of Code (SLOC)
      - 1874
-     - 2939
-     - 4813
+     - 3498
+     - 5372
    * - Classes
      - 20
-     - 7
-     - 27
+     - 8
+     - 28
    * - Functions / Methods
      - 209
-     - 225
-     - 434
+     - 285
+     - 494
    * - Files
      - 16
-     - 41
      - 57
+     - 73
 
 .. MIXINFORGE_STATS_END
 

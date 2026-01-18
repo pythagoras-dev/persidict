@@ -3,7 +3,7 @@ from moto import mock_aws
 
 import pandas as pd
 
-from data_for_mutable_tests import mutable_tests
+from .data_for_mutable_tests import mutable_tests
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
