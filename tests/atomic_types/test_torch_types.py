@@ -1,7 +1,8 @@
 """Tests for storing and retrieving torch atomic types in PersiDict."""
 
 import pytest
-import torch
+
+torch = pytest.importorskip("torch", reason="PyTorch not available on this platform")
 
 from ..atomic_test_config import atomic_type_tests
 
