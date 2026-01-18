@@ -666,8 +666,8 @@ Project Statistics
      - Total
    * - Lines Of Code (LOC)
      - 4954
-     - 5685
-     - 10639
+     - 5686
+     - 10640
    * - Source Lines Of Code (SLOC)
      - 1874
      - 3582
