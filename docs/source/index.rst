@@ -666,24 +666,24 @@ Project Statistics
      - Total
    * - Lines Of Code (LOC)
      - 4954
-     - 5528
-     - 10482
+     - 5685
+     - 10639
    * - Source Lines Of Code (SLOC)
      - 1874
-     - 3498
-     - 5372
+     - 3582
+     - 5456
    * - Classes
      - 20
      - 8
      - 28
    * - Functions / Methods
      - 209
-     - 285
-     - 494
+     - 287
+     - 496
    * - Files
      - 16
-     - 57
-     - 73
+     - 59
+     - 75
 
 .. MIXINFORGE_STATS_END
 

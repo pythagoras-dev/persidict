@@ -321,11 +321,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 4954 | 5528 | 10482 |
-| Source Lines Of Code (SLOC) | 1874 | 3498 | 5372 |
+| Lines Of Code (LOC) | 4954 | 5685 | 10639 |
+| Source Lines Of Code (SLOC) | 1874 | 3582 | 5456 |
 | Classes | 20 | 8 | 28 |
-| Functions / Methods | 209 | 285 | 494 |
-| Files | 16 | 57 | 73 |
+| Functions / Methods | 209 | 287 | 496 |
+| Files | 16 | 59 | 75 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing
