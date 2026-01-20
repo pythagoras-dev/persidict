@@ -22,8 +22,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
-from .safe_str_tuple import NonEmptySafeStrTuple
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
+from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
@@ -270,3 +270,23 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             TypeError: Always raised to indicate append-only restriction.
         """
         raise TypeError("append-only dicts do not support deletion")
+
+    def get_subdict(self, key: PersiDictKey) -> 'AppendOnlyDictCached[ValueType]':
+        """Get a sub-dictionary for the given key prefix.
+
+        Returns a new AppendOnlyDictCached with main_dict and data_cache
+        both scoped to the given prefix.
+
+        Args:
+            key: Prefix key (string or sequence of strings) identifying the
+                subdictionary scope.
+
+        Returns:
+            AppendOnlyDictCached: A new cached dictionary rooted at the
+                specified prefix.
+        """
+        key = SafeStrTuple(key)
+        return AppendOnlyDictCached(
+            main_dict=self._main.get_subdict(key),
+            data_cache=self._data_cache.get_subdict(key)
+        )

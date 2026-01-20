@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
-from .safe_str_tuple import NonEmptySafeStrTuple
+from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
+from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
 
 
@@ -271,5 +271,26 @@ class MutableDictCached(PersiDict[ValueType]):
         del self._main_dict[key]  # This will raise KeyError if key doesn't exist
         self._etag_cache.discard(key)
         self._data_cache.discard(key)
+
+    def get_subdict(self, key: PersiDictKey) -> 'MutableDictCached[ValueType]':
+        """Get a sub-dictionary for the given key prefix.
+
+        Returns a new MutableDictCached with main_dict, data_cache, and
+        etag_cache all scoped to the given prefix.
+
+        Args:
+            key: Prefix key (string or sequence of strings) identifying the
+                subdictionary scope.
+
+        Returns:
+            MutableDictCached: A new cached dictionary rooted at the
+                specified prefix.
+        """
+        key = SafeStrTuple(key)
+        return MutableDictCached(
+            main_dict=self._main_dict.get_subdict(key),
+            data_cache=self._data_cache.get_subdict(key),
+            etag_cache=self._etag_cache.get_subdict(key)
+        )
 
 
