@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "persidict"
-version = "0.112.2"
+version = "0.120.0"
 description = "Simple persistent key-value store for Python. Values are stored as files on a disk or as S3 objects on AWS cloud."
 readme = "README.md"
 requires-python = ">=3.11"
