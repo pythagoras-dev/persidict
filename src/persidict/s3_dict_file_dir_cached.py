@@ -11,7 +11,7 @@ from .file_dir_dict import FileDirDict, FILEDIRDICT_DEFAULT_BASE_DIR
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
-from .safe_str_tuple import NonEmptySafeStrTuple
+from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .overlapping_multi_dict import OverlappingMultiDict
 
 
@@ -162,14 +162,74 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         return self._cached_dict._generic_iter(result_type)
     
     def get_subdict(self, key: PersiDictKey) -> 'S3Dict_FileDirCached[ValueType]':
-        """Get a subdictionary for the given key prefix."""
-        return self._main_dict.get_subdict(key)
+        """Get a subdictionary for the given key prefix.
+
+        Returns a new S3Dict_FileDirCached with both the S3 storage and local
+        cache scoped to the given prefix. Modifications to the subdictionary
+        will be visible in the parent and vice versa.
+
+        Args:
+            key: Prefix key (string or sequence of strings) identifying the
+                subdictionary scope.
+
+        Returns:
+            S3Dict_FileDirCached: A new cached S3 dictionary rooted at the
+                specified prefix.
+        """
+        key = SafeStrTuple(key)
+
+        # Delegate to _cached_dict which handles subdict creation properly
+        cached_subdict = self._cached_dict.get_subdict(key)
+
+        # Create a new S3Dict_FileDirCached wrapper around the cached subdict
+        result = object.__new__(S3Dict_FileDirCached)
+
+        # Initialize base PersiDict attributes
+        PersiDict.__init__(
+            result,
+            append_only=self.append_only,
+            base_class_for_values=self.base_class_for_values,
+            serialization_format=self.serialization_format
+        )
+
+        # Extract internal components from cached_subdict
+        result._cached_dict = cached_subdict
+        if self.append_only:
+            result._main_dict = cached_subdict._main
+            result._data_cache = cached_subdict._data_cache
+        else:
+            result._main_dict = cached_subdict._main_dict
+            result._data_cache = cached_subdict._data_cache
+            result._etag_cache = cached_subdict._etag_cache
+            result.etag_serialization_format = self.etag_serialization_format
+
+        # Note: local_cache (OverlappingMultiDict) is not set on subdicts
+        # as it's only used during initial construction
+
+        return result
     
     def timestamp(self, key: NonEmptyPersiDictKey):
         """Get the timestamp of when the item was last modified."""
         return self._cached_dict.timestamp(key)
-    
-    # Additional methods that might be needed for ETag support
+
+    def etag(self, key: NonEmptyPersiDictKey) -> str:
+        """Get the ETag for an item.
+
+        For mutable dicts, returns the cached S3 native ETag if available,
+        otherwise fetches from S3 and caches it. For append-only dicts,
+        delegates to the cached dict's etag method.
+
+        Args:
+            key: Non-empty key to query.
+
+        Returns:
+            str: The ETag string for the key.
+
+        Raises:
+            KeyError: If the key does not exist.
+        """
+        return self._cached_dict.etag(key)
+
     def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
         """Get item only if ETag has changed (for mutable dicts)."""
         if hasattr(self._cached_dict, 'get_item_if_etag_changed'):
