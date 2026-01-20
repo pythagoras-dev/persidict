@@ -116,7 +116,34 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main_dict.timestamp(key)
 
+    def etag(self, key: NonEmptyPersiDictKey) -> str:
+        """Return cached ETag if available, otherwise fetch from main dict.
 
+        This method returns the ETag from the local cache when available,
+        avoiding a (network) call to the main dict. If the ETag is not cached,
+        it fetches from the main dict and caches the result.
+
+        Note: The cached ETag may be stale if the value was modified directly
+        in the main dict (bypassing this wrapper). However, reads via
+        __getitem__ are self-healing and will detect/refresh stale caches.
+
+        Args:
+            key: Non-empty key to query.
+
+        Returns:
+            str: The ETag string for the key.
+
+        Raises:
+            KeyError: If the key does not exist in the main dict.
+        """
+        key = NonEmptySafeStrTuple(key)
+        cached_etag = self._etag_cache.get(key, None)
+        if cached_etag is not None:
+            return cached_etag
+        # Not in cache - fetch from main_dict and cache it
+        etag = self._main_dict.etag(key)
+        self._set_cached_etag(key, etag)
+        return etag
 
 
     def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: Optional[str]) -> None:
