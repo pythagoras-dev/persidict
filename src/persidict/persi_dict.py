@@ -587,6 +587,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return NotImplemented
         return not eq_result
 
+    def __ior__(self, other: Mapping) -> 'PersiDict':
+        """Update this dict with items from other (self |= other)."""
+        if not isinstance(other, Mapping):
+            raise TypeError(f"Cannot update PersiDict with non-Mapping type: {type(other)}")
+        self.update(other)
+        return self
+
 
     def __getstate__(self):
         """Prevent pickling of PersiDict instances.
