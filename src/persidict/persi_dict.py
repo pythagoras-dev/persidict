@@ -187,6 +187,25 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return str(dict(self.items()))
 
 
+    def __bool__(self) -> bool:
+        """Return True if the dictionary is non-empty, False otherwise.
+
+        This provides an efficient truth-value check that avoids calling
+        __len__(), which can be expensive for large persistent stores
+        (e.g., full directory traversal for FileDirDict, S3 pagination
+        for BasicS3Dict). Instead, it attempts to retrieve just the first
+        key using the streaming iterator.
+
+        Returns:
+            bool: True if at least one key exists; False if empty.
+        """
+        try:
+            next(iter(self))
+            return True
+        except StopIteration:
+            return False
+
+
     @abstractmethod
     def __contains__(self, key:NonEmptyPersiDictKey) -> bool:
         """Check whether a key exists in the store.
