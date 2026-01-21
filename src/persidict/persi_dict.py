@@ -20,8 +20,9 @@ from abc import abstractmethod
 import heapq
 import random
 from mixinforge import ParameterizableMixin, sort_dict_by_keys
-from typing import Any, Sequence, Optional, TypeVar, Iterator
+from typing import Any, Sequence, Optional, TypeVar, Iterator, Mapping
 from collections.abc import MutableMapping
+from itertools import zip_longest
 
 ValueType = TypeVar('ValueType')
 """Generic type variable for dictionary values.
@@ -102,7 +103,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
             TypeError: If base_class_for_values is not a type or None.
         """
-        
+
+
         self._append_only = bool(append_only)
         
         if len(serialization_format) == 0:
@@ -521,7 +523,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self[key] = default
             return default
 
-    def __eq__(self, other: PersiDict) -> bool:
+    def __eq__(self, other: Any) -> bool:
         """Compare dictionaries for equality.
 
         If other is a PersiDict instance, compares parameters for equality.
@@ -531,24 +533,40 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             other: Another dictionary-like object to compare against.
 
         Returns:
-            True if the dictionaries are considered equal, False otherwise.
+            True if the dictionaries kave the same key/value pairs, False otherwise.
         """
+        if self is other:
+            return True
+
+        if not isinstance(other, Mapping):
+            return NotImplemented
+
         try:
             if type(self) is type(other) :
                 if self.get_params() == other.get_params():
                     return True
-        except:
-            pass
 
-        try: #TODO: refactor to improve performance
-            if len(self) != len(other):
-                return False
-            for k in other.keys():
-                if self[k] != other[k]:
+            for self_key, other_key_value in zip_longest(
+                    self.keys(),other.items(), fillvalue=None):
+                if self_key is None or other_key_value is None:
                     return False
-            return True
-        except KeyError:
+                (other_key, other_value) = other_key_value
+                if self[other_key] != other_value:
+                    return False
+
+        except (KeyError,TypeError, AttributeError, ValueError):
             return False
+
+        return True
+
+    def __ne__(self, other: Any) -> bool:
+        if self is other:
+            return False
+
+        eq_result = self.__eq__(other)
+        if eq_result is NotImplemented:
+            return NotImplemented
+        return not eq_result
 
 
     def __getstate__(self):
