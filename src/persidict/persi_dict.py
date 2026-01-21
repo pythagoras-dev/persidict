@@ -594,9 +594,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             TypeError: Always raised; PersiDict instances are not pickleable.
         """
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                                      " and cannot be pickled directly")
+        raise TypeError(
+            f"{self.__class__.__name__} instances cannot be pickled. "
+            "To persist configuration, use get_params().")
 
 
     def __setstate__(self, state):
@@ -605,9 +605,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             TypeError: Always raised; PersiDict instances are not pickleable.
         """
-        if type(self) is PersiDict:
-            raise TypeError("PersiDict is an abstract base class"
-                            " and cannot be unpickled directly")
+        raise TypeError(
+            f"{self.__class__.__name__} instances cannot be unpickled. "
+            "Recreate from parameters instead.")
 
 
     def clear(self) -> None:
