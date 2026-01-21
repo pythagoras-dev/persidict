@@ -9,6 +9,8 @@ import pickle
 
 import pytest
 
+from moto import mock_aws
+
 from persidict import (
     PersiDict,
     FileDirDict,
@@ -74,6 +76,7 @@ PERSIDICT_SUBCLASS_FACTORIES = [
 ]
 
 
+@mock_aws
 @pytest.mark.parametrize("name,factory", PERSIDICT_SUBCLASS_FACTORIES, ids=[p[0] for p in PERSIDICT_SUBCLASS_FACTORIES])
 def test_persidict_subclass_cannot_be_pickled(name, factory, tmp_path):
     """Verify that pickling a PersiDict subclass raises TypeError."""
@@ -83,6 +86,7 @@ def test_persidict_subclass_cannot_be_pickled(name, factory, tmp_path):
         pickle.dumps(instance)
 
 
+@mock_aws
 @pytest.mark.parametrize("name,factory", PERSIDICT_SUBCLASS_FACTORIES, ids=[p[0] for p in PERSIDICT_SUBCLASS_FACTORIES])
 def test_persidict_subclass_setstate_raises(name, factory, tmp_path):
     """Verify that calling __setstate__ on a PersiDict subclass raises TypeError."""
