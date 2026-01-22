@@ -549,7 +549,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         return step()
 
 
-    def get_subdict(self, key:PersiDictKey) -> 'BasicS3Dict[ValueType]':
+    def get_subdict(self, prefix_key:PersiDictKey) -> 'BasicS3Dict[ValueType]':
         """Create a subdictionary scoped to items with the specified prefix.
 
         Returns an empty subdictionary if no items exist under the prefix.
@@ -557,19 +557,19 @@ class BasicS3Dict(PersiDict[ValueType]):
         This method is not part of the standard Python dictionary interface.
 
         Args:
-            key: A common prefix (string or sequence of strings or SafeStrTuple)
+            prefix_key: A common prefix (string or sequence of strings or SafeStrTuple)
                 used to scope items stored under this dictionary.
 
         Returns:
             BasicS3Dict: A new BasicS3Dict instance with root_prefix
-                extended by the given key, sharing the parent's bucket,
+                extended by the given prefix_key, sharing the parent's bucket,
                 region, serialization_format, and other configuration settings.
         """
 
-        key = SafeStrTuple(key)
-        if len(key):
-            key = sign_safe_str_tuple(key, 0)
-            full_root_prefix = self.root_prefix + "/".join(key)
+        prefix_key = SafeStrTuple(prefix_key)
+        if len(prefix_key):
+            prefix_key = sign_safe_str_tuple(prefix_key, 0)
+            full_root_prefix = self.root_prefix + "/".join(prefix_key)
         else:
             full_root_prefix = self.root_prefix
 

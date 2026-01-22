@@ -161,7 +161,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         """Generic iteration over dictionary items."""
         return self._cached_dict._generic_iter(result_type)
     
-    def get_subdict(self, key: PersiDictKey) -> 'S3Dict_FileDirCached[ValueType]':
+    def get_subdict(self, prefix_key: PersiDictKey) -> 'S3Dict_FileDirCached[ValueType]':
         """Get a subdictionary for the given key prefix.
 
         Returns a new S3Dict_FileDirCached with both the S3 storage and local
@@ -169,17 +169,17 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         will be visible in the parent and vice versa.
 
         Args:
-            key: Prefix key (string or sequence of strings) identifying the
+            prefix_key: Prefix key (string or sequence of strings) identifying the
                 subdictionary scope.
 
         Returns:
             S3Dict_FileDirCached: A new cached S3 dictionary rooted at the
                 specified prefix.
         """
-        key = SafeStrTuple(key)
+        prefix_key = SafeStrTuple(prefix_key)
 
         # Delegate to _cached_dict which handles subdict creation properly
-        cached_subdict = self._cached_dict.get_subdict(key)
+        cached_subdict = self._cached_dict.get_subdict(prefix_key)
 
         # Create a new S3Dict_FileDirCached wrapper around the cached subdict
         result = object.__new__(S3Dict_FileDirCached)

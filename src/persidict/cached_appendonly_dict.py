@@ -271,22 +271,22 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         """
         raise TypeError("append-only dicts do not support deletion")
 
-    def get_subdict(self, key: PersiDictKey) -> 'AppendOnlyDictCached[ValueType]':
+    def get_subdict(self, prefix_key: PersiDictKey) -> 'AppendOnlyDictCached[ValueType]':
         """Get a sub-dictionary for the given key prefix.
 
         Returns a new AppendOnlyDictCached with main_dict and data_cache
         both scoped to the given prefix.
 
         Args:
-            key: Prefix key (string or sequence of strings) identifying the
+            prefix_key: Prefix key (string or sequence of strings) identifying the
                 subdictionary scope.
 
         Returns:
             AppendOnlyDictCached: A new cached dictionary rooted at the
                 specified prefix.
         """
-        key = SafeStrTuple(key)
+        prefix_key = SafeStrTuple(prefix_key)
         return AppendOnlyDictCached(
-            main_dict=self._main.get_subdict(key),
-            data_cache=self._data_cache.get_subdict(key)
+            main_dict=self._main.get_subdict(prefix_key),
+            data_cache=self._data_cache.get_subdict(prefix_key)
         )

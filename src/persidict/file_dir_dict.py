@@ -344,7 +344,7 @@ class FileDirDict(PersiDict[ValueType]):
             return key
 
 
-    def get_subdict(self, key:PersiDictKey) -> 'FileDirDict[ValueType]':
+    def get_subdict(self, prefix_key:PersiDictKey) -> 'FileDirDict[ValueType]':
         """Get a subdictionary containing items with the same prefix key.
 
         For non-existing prefix key, an empty sub-dictionary is returned.
@@ -352,16 +352,16 @@ class FileDirDict(PersiDict[ValueType]):
         This method is absent in the original dict API.
 
         Args:
-            key (PersiDictKey): Prefix key (string or sequence of strings) that
+            prefix_key (PersiDictKey): Prefix key (string or sequence of strings) that
                 identifies the subdirectory.
 
         Returns:
             FileDirDict: A new FileDirDict instance rooted at the specified
                 subdirectory, sharing the same parameters as this dictionary.
         """
-        key = SafeStrTuple(key)
+        prefix_key = SafeStrTuple(prefix_key)
         full_dir_path = self._build_full_path(
-            key,
+            prefix_key,
             create_subdirs = True,
             is_file_path = False)
         return FileDirDict(

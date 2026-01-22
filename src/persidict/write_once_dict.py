@@ -238,16 +238,16 @@ class WriteOnceDict(PersiDict[ValueType]):
                         + f"which is not allowed. Details here: {diff_dict} ")
                 self._consistency_checks_passed += 1
 
-    def __contains__(self, item:NonEmptyPersiDictKey):
+    def __contains__(self, key:NonEmptyPersiDictKey):
         """Check if a key exists in the dictionary.
 
         Args:
-            item: Key to check.
+            key: Key to check.
 
         Returns:
             bool: True if the key exists, False otherwise.
         """
-        return item in self._wrapped_dict
+        return key in self._wrapped_dict
 
     def __getitem__(self, key:NonEmptyPersiDictKey) -> ValueType:
         """Retrieve a value by key.
@@ -282,16 +282,16 @@ class WriteOnceDict(PersiDict[ValueType]):
         """
         return len(self._wrapped_dict)
 
-    def _generic_iter(self, iter_type: set[str]):
+    def _generic_iter(self, result_type: set[str]):
         """Delegate iteration to the wrapped dict.
 
         Args:
-            iter_type: Type of iterator: 'items' and/or 'keys' and/or 'timestamps'.
+            result_type: Type of iterator: 'items' and/or 'keys' and/or 'timestamps'.
 
         Returns:
             Any: Iterator from the wrapped dictionary.
         """
-        return self._wrapped_dict._generic_iter(iter_type)
+        return self._wrapped_dict._generic_iter(result_type)
 
     def timestamp(self, key: NonEmptyPersiDictKey) -> float:
         """Return the timestamp for a given key.
