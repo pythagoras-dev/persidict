@@ -127,7 +127,7 @@ class WriteOnceDict(PersiDict[ValueType]):
                 return
             else:
                 raise ValueError(
-                    f"KEEP_CURRENT can't be used to initialize p_consistency_checks.")
+                    "KEEP_CURRENT can't be used to initialize p_consistency_checks.")
         if value is None:
             value = 0.0
         if not (0 <= value <= 1):

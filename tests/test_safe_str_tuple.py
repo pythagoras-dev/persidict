@@ -32,53 +32,53 @@ def test_eq():
 
 def test_getitem():
     """Test if SafeStrTuple gets items correctly."""
-    l = ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']
-    s = SafeStrTuple(*l)
+    letters = ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']
+    s = SafeStrTuple(*letters)
     for i, c in enumerate(s):
-        assert s[i] == l[i] == c
+        assert s[i] == letters[i] == c
     assert s == SafeStrTuple(s)
 
 def test_len():
     """Test if SafeStrTuple gets length correctly."""
-    l = ['a', 'b', 'c']
-    s = SafeStrTuple(*l)
-    assert len(s) == len(l)
+    letters = ['a', 'b', 'c']
+    s = SafeStrTuple(*letters)
+    assert len(s) == len(letters)
 
 def test_contains():
     """Test if SafeStrTuple checks containment correctly."""
-    l = ['a', 'b', 'c']
-    s = SafeStrTuple(*l)
-    for c in l:
+    letters = ['a', 'b', 'c']
+    s = SafeStrTuple(*letters)
+    for c in letters:
         assert c in s
         assert c*10 not in s
 
 def test_reversed():
-    l = ['a', 'b', 'c', 'x', 'y', 'z']
-    s = SafeStrTuple(*l)
+    letters = ['a', 'b', 'c', 'x', 'y', 'z']
+    s = SafeStrTuple(*letters)
     assert s == reversed(reversed(s))
     assert s != reversed(s)
 
 def test_count():
-    l = ['a', 'b', 'c', 'a']
-    s = SafeStrTuple(*l)
-    for c in l:
-        assert s.count(c) == l.count(c)
+    letters = ['a', 'b', 'c', 'a']
+    s = SafeStrTuple(*letters)
+    for c in letters:
+        assert s.count(c) == letters.count(c)
         assert s.count(c*100) == 0
 
 def test_init():
-    l = ['a', 'b', 'c']
-    s = SafeStrTuple(*l)
+    letters = ['a', 'b', 'c']
+    s = SafeStrTuple(*letters)
     assert s == SafeStrTuple(s)
-    assert s == SafeStrTuple(*l)
+    assert s == SafeStrTuple(*letters)
     assert s != reversed(s)
-    assert s != SafeStrTuple(*l, 'd')
-    assert s != SafeStrTuple(*l, 'd', 'e')
-    assert s != SafeStrTuple(*l, 'd', 'e', 'f')
+    assert s != SafeStrTuple(*letters, 'd')
+    assert s != SafeStrTuple(*letters, 'd', 'e')
+    assert s != SafeStrTuple(*letters, 'd', 'e', 'f')
 
 def test_signing_unsigning():
-    l = ['a', 'b', 'c']
+    letters = ['a', 'b', 'c']
     for n in range(0,20):
-        s = SafeStrTuple(*l)
+        s = SafeStrTuple(*letters)
         signed_s = sign_safe_str_tuple(s, n)
         assert s == unsign_safe_str_tuple(signed_s, n)
         if n > 0:
