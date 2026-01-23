@@ -302,7 +302,6 @@ def test_keyerror_when_main_missing_even_if_cache_has_entries(cached_env):
 
 
 def test_constructor_main_type_validation():
-    main = FakeETagMain()
     good_cache = LocalDict()
     # main must be a PersiDict too
     with pytest.raises(TypeError):

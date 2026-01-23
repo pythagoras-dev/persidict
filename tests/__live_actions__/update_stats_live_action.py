@@ -74,9 +74,7 @@ def test_live_stats_update(pytestconfig):
     assert 'LOC' in rst_content or 'Lines' in rst_content, \
         "Generated RST should contain LOC/Lines metric"
 
-    # Store original content to verify updates actually happen
-    original_readme = readme_content
-    original_index_rst = index_rst_content
+
 
     # Attempt to update README.md
     updated_readme_path = _update_readme_if_possible(project_root, markdown_content)

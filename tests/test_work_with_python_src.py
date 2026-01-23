@@ -21,7 +21,6 @@ def test_work_with_python_src(tmpdir, DictToTest, kwargs):
 
     dict_to_test = DictToTest(**new_kwargs)
     dict_to_test.clear()
-    model_dict = dict()
 
     src = inspect.getsource(demo_function)
     print(f"{type(src)=}")
@@ -29,4 +28,3 @@ def test_work_with_python_src(tmpdir, DictToTest, kwargs):
     assert dict_to_test["my_function"] == src
 
     dict_to_test.clear()
-
