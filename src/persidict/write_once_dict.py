@@ -218,7 +218,7 @@ class WriteOnceDict(PersiDict[ValueType]):
                 else:
                     raise e
 
-        if not key in self._wrapped_dict:
+        if key not in self._wrapped_dict:
             raise KeyError(
                 f"Key {key} was not set in the wrapped dict "
                 + f"{self._wrapped_dict}. This should not happen.")
