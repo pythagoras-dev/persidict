@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from mixinforge import sort_dict_by_keys
 
 from .basic_s3_dict import BasicS3Dict
-from .file_dir_dict import FileDirDict, FILEDIRDICT_DEFAULT_BASE_DIR
+from .file_dir_dict import FileDirDict
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType

@@ -1,6 +1,5 @@
 """Tests for __eq__ behavior across PersiDict implementations."""
 
-import pytest
 from moto import mock_aws
 
 from persidict import FileDirDict, LocalDict, BasicS3Dict

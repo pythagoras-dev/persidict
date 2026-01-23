@@ -4,7 +4,6 @@
 import os
 import tempfile
 import sys
-import shutil
 
 # Add src to path to import persidict
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))

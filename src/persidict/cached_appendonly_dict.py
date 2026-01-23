@@ -20,7 +20,7 @@ main dict to keep semantics consistent with the authoritative store.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple

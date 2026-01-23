@@ -23,7 +23,6 @@ import sys
 from typing import Any
 
 import joblib.hashing
-from .persi_dict import PersiDictKey
 
 def _get_md5_signature(x: Any) -> str:
     """Compute an MD5 signature for an arbitrary Python object.

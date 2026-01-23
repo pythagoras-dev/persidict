@@ -5,7 +5,7 @@ from persidict.cached_mutable_dict import MutableDictCached
 from persidict.persi_dict import PersiDict
 from persidict.local_dict import LocalDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple
-from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED
+from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, KEEP_CURRENT, DELETE_CURRENT
 
 
 class FakeETagMain(PersiDict):
@@ -188,9 +188,6 @@ def test_delete_removes_from_main_and_caches(cached_env):
     assert ("d",) not in main
     assert ("d",) not in data_cache
     assert ("d",) not in etag_cache
-
-
-from persidict.jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT
 
 
 def test_wrapper_write_update_and_jokers(cached_env):

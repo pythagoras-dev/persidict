@@ -1,11 +1,10 @@
 """Tests for storing and retrieving torch atomic types in PersiDict."""
 
+from ..atomic_test_config import atomic_type_tests
+
 import pytest
 
 torch = pytest.importorskip("torch", reason="PyTorch not available on this platform")
-
-from ..atomic_test_config import atomic_type_tests
-
 
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_torch_tensor_1d(tmp_path, DictToTest):

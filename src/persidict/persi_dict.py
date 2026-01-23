@@ -17,12 +17,20 @@ objects) and remain accessible across process lifetimes.
 from __future__ import annotations
 
 from abc import abstractmethod
-import heapq
-import random
-from mixinforge import ParameterizableMixin, sort_dict_by_keys
-from typing import Any, Sequence, Optional, TypeVar, Iterator, Mapping
 from collections.abc import MutableMapping
+import heapq
 from itertools import zip_longest
+import random
+from typing import Any, Sequence, Optional, TypeVar, Iterator, Mapping
+
+from mixinforge import ParameterizableMixin, sort_dict_by_keys
+
+from . import NonEmptySafeStrTuple
+from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
+                                      CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
+                                      ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED)
+from .safe_chars import contains_unsafe_chars
+from .safe_str_tuple import SafeStrTuple
 
 ValueType = TypeVar('ValueType')
 """Generic type variable for dictionary values.
@@ -34,13 +42,6 @@ Example:
     d: FileDirDict[int] = FileDirDict(base_dir="./data")
     val: int = d["key"]  # Type checker knows this is int
 """
-
-from . import NonEmptySafeStrTuple
-from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
-                                      CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
-                                      ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED)
-from .safe_chars import contains_unsafe_chars
-from .safe_str_tuple import SafeStrTuple
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
 NonEmptyPersiDictKey = NonEmptySafeStrTuple | Sequence[str] | str

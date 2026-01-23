@@ -8,7 +8,7 @@ same logical location.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Type
+from typing import Any
 
 from .persi_dict import PersiDict
 

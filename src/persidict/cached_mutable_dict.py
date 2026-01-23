@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
@@ -292,5 +292,4 @@ class MutableDictCached(PersiDict[ValueType]):
             data_cache=self._data_cache.get_subdict(prefix_key),
             etag_cache=self._etag_cache.get_subdict(prefix_key)
         )
-
 

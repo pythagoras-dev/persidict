@@ -10,7 +10,7 @@ like dict.update(), supporting:
 import pytest
 from moto import mock_aws
 
-from persidict import FileDirDict, LocalDict, SafeStrTuple
+from persidict import LocalDict, SafeStrTuple
 
 from .data_for_mutable_tests import mutable_tests
 
