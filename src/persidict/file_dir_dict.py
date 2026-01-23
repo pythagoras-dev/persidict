@@ -395,14 +395,14 @@ class FileDirDict(PersiDict[ValueType]):
                 else:
                     fd_open_mode = os.O_RDONLY
                 fd = msvcrt.open_osfhandle(int(handle),fd_open_mode)
-            except:
+            except Exception:
                 CloseHandle(handle)
                 raise
 
             try:
                 f = os.fdopen(fd, file_open_mode)
                 fd = None
-            except:
+            except Exception:
                 if fd is not None:
                     os.close(fd)
                 raise
@@ -520,13 +520,13 @@ class FileDirDict(PersiDict[ValueType]):
                                 kernel32.FlushFileBuffers(handle)
                             finally:
                                 CloseHandle(handle)
-                    except:
+                    except Exception:
                         pass
 
-            except OSError:
+            except Exception:
                 pass
 
-        except:
+        except Exception:
             try:
                 os.remove(temp_path)
             finally:
@@ -723,7 +723,7 @@ class FileDirDict(PersiDict[ValueType]):
                             full_path = os.path.join(dir_name, f)
                             try:
                                 value_to_return = self._read_from_file(full_path)
-                            except:
+                            except Exception:
                                 if not os.path.isfile(full_path):
                                     continue
                                 else:
