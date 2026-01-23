@@ -52,8 +52,8 @@ def test_empty_dict_delete_operations():
         del empty_dict["non_existent"]
     
     # Test discard (should return False)
-    assert empty_dict.discard("any_key") == False
-    assert empty_dict.discard(("complex", "key")) == False
+    assert not empty_dict.discard("any_key")
+    assert not empty_dict.discard(("complex", "key"))
 
 
 def test_empty_dict_timestamp_operations():
@@ -152,4 +152,4 @@ def test_empty_dict_consistency():
     for i in range(10):
         assert f"key_{i}" not in empty_dict
         assert empty_dict.get(f"key_{i}") is None
-        assert empty_dict.discard(f"key_{i}") == False
+        assert not empty_dict.discard(f"key_{i}")

@@ -160,27 +160,27 @@ def test_eq_overrideability():
     good_tuple = GoodTuple(safe_tuple)
     good_tuple_2 = GoodTuple2(safe_tuple)
 
-    assert (safe_tuple == bad_tuple) == False
-    assert (bad_tuple == safe_tuple) == False
-    assert (safe_tuple != bad_tuple) == True
-    assert (bad_tuple != safe_tuple) == True
+    assert not (safe_tuple == bad_tuple)
+    assert not (bad_tuple == safe_tuple)
+    assert safe_tuple != bad_tuple
+    assert bad_tuple != safe_tuple
 
-    assert (good_tuple_2 == bad_tuple) == False
-    assert (bad_tuple == good_tuple_2) == False
-    assert (good_tuple_2 != bad_tuple) == True
-    assert (bad_tuple != good_tuple_2) == True
+    assert not (good_tuple_2 == bad_tuple)
+    assert not (bad_tuple == good_tuple_2)
+    assert good_tuple_2 != bad_tuple
+    assert bad_tuple != good_tuple_2
 
-    assert (safe_tuple == good_tuple) == True
-    assert (good_tuple == safe_tuple) == True
-    assert (safe_tuple != good_tuple) == False
-    assert (good_tuple != safe_tuple) == False
+    assert safe_tuple == good_tuple
+    assert good_tuple == safe_tuple
+    assert not (safe_tuple != good_tuple)
+    assert not (good_tuple != safe_tuple)
 
-    assert (safe_tuple == good_tuple_2) == True
-    assert (good_tuple_2 == safe_tuple) == True
-    assert (safe_tuple != good_tuple_2) == False
-    assert (good_tuple_2 != safe_tuple) == False
+    assert safe_tuple == good_tuple_2
+    assert good_tuple_2 == safe_tuple
+    assert not (safe_tuple != good_tuple_2)
+    assert not (good_tuple_2 != safe_tuple)
 
-    assert (good_tuple == good_tuple_2) == True
-    assert (good_tuple_2 == good_tuple) == True
-    assert (good_tuple != good_tuple_2) == False
-    assert (good_tuple_2 != good_tuple) == False
+    assert good_tuple == good_tuple_2
+    assert good_tuple_2 == good_tuple
+    assert not (good_tuple != good_tuple_2)
+    assert not (good_tuple_2 != good_tuple)
