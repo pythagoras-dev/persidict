@@ -101,3 +101,6 @@ warn_unused_ignores = true
 [tool.coverage.run]
 source = ["src/persidict"]
 branch = true
+
+[tool.ruff]
+lint.ignore = ["F403", "F405"]
