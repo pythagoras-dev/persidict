@@ -74,6 +74,7 @@ dev = [
     "sympy",
     "shapely",
     "astropy",
+    "ruff",
     "uv-publish"
 ]
 
