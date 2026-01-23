@@ -29,6 +29,10 @@ persidict documentation
    :target: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
    :alt: Docstring Style: Google
 
+.. image:: https://github.com/pythagoras-dev/persidict/actions/workflows/ruff.yml/badge.svg?branch=master
+   :target: https://github.com/pythagoras-dev/persidict/actions/workflows/ruff.yml
+   :alt: Ruff
+
 
 **persidict** is a lightweight persistent key-value store for Python designed for distributed
 environments where multiple processes on different machines concurrently work with the same store.
