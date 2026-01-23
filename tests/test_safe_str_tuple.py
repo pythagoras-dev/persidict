@@ -96,7 +96,7 @@ def test_unsafe_chars():
     for c in bad_chars:
         try:
             SafeStrTuple("qwerty" + c + "uiop")
-        except:
+        except Exception:
             pass
         else:
             assert False, f"Failed to reject unsafe character {c}"
@@ -115,7 +115,7 @@ def test_rejecting_non_strings():
     for a in bad_args:
         try:
             SafeStrTuple(a)
-        except:
+        except Exception:
             pass
         else:
             assert False, f"Failed to reject non-string argument {a}"
@@ -124,7 +124,7 @@ def test_rejecting_empty_strings():
     """Test if SafeStrTuple rejects empty strings."""
     try:
         SafeStrTuple("")
-    except:
+    except Exception:
         pass
     else:
         assert False, "Failed to reject empty string"
@@ -134,7 +134,7 @@ def test_rejecting_empty_sequences():
     SafeStrTuple([])
     try:
         NonEmptySafeStrTuple([])
-    except:
+    except Exception:
         pass
     else:
         assert False, "Failed to reject empty sequence"
