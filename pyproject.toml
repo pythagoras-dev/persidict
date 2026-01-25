@@ -36,7 +36,6 @@ dependencies = [
     "jsonpickle",
     "deepdiff",
     "boto3",
-    "pytest",
     "uv",
     "pandas",
 ]
