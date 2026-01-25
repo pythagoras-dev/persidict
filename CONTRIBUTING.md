@@ -29,6 +29,12 @@ Your help is greatly appreciated. These guidelines will help you get started.
     ```bash
     pytest
     ```
+    
+4.  **Run Linting:**
+    Make sure the code is free of linting errors.
+    ```bash
+    uv run ruff check .
+    ```
 
 ## How to Contribute
 
@@ -47,8 +53,10 @@ Please provide a clear description, steps to reproduce, and your Python version.
     *   Adhere to PEP 8 guidelines.
     *   Write clear, Google-style docstrings for public functions and classes.
     *   Add type hints where appropriate.
-4.  **Write Commit Messages:** Follow the conventions below.
-5.  **Push and Open a Pull Request:** Push your branch to your fork and open a pull request.
+4. **Check Tests:** Make sure the test suite passes.
+5. **Check Linting:** Make sure the code is free of linting errors.
+6. **Write Commit Messages:** Follow the conventions below.
+7. **Push and Open a Pull Request:** Push your branch to your fork and open a pull request.
 
 ### Commit Message Prefixes
 
