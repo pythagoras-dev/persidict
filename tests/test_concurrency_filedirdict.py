@@ -1,4 +1,6 @@
-import random, time, multiprocessing
+import multiprocessing
+import random
+import time
 
 from persidict import FileDirDict
 
@@ -48,5 +50,4 @@ def test_concurrency_10(tmpdir):
     assert len(d) == 1, f"Expected 1 item, found {len(d)} items: {list(d.keys())}"
     assert "a" in d
     assert isinstance(d["a"], float)
-
 

@@ -7,7 +7,6 @@ to Mapping arguments only (per implementation).
 
 import pytest
 from moto import mock_aws
-from collections.abc import Mapping
 
 from persidict import LocalDict
 from .data_for_mutable_tests import mutable_tests
@@ -49,6 +48,5 @@ def test_ior_with_another_persidict(tmpdir, DictToTest, kwargs):
     assert d1[("key2",)] == "val2"
     
     d1.clear()
-
 
 

@@ -7,6 +7,7 @@
 [![Documentation Status](https://app.readthedocs.org/projects/persidict/badge/?version=latest)](https://persidict.readthedocs.io/en/latest/)
 [![Code style: pep8](https://img.shields.io/badge/code_style-pep8-blue.svg)](https://peps.python.org/pep-0008/)
 [![Docstring Style: Google](https://img.shields.io/badge/docstrings_style-Google-blue)](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
+[![Ruff](https://github.com/pythagoras-dev/persidict/actions/workflows/ruff.yml/badge.svg?branch=master)](https://github.com/pythagoras-dev/persidict/actions/workflows/ruff.yml)
 
 Simple persistent dictionaries for distributed applications in Python.
 
@@ -321,8 +322,8 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 5175 | 6581 | 11756 |
-| Source Lines Of Code (SLOC) | 1976 | 4123 | 6099 |
+| Lines Of Code (LOC) | 5174 | 6564 | 11738 |
+| Source Lines Of Code (SLOC) | 1975 | 4112 | 6087 |
 | Classes | 20 | 8 | 28 |
 | Functions / Methods | 218 | 353 | 571 |
 | Files | 18 | 67 | 85 |

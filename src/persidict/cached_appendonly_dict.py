@@ -20,7 +20,7 @@ main dict to keep semantics consistent with the authoritative store.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
@@ -208,7 +208,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         res = self._main.get_item_if_etag_changed(key, etag)
-        if not res is ETAG_HAS_NOT_CHANGED:
+        if res is not ETAG_HAS_NOT_CHANGED:
             value, _ = res
             self._data_cache[key] = value
         return res

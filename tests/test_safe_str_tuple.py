@@ -32,53 +32,53 @@ def test_eq():
 
 def test_getitem():
     """Test if SafeStrTuple gets items correctly."""
-    l = ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']
-    s = SafeStrTuple(*l)
+    letters = ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']
+    s = SafeStrTuple(*letters)
     for i, c in enumerate(s):
-        assert s[i] == l[i] == c
+        assert s[i] == letters[i] == c
     assert s == SafeStrTuple(s)
 
 def test_len():
     """Test if SafeStrTuple gets length correctly."""
-    l = ['a', 'b', 'c']
-    s = SafeStrTuple(*l)
-    assert len(s) == len(l)
+    letters = ['a', 'b', 'c']
+    s = SafeStrTuple(*letters)
+    assert len(s) == len(letters)
 
 def test_contains():
     """Test if SafeStrTuple checks containment correctly."""
-    l = ['a', 'b', 'c']
-    s = SafeStrTuple(*l)
-    for c in l:
+    letters = ['a', 'b', 'c']
+    s = SafeStrTuple(*letters)
+    for c in letters:
         assert c in s
         assert c*10 not in s
 
 def test_reversed():
-    l = ['a', 'b', 'c', 'x', 'y', 'z']
-    s = SafeStrTuple(*l)
+    letters = ['a', 'b', 'c', 'x', 'y', 'z']
+    s = SafeStrTuple(*letters)
     assert s == reversed(reversed(s))
     assert s != reversed(s)
 
 def test_count():
-    l = ['a', 'b', 'c', 'a']
-    s = SafeStrTuple(*l)
-    for c in l:
-        assert s.count(c) == l.count(c)
+    letters = ['a', 'b', 'c', 'a']
+    s = SafeStrTuple(*letters)
+    for c in letters:
+        assert s.count(c) == letters.count(c)
         assert s.count(c*100) == 0
 
 def test_init():
-    l = ['a', 'b', 'c']
-    s = SafeStrTuple(*l)
+    letters = ['a', 'b', 'c']
+    s = SafeStrTuple(*letters)
     assert s == SafeStrTuple(s)
-    assert s == SafeStrTuple(*l)
+    assert s == SafeStrTuple(*letters)
     assert s != reversed(s)
-    assert s != SafeStrTuple(*l, 'd')
-    assert s != SafeStrTuple(*l, 'd', 'e')
-    assert s != SafeStrTuple(*l, 'd', 'e', 'f')
+    assert s != SafeStrTuple(*letters, 'd')
+    assert s != SafeStrTuple(*letters, 'd', 'e')
+    assert s != SafeStrTuple(*letters, 'd', 'e', 'f')
 
 def test_signing_unsigning():
-    l = ['a', 'b', 'c']
+    letters = ['a', 'b', 'c']
     for n in range(0,20):
-        s = SafeStrTuple(*l)
+        s = SafeStrTuple(*letters)
         signed_s = sign_safe_str_tuple(s, n)
         assert s == unsign_safe_str_tuple(signed_s, n)
         if n > 0:
@@ -96,7 +96,7 @@ def test_unsafe_chars():
     for c in bad_chars:
         try:
             SafeStrTuple("qwerty" + c + "uiop")
-        except:
+        except Exception:
             pass
         else:
             assert False, f"Failed to reject unsafe character {c}"
@@ -115,7 +115,7 @@ def test_rejecting_non_strings():
     for a in bad_args:
         try:
             SafeStrTuple(a)
-        except:
+        except Exception:
             pass
         else:
             assert False, f"Failed to reject non-string argument {a}"
@@ -124,7 +124,7 @@ def test_rejecting_empty_strings():
     """Test if SafeStrTuple rejects empty strings."""
     try:
         SafeStrTuple("")
-    except:
+    except Exception:
         pass
     else:
         assert False, "Failed to reject empty string"
@@ -134,7 +134,7 @@ def test_rejecting_empty_sequences():
     SafeStrTuple([])
     try:
         NonEmptySafeStrTuple([])
-    except:
+    except Exception:
         pass
     else:
         assert False, "Failed to reject empty sequence"
@@ -160,27 +160,27 @@ def test_eq_overrideability():
     good_tuple = GoodTuple(safe_tuple)
     good_tuple_2 = GoodTuple2(safe_tuple)
 
-    assert (safe_tuple == bad_tuple) == False
-    assert (bad_tuple == safe_tuple) == False
-    assert (safe_tuple != bad_tuple) == True
-    assert (bad_tuple != safe_tuple) == True
+    assert not (safe_tuple == bad_tuple)
+    assert not (bad_tuple == safe_tuple)
+    assert safe_tuple != bad_tuple
+    assert bad_tuple != safe_tuple
 
-    assert (good_tuple_2 == bad_tuple) == False
-    assert (bad_tuple == good_tuple_2) == False
-    assert (good_tuple_2 != bad_tuple) == True
-    assert (bad_tuple != good_tuple_2) == True
+    assert not (good_tuple_2 == bad_tuple)
+    assert not (bad_tuple == good_tuple_2)
+    assert good_tuple_2 != bad_tuple
+    assert bad_tuple != good_tuple_2
 
-    assert (safe_tuple == good_tuple) == True
-    assert (good_tuple == safe_tuple) == True
-    assert (safe_tuple != good_tuple) == False
-    assert (good_tuple != safe_tuple) == False
+    assert safe_tuple == good_tuple
+    assert good_tuple == safe_tuple
+    assert not (safe_tuple != good_tuple)
+    assert not (good_tuple != safe_tuple)
 
-    assert (safe_tuple == good_tuple_2) == True
-    assert (good_tuple_2 == safe_tuple) == True
-    assert (safe_tuple != good_tuple_2) == False
-    assert (good_tuple_2 != safe_tuple) == False
+    assert safe_tuple == good_tuple_2
+    assert good_tuple_2 == safe_tuple
+    assert not (safe_tuple != good_tuple_2)
+    assert not (good_tuple_2 != safe_tuple)
 
-    assert (good_tuple == good_tuple_2) == True
-    assert (good_tuple_2 == good_tuple) == True
-    assert (good_tuple != good_tuple_2) == False
-    assert (good_tuple_2 != good_tuple) == False
+    assert good_tuple == good_tuple_2
+    assert good_tuple_2 == good_tuple
+    assert not (good_tuple != good_tuple_2)
+    assert not (good_tuple_2 != good_tuple)

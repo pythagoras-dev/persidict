@@ -10,7 +10,6 @@ def test_subdicts(tmpdir, DictToTest, kwargs):
     """Test if get_subdict() works correctly."""
     dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
     dict_to_test.clear()
-    model_dict = dict()
 
     fdd = dict_to_test
     fdd[("a", "a_1")] = 10

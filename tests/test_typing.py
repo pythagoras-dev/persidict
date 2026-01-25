@@ -1,8 +1,10 @@
 """Static typing assertions validated by mypy/pyright (not executed at runtime)."""
 
-from typing import Any, TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Any, assert_type, cast
+
     from persidict import (
         EmptyDict,
         FileDirDict,
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
     )
 
     # Parameterized usage - typed dictionaries
-    int_dict: FileDirDict[int]
+    int_dict = cast(FileDirDict[int], None)
     assert_type(int_dict["key"], int)
     assert_type(int_dict.get("key"), int | None)
     assert_type(int_dict.get("key", 0), int)
@@ -28,7 +30,7 @@ if TYPE_CHECKING:
         assert_type(key, NonEmptySafeStrTuple)
         assert_type(value, int)
 
-    str_dict: LocalDict[str]
+    str_dict = cast(LocalDict[str], None)
     assert_type(str_dict["another_key"], str)
     assert_type(str_dict.get("another_key"), str | None)
     assert_type(str_dict.get("another_key", "default"), str)
@@ -46,13 +48,13 @@ if TYPE_CHECKING:
         assert_type(value, str)
 
     # Unparameterized usage (backward compatible)
-    any_dict: FileDirDict
+    any_dict = cast(FileDirDict, None)
     assert_type(any_dict["key"], Any)
     assert_type(any_dict.get("key"), Any)
     assert_type(any_dict.pop("key", None), Any)
 
     # EmptyDict with type parameter
-    empty: EmptyDict[float]
+    empty = cast(EmptyDict[float], None)
     assert_type(empty.get("key"), float | None)
     assert_type(empty.get("key", 1.0), float)
     assert_type(empty.setdefault("key", 1.0), float)

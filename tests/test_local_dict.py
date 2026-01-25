@@ -172,6 +172,8 @@ def test_newest_oldest_helpers():
     ld[("t", "3")] = "c"
     t3 = ld.timestamp(("t", "3"))
 
+    assert t1 < t2 < t3
+
     # newest
     nk = ld.newest_keys()
     nv = ld.newest_values()

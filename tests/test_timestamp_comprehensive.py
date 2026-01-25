@@ -1,5 +1,3 @@
-import time
-import pytest
 from moto import mock_aws
 from persidict import FileDirDict, S3Dict
 from persidict.safe_str_tuple import SafeStrTuple

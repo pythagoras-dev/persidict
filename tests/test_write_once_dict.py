@@ -50,18 +50,18 @@ def test_first_entry_dict_pchecks_one(tmpdir):
 
 def test_firs_entry_dict_wrong_init_params(tmpdir):
     with pytest.raises(Exception):
-        fed = WriteOnceDict({}, p_consistency_checks=None)
+        _ = WriteOnceDict({}, p_consistency_checks=None)
 
     with pytest.raises(Exception):
-        fed = WriteOnceDict(
+        _ = WriteOnceDict(
             FileDirDict(tmpdir, append_only=True)
             , p_consistency_checks=1.2)
 
     with pytest.raises(Exception):
-        fed = WriteOnceDict(
+        _ = WriteOnceDict(
             FileDirDict(tmpdir, append_only=True)
             , p_consistency_checks=-0.1)
 
     with pytest.raises(Exception):
-        fed = WriteOnceDict(
+        _ = WriteOnceDict(
             FileDirDict(tmpdir, append_only=False))

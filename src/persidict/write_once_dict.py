@@ -23,7 +23,6 @@ import sys
 from typing import Any
 
 import joblib.hashing
-from .persi_dict import PersiDictKey
 
 def _get_md5_signature(x: Any) -> str:
     """Compute an MD5 signature for an arbitrary Python object.
@@ -128,7 +127,7 @@ class WriteOnceDict(PersiDict[ValueType]):
                 return
             else:
                 raise ValueError(
-                    f"KEEP_CURRENT can't be used to initialize p_consistency_checks.")
+                    "KEEP_CURRENT can't be used to initialize p_consistency_checks.")
         if value is None:
             value = 0.0
         if not (0 <= value <= 1):
@@ -219,7 +218,7 @@ class WriteOnceDict(PersiDict[ValueType]):
                 else:
                     raise e
 
-        if not key in self._wrapped_dict:
+        if key not in self._wrapped_dict:
             raise KeyError(
                 f"Key {key} was not set in the wrapped dict "
                 + f"{self._wrapped_dict}. This should not happen.")

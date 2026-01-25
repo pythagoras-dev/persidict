@@ -29,6 +29,10 @@ persidict documentation
    :target: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
    :alt: Docstring Style: Google
 
+.. image:: https://github.com/pythagoras-dev/persidict/actions/workflows/ruff.yml/badge.svg?branch=master
+   :target: https://github.com/pythagoras-dev/persidict/actions/workflows/ruff.yml
+   :alt: Ruff
+
 
 **persidict** is a lightweight persistent key-value store for Python designed for distributed
 environments where multiple processes on different machines concurrently work with the same store.
@@ -665,13 +669,13 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 5175
-     - 6581
-     - 11756
+     - 5174
+     - 6564
+     - 11738
    * - Source Lines Of Code (SLOC)
-     - 1976
-     - 4123
-     - 6099
+     - 1975
+     - 4112
+     - 6087
    * - Classes
      - 20
      - 8
