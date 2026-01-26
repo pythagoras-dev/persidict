@@ -13,7 +13,7 @@ import os
 import random
 import tempfile
 import time
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 import joblib
 import jsonpickle
@@ -31,12 +31,12 @@ if os.name == 'nt':
     import ctypes
     from ctypes import wintypes
 
-    GENERIC_READ = 0x80000000
-    FILE_SHARE_READ = 0x00000001
-    FILE_SHARE_WRITE = 0x00000002
-    FILE_SHARE_DELETE = 0x00000004
-    OPEN_EXISTING = 3
-    INVALID_HANDLE_VALUE = -1
+    GENERIC_READ: Final[int] = 0x80000000
+    FILE_SHARE_READ: Final[int] = 0x00000001
+    FILE_SHARE_WRITE: Final[int] = 0x00000002
+    FILE_SHARE_DELETE: Final[int] = 0x00000004
+    OPEN_EXISTING: Final[int] = 3
+    INVALID_HANDLE_VALUE: Final[int] = -1
 
     CreateFileW = ctypes.windll.kernel32.CreateFileW
     CreateFileW.argtypes = [wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
@@ -98,7 +98,7 @@ else:
 jsonpickle_numpy.register_handlers()
 jsonpickle_pandas.register_handlers()
 
-FILEDIRDICT_DEFAULT_BASE_DIR = "__file_dir_dict__"
+FILEDIRDICT_DEFAULT_BASE_DIR: Final[str] = "__file_dir_dict__"
 
 class FileDirDict(PersiDict[ValueType]):
     """ A persistent Dict that stores key-value pairs in local files.

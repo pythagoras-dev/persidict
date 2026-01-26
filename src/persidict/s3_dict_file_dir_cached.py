@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Final, Optional
 
 from mixinforge import sort_dict_by_keys
 
@@ -16,7 +16,7 @@ from .overlapping_multi_dict import OverlappingMultiDict
 
 
 # Default base directory for S3Dict_FileDirCached local cache
-S3DICT_NEW_DEFAULT_BASE_DIR = "__s3_dict__"
+S3DICT_NEW_DEFAULT_BASE_DIR: Final[str] = "__s3_dict__"
 
 
 class S3Dict_FileDirCached(PersiDict[ValueType]):

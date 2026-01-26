@@ -15,6 +15,8 @@ Examples:
     >>> d[key] = KEEP_CURRENT  # Do not alter existing value
     >>> d[key] = DELETE_CURRENT  # Remove key if present
 """
+from typing import Final
+
 from mixinforge import SingletonMixin
 
 
@@ -112,7 +114,7 @@ class ExecutionIsCompleteFlag(StatusFlag):
     pass
 
 _KeepCurrent = KeepCurrentFlag()
-KEEP_CURRENT = KeepCurrentFlag()
+KEEP_CURRENT: Final[KeepCurrentFlag] = KeepCurrentFlag()
 """Flag indicating that the current value should be kept unchanged.
 
 This flag can be assigned to a key in a PersiDict to indicate that any existing
@@ -129,7 +131,7 @@ Example:
 
 
 _DeleteCurrent = DeleteCurrentFlag()
-DELETE_CURRENT = DeleteCurrentFlag()
+DELETE_CURRENT: Final[DeleteCurrentFlag] = DeleteCurrentFlag()
 """Flag indicating that the current value should be deleted.
 
 This flag can be assigned to a key in a PersiDict to indicate that any existing
@@ -146,7 +148,7 @@ Example:
 
 
 _ContinueNormalExecution = ContinueNormalExecutionFlag()
-CONTINUE_NORMAL_EXECUTION = ContinueNormalExecutionFlag()
+CONTINUE_NORMAL_EXECUTION: Final[ContinueNormalExecutionFlag] = ContinueNormalExecutionFlag()
 """Flag indicating that normal execution should continue.
 
 This flag can be used in process flow control contexts to signal that normal
@@ -163,7 +165,7 @@ Example:
 """
 
 _ExecutionIsComplete = ExecutionIsCompleteFlag()
-EXECUTION_IS_COMPLETE = ExecutionIsCompleteFlag()
+EXECUTION_IS_COMPLETE: Final[ExecutionIsCompleteFlag] = ExecutionIsCompleteFlag()
 """Flag indicating that execution is complete, no further processing is needed.
 
 This flag can be used in process flow control contexts to signal that all necessary
@@ -179,7 +181,7 @@ Example:
 """
 
 _ETagHasNotChanged = ETagHasNotChangedFlag()
-ETAG_HAS_NOT_CHANGED = ETagHasNotChangedFlag()
+ETAG_HAS_NOT_CHANGED: Final[ETagHasNotChangedFlag] = ETagHasNotChangedFlag()
 """Flag indicating that an ETag value has not changed.
 
 This flag can be used in contexts where a notification is needed to indicate

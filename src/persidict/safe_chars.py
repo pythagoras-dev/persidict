@@ -5,14 +5,15 @@ that are safe for use in URLs, filenames, and other contexts where character
 restrictions apply.
 """
 import string
+from typing import Final
 
 # Set of characters considered safe for filenames and URL components.
 # Includes ASCII letters (a-z, A-Z), digits (0-9), and special chars: ()_-~.=
-SAFE_CHARS_SET = set(string.ascii_letters + string.digits + "()_-~.=")
+SAFE_CHARS_SET: Final[set[str]] = set(string.ascii_letters + string.digits + "()_-~.=")
 
 # Maximum length for safe strings to ensure compatibility with various filesystems
 # and URL length limitations. Set to 254 to stay well under most system limits.
-SAFE_STRING_MAX_LENGTH = 254
+SAFE_STRING_MAX_LENGTH: Final[int] = 254
 
 def get_safe_chars() -> set[str]:
     """Get the set of allowed characters.
