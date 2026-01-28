@@ -36,18 +36,10 @@ def test_eq_incompatible_types():
     s = SafeStrTuple("a", "b", "c")
 
     # These should return False (via NotImplemented), not raise TypeError
-    assert not (s == 123)
-    assert not (s == 3.14)
-    assert not (s == None)
-    assert not (s == {"key": "value"})
-    assert not (s == object())
-
-    # != should return True for incompatible types
-    assert s != 123
-    assert s != 3.14
-    assert s != None
-    assert s != {"key": "value"}
-    assert s != object()
+    incompatible_values = [123, 3.14, None, {"key": "value"}, object()]
+    for val in incompatible_values:
+        assert not (s == val)
+        assert s != val
 
     # Strings with invalid characters should also not raise
     assert not (s == ["invalid!char"])
