@@ -30,6 +30,33 @@ def test_eq():
     assert s2 == SafeStrTuple(*l2)
     assert s1 != s2
 
+
+def test_eq_incompatible_types():
+    """Test that comparing with incompatible types returns False, not raises."""
+    s = SafeStrTuple("a", "b", "c")
+
+    # These should return False (via NotImplemented), not raise TypeError
+    assert not (s == 123)
+    assert not (s == 3.14)
+    assert not (s == None)
+    assert not (s == {"key": "value"})
+    assert not (s == object())
+
+    # != should return True for incompatible types
+    assert s != 123
+    assert s != 3.14
+    assert s != None
+    assert s != {"key": "value"}
+    assert s != object()
+
+    # Strings with invalid characters should also not raise
+    assert not (s == ["invalid!char"])
+    assert s != ["invalid!char"]
+
+    # Empty strings should also not raise
+    assert not (s == [""])
+    assert s != [""]
+
 def test_getitem():
     """Test if SafeStrTuple gets items correctly."""
     letters = ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']

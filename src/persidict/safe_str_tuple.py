@@ -146,7 +146,8 @@ class SafeStrTuple(Sequence, Hashable):
         """Compare two SafeStrTuple-compatible objects for equality.
 
         If other is not a SafeStrTuple, it will be coerced using the same
-        validation rules.
+        validation rules. If coercion fails, returns NotImplemented to allow
+        Python to try the reverse comparison.
 
         Args:
             other: Another SafeStrTuple or compatible input.
@@ -158,7 +159,10 @@ class SafeStrTuple(Sequence, Hashable):
             if type(self).__eq__ != type(other).__eq__:
                 return other.__eq__(self)
         else:
-            other = SafeStrTuple(other)
+            try:
+                other = SafeStrTuple(other)
+            except (TypeError, ValueError):
+                return NotImplemented
 
         return self.strings == other.strings
 
