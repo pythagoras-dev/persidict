@@ -71,8 +71,8 @@ class SafeStrTuple(Sequence, Hashable):
             **kwargs: Not supported.
 
         Raises:
-            TypeError: If unexpected keyword arguments are provided, if no args
-                are provided, or if an argument has an invalid type.
+            TypeError: If unexpected keyword arguments are provided or if an
+                argument has an invalid type.
             ValueError: If a string is empty, too long, or contains disallowed
                 characters.
         """
