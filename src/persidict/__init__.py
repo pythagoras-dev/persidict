@@ -51,7 +51,7 @@ from .basic_s3_dict import BasicS3Dict
 from .write_once_dict import WriteOnceDict
 from .empty_dict import EmptyDict
 from .jokers_and_status_flags import Joker, KeepCurrentFlag, DeleteCurrentFlag
-from .jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT
+from .jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT, ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED
 from .overlapping_multi_dict import OverlappingMultiDict
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
@@ -83,6 +83,8 @@ __all__ = [
     # Constants/Jokers
     'KEEP_CURRENT',
     'DELETE_CURRENT',
+    'ETAG_HAS_NOT_CHANGED',
+    'ETAG_HAS_CHANGED',
     'Joker',
     'KeepCurrentFlag',
     'DeleteCurrentFlag',

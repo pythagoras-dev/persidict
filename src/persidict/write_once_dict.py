@@ -185,6 +185,12 @@ class WriteOnceDict(PersiDict[ValueType]):
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
+    def set_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: str | None):
+        raise NotImplementedError("Operation not supported on WriteOnceDict.")
+
+    def set_item_if_etag_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: str | None):
+        raise NotImplementedError("Operation not supported on WriteOnceDict.")
+
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set a value for a key, preserving the first assignment.
 

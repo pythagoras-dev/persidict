@@ -119,7 +119,7 @@ class ExecutionIsCompleteFlag(StatusFlag):
     Usage:
         This flag can be used in contexts where a notification is needed
         to indicate that all necessary processing steps were
-        finished successfully and nore further action is needed.
+        finished successfully and no further action is needed.
 
     Note:
         This is a singleton class; constructing it repeatedly returns the same

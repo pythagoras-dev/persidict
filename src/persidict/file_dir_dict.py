@@ -13,6 +13,7 @@ import os
 import random
 import tempfile
 import time
+from contextlib import contextmanager
 from typing import Any, Final, Optional
 
 import joblib
@@ -21,7 +22,10 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 from mixinforge import sort_dict_by_keys
 
-from .jokers_and_status_flags import Joker, EXECUTION_IS_COMPLETE
+from .jokers_and_status_flags import (Joker, EXECUTION_IS_COMPLETE,
+                                      ETagHasNotChangedFlag, ETagHasChangedFlag,
+                                      ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
+                                      KEEP_CURRENT, DELETE_CURRENT)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
@@ -89,6 +93,8 @@ if os.name == 'nt':
             return path
 
 else:
+    import fcntl
+
     def add_long_path_prefix(path: str) -> str:
         return path
 
@@ -342,6 +348,32 @@ class FileDirDict(PersiDict[ValueType]):
             key = unsign_safe_str_tuple(key, self.digest_len)
 
             return key
+
+
+    def _lock_path_for_key(self, key: SafeStrTuple) -> str:
+        """Return the filesystem path of the lock file for a key."""
+        file_path = self._build_full_path(key, create_subdirs=True)
+        return file_path + ".lock"
+
+    @contextmanager
+    def _acquire_key_lock(self, key: SafeStrTuple):
+        """Acquire an exclusive per-key lock to guard compare-and-write sequences."""
+        lock_path = self._lock_path_for_key(key)
+        # Use a lock file co-located with the data file to avoid cross-device issues.
+        with open(lock_path, "a+b") as lock_file:
+            if os.name == 'nt':
+                lock_file.seek(0)
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+            else:
+                fcntl.flock(lock_file, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if os.name == 'nt':
+                    lock_file.seek(0)
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
     def get_subdict(self, prefix_key:PersiDictKey) -> 'FileDirDict[ValueType]':
@@ -639,6 +671,144 @@ class FileDirDict(PersiDict[ValueType]):
         self._save_to_file(filename, value)
 
 
+    def set_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType | Joker,
+            etag: str | None
+    ) -> str | None | ETagHasChangedFlag:
+        """Store a value only if the ETag has not changed.
+
+        Uses a per-key file lock to make the compare-and-write sequence
+        safe across concurrent writers on the same filesystem.
+        """
+        key = NonEmptySafeStrTuple(key)
+        with self._acquire_key_lock(key):
+            current_etag = self.etag(key)
+            if etag != current_etag:
+                return ETAG_HAS_CHANGED
+            key = self._validate_setitem_args(key, value)
+            if value is KEEP_CURRENT:
+                return None
+            if value is DELETE_CURRENT:
+                self._delitem_locked(key)
+                return None
+            filename = self._build_full_path(key, create_subdirs=True)
+            self._save_to_file(filename, value)
+            return self.etag(key)
+
+
+    def set_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType | Joker,
+            etag: str | None
+    ) -> str | None | ETagHasNotChangedFlag:
+        """Store a value only if the ETag has changed.
+
+        Uses a per-key file lock to make the compare-and-write sequence
+        safe across concurrent writers on the same filesystem.
+        """
+        key = NonEmptySafeStrTuple(key)
+        with self._acquire_key_lock(key):
+            current_etag = self.etag(key)
+            if etag == current_etag:
+                return ETAG_HAS_NOT_CHANGED
+            key = self._validate_setitem_args(key, value)
+            if value is KEEP_CURRENT:
+                return None
+            if value is DELETE_CURRENT:
+                self._delitem_locked(key)
+                return None
+            filename = self._build_full_path(key, create_subdirs=True)
+            self._save_to_file(filename, value)
+            return self.etag(key)
+
+
+    def _delitem_locked(self, key: SafeStrTuple) -> None:
+        """Internal delete method assuming lock is already held.
+
+        Raises:
+            KeyError: If the file does not exist.
+        """
+        filename = self._build_full_path(key)
+        if not os.path.isfile(filename):
+            raise KeyError(f"File {filename} does not exist")
+        os.remove(filename)
+
+
+    def delete_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: str | None
+    ) -> None | ETagHasChangedFlag:
+        """Delete a key only if its ETag has not changed (with per-key lock)."""
+        key = NonEmptySafeStrTuple(key)
+        with self._acquire_key_lock(key):
+            current_etag = self.etag(key)
+            if etag != current_etag:
+                return ETAG_HAS_CHANGED
+            self._delitem_locked(key)
+            return None
+
+
+    def delete_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: str | None
+    ) -> None | ETagHasNotChangedFlag:
+        """Delete a key only if its ETag has changed (with per-key lock)."""
+        key = NonEmptySafeStrTuple(key)
+        with self._acquire_key_lock(key):
+            current_etag = self.etag(key)
+            if etag == current_etag:
+                return ETAG_HAS_NOT_CHANGED
+            self._delitem_locked(key)
+            return None
+
+
+    def discard_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: str | None
+    ) -> bool:
+        """Discard a key only if its ETag has not changed (with per-key lock)."""
+        key = NonEmptySafeStrTuple(key)
+        with self._acquire_key_lock(key):
+            try:
+                current_etag = self.etag(key)
+            except (KeyError, FileNotFoundError):
+                return False
+            if etag != current_etag:
+                return False
+            try:
+                self._delitem_locked(key)
+                return True
+            except KeyError:
+                return False
+
+
+    def discard_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: str | None
+    ) -> bool:
+        """Discard a key only if its ETag has changed (with per-key lock)."""
+        key = NonEmptySafeStrTuple(key)
+        with self._acquire_key_lock(key):
+            try:
+                current_etag = self.etag(key)
+            except (KeyError, FileNotFoundError):
+                return False
+            if etag == current_etag:
+                return False
+            try:
+                self._delitem_locked(key)
+                return True
+            except KeyError:
+                return False
+
+
     def __delitem__(self, key:NonEmptyPersiDictKey) -> None:
         """Delete the stored value for a key.
 
@@ -651,10 +821,8 @@ class FileDirDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
-        filename = self._build_full_path(key)
-        if not os.path.isfile(filename):
-            raise KeyError(f"File {filename} does not exist")
-        os.remove(filename)
+        with self._acquire_key_lock(key):
+            self._delitem_locked(key)
 
 
     def _generic_iter(self, result_type: set[str]):

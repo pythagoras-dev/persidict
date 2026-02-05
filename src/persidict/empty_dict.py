@@ -59,6 +59,12 @@ class EmptyDict(PersiDict[ValueType]):
         raise KeyError(key)
 
 
+    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+                                     ) -> tuple[ValueType, str|None]:
+        """Always raises KeyError as EmptyDict contains nothing."""
+        raise KeyError(key)
+
+
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Accepts any write operation, discards the data (like /dev/null)."""
         # Run base validations (immutable checks, key normalization,
@@ -85,6 +91,7 @@ class EmptyDict(PersiDict[ValueType]):
         # type checks, jokers) to ensure API consistency, then discard.
         self._process_setitem_args(key, value)
         # Do nothing - discard the write like /dev/null
+        return None
 
     
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
@@ -140,6 +147,14 @@ class EmptyDict(PersiDict[ValueType]):
 
 
     def discard(self, key: NonEmptyPersiDictKey) -> bool:
+        """Always returns False as the key never exists."""
+        return False
+
+    def discard_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: str | None) -> bool:
+        """Always returns False as the key never exists."""
+        return False
+
+    def discard_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None) -> bool:
         """Always returns False as the key never exists."""
         return False
 

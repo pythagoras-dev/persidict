@@ -24,7 +24,8 @@ from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
-                                      ETAG_HAS_NOT_CHANGED)
+                                      ETAG_HAS_NOT_CHANGED, ETagHasChangedFlag,
+                                      ETAG_HAS_CHANGED, KEEP_CURRENT, DELETE_CURRENT)
 
 
 def not_found_error(e:ClientError) -> bool:
@@ -322,6 +323,25 @@ class BasicS3Dict(PersiDict[ValueType]):
         return self.get_item_if_etag_changed(key, None)[0]
 
 
+    def _serialize_value_for_s3(self, value: Any) -> tuple[bytes, str]:
+        """Serialize a value for S3 storage and return (bytes, content_type)."""
+        if self.serialization_format == 'json':
+            serialized_data = jsonpickle.dumps(value, indent=4).encode('utf-8')
+            content_type = 'application/json'
+        elif self.serialization_format == 'pkl':
+            with io.BytesIO() as buffer:
+                joblib.dump(value, buffer)
+                serialized_data = buffer.getvalue()
+            content_type = 'application/octet-stream'
+        else:
+            if isinstance(value, str):
+                serialized_data = value.encode('utf-8')
+            else:
+                serialized_data = str(value).encode('utf-8')
+            content_type = 'text/plain'
+        return serialized_data, content_type
+
+
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
         """Store a value for a key directly in S3 and return the new ETag.
 
@@ -354,21 +374,7 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         obj_name = self._build_full_objectname(key)
 
-        # Serialize the value directly to S3
-        if self.serialization_format == 'json':
-            serialized_data = jsonpickle.dumps(value, indent=4).encode('utf-8')
-            content_type = 'application/json'
-        elif self.serialization_format == 'pkl':
-            with io.BytesIO() as buffer:
-                joblib.dump(value, buffer)
-                serialized_data = buffer.getvalue()
-            content_type = 'application/octet-stream'
-        else:
-            if isinstance(value, str):
-                serialized_data = value.encode('utf-8')
-            else:
-                serialized_data = str(value).encode('utf-8')
-            content_type = 'text/plain'
+        serialized_data, content_type = self._serialize_value_for_s3(value)
 
         response = self.s3_client.put_object(
             Bucket=self.bucket_name,
@@ -377,6 +383,127 @@ class BasicS3Dict(PersiDict[ValueType]):
             ContentType=content_type
         )
         return response.get("ETag")
+
+
+    def set_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: Any,
+            etag: str | None
+    ) -> str | None | ETagHasChangedFlag:
+        """Store a value only if the ETag has not changed (compare-and-set).
+
+        Uses conditional S3 writes (If-Match) to avoid overwriting changes
+        made by other writers between the ETag check and the write.
+        """
+        key = NonEmptySafeStrTuple(key)
+        # If no etag is provided, treat as mismatch (but preserve missing-key error).
+        if etag is None:
+            # This will raise KeyError if the key does not exist.
+            self.etag(key)
+            return ETAG_HAS_CHANGED
+
+        self._validate_setitem_args(key, value)
+        if value is KEEP_CURRENT:
+            current_etag = self.etag(key)
+            if etag != current_etag:
+                return ETAG_HAS_CHANGED
+            return None
+        if value is DELETE_CURRENT:
+            return self.delete_item_if_etag_not_changed(key, etag)
+        serialized_data, content_type = self._serialize_value_for_s3(value)
+
+        try:
+            response = self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=self._build_full_objectname(key),
+                Body=serialized_data,
+                ContentType=content_type,
+                IfMatch=etag
+            )
+            return response.get("ETag")
+        except ClientError as e:
+            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+            code = e.response.get('Error', {}).get('Code')
+            if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
+                # Distinguish missing key from an etag mismatch
+                try:
+                    self.etag(key)
+                except KeyError:
+                    raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+                return ETAG_HAS_CHANGED
+            if not_found_error(e):
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            raise
+
+
+    def set_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: Any,
+            etag: str | None
+    ) -> str | None | ETagHasNotChangedFlag:
+        """Store a value only if the ETag has changed.
+
+        Performs an ETag comparison and then writes without a conditional
+        If-Match header (last-write-wins semantics under concurrency).
+        """
+        key = NonEmptySafeStrTuple(key)
+        current_etag = self.etag(key)
+        if etag == current_etag:
+            return ETAG_HAS_NOT_CHANGED
+
+        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
+            return None
+        serialized_data, content_type = self._serialize_value_for_s3(value)
+
+        try:
+            response = self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=self._build_full_objectname(key),
+                Body=serialized_data,
+                ContentType=content_type
+            )
+            return response.get("ETag")
+        except ClientError as e:
+            if not_found_error(e):
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            raise
+
+
+    def delete_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: str | None
+    ) -> None | ETagHasChangedFlag:
+        """Delete a key only if its ETag has not changed.
+
+        Warning:
+            Atomic conditional deletes are NOT supported by S3.
+            This method relies on the non-atomic base implementation:
+            it checks the ETag and then issues a delete request.
+            A race condition exists where the object could be modified
+            by another client between the check and the delete.
+        """
+        return super().delete_item_if_etag_not_changed(key, etag)
+
+
+    def delete_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: str | None
+    ) -> None | ETagHasNotChangedFlag:
+        """Delete a key only if its ETag has changed.
+
+        Warning:
+            Atomic conditional deletes are NOT supported by S3.
+            This method relies on the non-atomic base implementation:
+            it checks the ETag and then issues a delete request.
+            A race condition exists where the object could be modified
+            by another client between the check and the delete.
+        """
+        return super().delete_item_if_etag_changed(key, etag)
+
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value for a key directly in S3.

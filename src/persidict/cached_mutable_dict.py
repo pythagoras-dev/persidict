@@ -4,7 +4,10 @@ from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
-from .jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE
+from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
+                                      EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
+                                      ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
+                                      Joker)
 
 
 class MutableDictCached(PersiDict[ValueType]):
@@ -215,6 +218,27 @@ class MutableDictCached(PersiDict[ValueType]):
         return res
 
 
+    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+        """Return value only if the ETag matches the provided one.
+
+        Validates against the main dict to avoid stale cached ETags. On success,
+        refreshes both caches.
+        """
+        key = NonEmptySafeStrTuple(key)
+        current_etag = self._main_dict.etag(key)
+        if etag != current_etag:
+            return ETAG_HAS_CHANGED
+
+        try:
+            value = self._data_cache[key]
+        except KeyError:
+            value = self._main_dict[key]
+            self._data_cache[key] = value
+
+        self._set_cached_etag(key, current_etag)
+        return value, current_etag
+
+
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set value for key via main dict and keep caches in sync.
 
@@ -255,6 +279,108 @@ class MutableDictCached(PersiDict[ValueType]):
         return etag
 
 
+    def set_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType | Joker,
+            etag: Optional[str]
+    ) -> Optional[str] | ETagHasChangedFlag:
+        """Set item only if ETag has not changed; update caches on success."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.set_item_if_etag_not_changed(key, value, etag)
+        if res is ETAG_HAS_CHANGED:
+            return res
+        if value is KEEP_CURRENT:
+            return res
+        if value is DELETE_CURRENT:
+            self._data_cache.discard(key)
+            self._etag_cache.discard(key)
+            return res
+        self._data_cache[key] = value
+        self._set_cached_etag(key, res)
+        return res
+
+
+    def set_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType | Joker,
+            etag: Optional[str]
+    ) -> Optional[str] | ETagHasNotChangedFlag:
+        """Set item only if ETag has changed; update caches on success."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.set_item_if_etag_changed(key, value, etag)
+        if res is ETAG_HAS_NOT_CHANGED:
+            return res
+        if value is KEEP_CURRENT:
+            return res
+        if value is DELETE_CURRENT:
+            self._data_cache.discard(key)
+            self._etag_cache.discard(key)
+            return res
+        self._data_cache[key] = value
+        self._set_cached_etag(key, res)
+        return res
+
+
+    def delete_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: Optional[str]
+    ) -> None | ETagHasChangedFlag:
+        """Delete item only if ETag has not changed; update caches on success."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.delete_item_if_etag_not_changed(key, etag)
+        if res is ETAG_HAS_CHANGED:
+            return res
+        self._data_cache.discard(key)
+        self._etag_cache.discard(key)
+        return None
+
+
+    def delete_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: Optional[str]
+    ) -> None | ETagHasNotChangedFlag:
+        """Delete item only if ETag has changed; update caches on success."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.delete_item_if_etag_changed(key, etag)
+        if res is ETAG_HAS_NOT_CHANGED:
+            return res
+        self._data_cache.discard(key)
+        self._etag_cache.discard(key)
+        return None
+
+
+    def discard_item_if_etag_not_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: Optional[str]
+    ) -> bool:
+        """Discard item only if ETag has not changed; update caches on success."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.discard_item_if_etag_not_changed(key, etag)
+        if res:
+            self._data_cache.discard(key)
+            self._etag_cache.discard(key)
+        return res
+
+
+    def discard_item_if_etag_changed(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: Optional[str]
+    ) -> bool:
+        """Discard item only if ETag has changed; update caches on success."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.discard_item_if_etag_changed(key, etag)
+        if res:
+            self._data_cache.discard(key)
+            self._etag_cache.discard(key)
+        return res
+
+
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Delete key from main dict and purge caches if present.
 
@@ -292,4 +418,3 @@ class MutableDictCached(PersiDict[ValueType]):
             data_cache=self._data_cache.get_subdict(prefix_key),
             etag_cache=self._etag_cache.get_subdict(prefix_key)
         )
-
