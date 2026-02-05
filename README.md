@@ -344,11 +344,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6152 | 6635 | 12787 |
-| Source Lines Of Code (SLOC) | 2516 | 4160 | 6676 |
+| Lines Of Code (LOC) | 6191 | 6786 | 12977 |
+| Source Lines Of Code (SLOC) | 2533 | 4289 | 6822 |
 | Classes | 21 | 8 | 29 |
-| Functions / Methods | 267 | 357 | 624 |
-| Files | 18 | 69 | 87 |
+| Functions / Methods | 268 | 366 | 634 |
+| Files | 18 | 70 | 88 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing
