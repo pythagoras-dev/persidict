@@ -682,6 +682,8 @@ class FileDirDict(PersiDict[ValueType]):
         Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
         Validates value type if base_class_for_values is set, then serializes
         and writes to a file determined by the key and serialization_format.
+        Uses a per-key lock to serialize unconditional writes with conditional
+        operations on the same key.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string or sequence of strings
@@ -696,11 +698,17 @@ class FileDirDict(PersiDict[ValueType]):
         """
 
         key = NonEmptySafeStrTuple(key)
-        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
+        if value is KEEP_CURRENT:
+            return None
+        if value is DELETE_CURRENT:
+            self._validate_setitem_args(key, value)
+            self.discard(key)
             return None
 
-        filename = self._build_full_path(key, create_subdirs=True)
-        self._save_to_file(filename, value)
+        with self._acquire_key_lock(key):
+            key = self._validate_setitem_args(key, value)
+            filename = self._build_full_path(key, create_subdirs=True)
+            self._save_to_file(filename, value)
 
 
     def set_item_if_etag_not_changed(
