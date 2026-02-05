@@ -160,6 +160,15 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main.timestamp(key)
 
+    def etag(self, key: NonEmptyPersiDictKey) -> str | None:
+        """Return the ETag from the main dict.
+
+        Delegating to the main dict preserves backend-specific ETag semantics
+        (e.g., native S3 ETags) instead of deriving ETags from timestamps.
+        """
+        key = NonEmptySafeStrTuple(key)
+        return self._main.etag(key)
+
 
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
@@ -274,17 +283,16 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             etag: Optional[str]
     ) -> Optional[str] | ETagHasChangedFlag:
         """Set item only if ETag has not changed; update cache on success."""
-        key = NonEmptySafeStrTuple(key)
-        res = self._main.set_item_if_etag_not_changed(key, value, etag)
-        if res is ETAG_HAS_CHANGED:
-            return res
-        if value is KEEP_CURRENT:
-            return res
         if value is DELETE_CURRENT:
-            self._data_cache.discard(key)
-            return res
-        self._data_cache[key] = value
-        return res
+            raise TypeError("append-only dicts do not support deletion")
+        key = NonEmptySafeStrTuple(key)
+        if not key in self:
+            raise KeyError(f"Key {key} does not exist; cannot perform "
+                           "ETag-conditional set on missing key")
+        if value is KEEP_CURRENT:
+            return etag
+        else:
+            raise ValueError("append-only dicts do not support modifying existing items")
 
 
     def set_item_if_etag_changed(
@@ -293,18 +301,14 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: Optional[str]
     ) -> Optional[str] | ETagHasNotChangedFlag:
-        """Set item only if ETag has changed; update cache on success."""
+        """ Append-only dicts do not support modifying existing items.
+        """
         key = NonEmptySafeStrTuple(key)
-        res = self._main.set_item_if_etag_changed(key, value, etag)
-        if res is ETAG_HAS_NOT_CHANGED:
-            return res
-        if value is KEEP_CURRENT:
-            return res
-        if value is DELETE_CURRENT:
-            self._data_cache.discard(key)
-            return res
-        self._data_cache[key] = value
-        return res
+        if key in self:
+            return ETAG_HAS_NOT_CHANGED
+        else:
+            raise KeyError(f"Key {key} does not exist.")
+
 
 
     def delete_item_if_etag_not_changed(
