@@ -119,7 +119,7 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main_dict.timestamp(key)
 
-    def etag(self, key: NonEmptyPersiDictKey) -> str:
+    def etag(self, key: NonEmptyPersiDictKey) -> str|None:
         """Return cached ETag if available, otherwise fetch from main dict.
 
         This method returns the ETag from the local cache when available,
