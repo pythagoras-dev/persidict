@@ -359,7 +359,7 @@ before reading or writing.
    set_item_if_etag_not_changed(key, value, etag) -> str | None | ETagHasChangedFlag
        Stores value only if ETag has not changed
 
-   set_item_if_etag_changed(key, value, etag) -> str | None | ETagHasNotChangedFlag | ETagHasChangedFlag
+   set_item_if_etag_changed(key, value, etag) -> str | None | ETagHasNotChangedFlag
        Stores value only if ETag has changed
 
    delete_item_if_etag_not_changed(key, etag) -> None | ETagHasChangedFlag
