@@ -24,8 +24,7 @@ from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
-from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
-                                      EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
+from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
                                       ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
                                       Joker)
 
@@ -286,7 +285,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")
         key = NonEmptySafeStrTuple(key)
-        if not key in self:
+        if key not in self:
             raise KeyError(f"Key {key} does not exist; cannot perform "
                            "ETag-conditional set on missing key")
         if value is KEEP_CURRENT:
