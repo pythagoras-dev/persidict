@@ -65,7 +65,8 @@ Key Features
 * **Flexible Serialization**: Support for pickle, JSON, or plain text storage formats
 * **Type Safety**: Optional enforcement that all values are instances of a specific class
 * **Generic Type Parameters**: Static type checking with ``FileDirDict[MyClass]`` syntax
-* **Advanced Features**: Write-once dictionaries, timestamps, ETags, hierarchical keys, caching layers
+* **Advanced Features**: Write-once dictionaries, timestamps, and tools for handling file-system-safe keys
+* **ETag-Based Conditional Operations**: Optimistic concurrency helpers for conditional reads, writes, and deletes
 * **Hierarchical Keys**: Keys can be sequences of strings, creating directory-like structures
 
 Core Concepts
@@ -313,6 +314,34 @@ Utility Methods
 ETag Operations
 ^^^^^^^^^^^^^^^
 
+ETag-aware methods provide optimistic concurrency controls. On local backends,
+ETags default to stringified timestamps; on S3 they use native object ETags.
+Use them to avoid overwriting concurrent updates by checking the last-seen ETag
+before reading or writing.
+
+.. code-block:: python
+
+   from persidict import FileDirDict, ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED
+
+   d = FileDirDict(base_dir="my_app_data")
+   d["counter"] = 1
+
+   etag = d.etag("counter")
+
+   # Conditional read: only fetch if changed.
+   res = d.get_item_if_etag_changed("counter", etag)
+   if res is ETAG_HAS_NOT_CHANGED:
+       print("No change")
+   else:
+       value, etag = res
+
+   # Conditional write: compare-and-set.
+   res = d.set_item_if_etag_not_changed("counter", value + 1, etag)
+   if res is ETAG_HAS_CHANGED:
+       print("Conflict; reload and retry")
+   else:
+       etag = res
+
 .. code-block:: python
 
    etag(key) -> str | None
@@ -323,6 +352,27 @@ ETag Operations
 
    get_item_if_etag_changed(key, etag) -> tuple[Any, str|None] | ETagHasNotChangedFlag
        Retrieves value only if ETag changed
+
+   get_item_if_etag_not_changed(key, etag) -> tuple[Any, str|None] | ETagHasChangedFlag
+       Retrieves value only if ETag has not changed
+
+   set_item_if_etag_not_changed(key, value, etag) -> str | None | ETagHasChangedFlag
+       Stores value only if ETag has not changed
+
+   set_item_if_etag_changed(key, value, etag) -> str | None | ETagHasNotChangedFlag | ETagHasChangedFlag
+       Stores value only if ETag has changed
+
+   delete_item_if_etag_not_changed(key, etag) -> None | ETagHasChangedFlag
+       Deletes key only if ETag has not changed
+
+   delete_item_if_etag_changed(key, etag) -> None | ETagHasNotChangedFlag | ETagHasChangedFlag
+       Deletes key only if ETag has changed
+
+   discard_item_if_etag_not_changed(key, etag) -> bool
+       Discards key only if ETag has not changed
+
+   discard_item_if_etag_changed(key, etag) -> bool
+       Discards key only if ETag has changed
 
 Enhanced Iterators
 ^^^^^^^^^^^^^^^^^^
@@ -669,25 +719,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 5181
-     - 6583
-     - 11764
+     - 6057
+     - 6604
+     - 12661
    * - Source Lines Of Code (SLOC)
-     - 1980
-     - 4122
-     - 6102
+     - 2483
+     - 4137
+     - 6620
    * - Classes
-     - 20
+     - 21
      - 8
-     - 28
+     - 29
    * - Functions / Methods
-     - 218
-     - 354
-     - 572
+     - 266
+     - 355
+     - 621
    * - Files
      - 18
-     - 67
-     - 85
+     - 68
+     - 86
 
 .. MIXINFORGE_STATS_END
 

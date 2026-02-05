@@ -42,6 +42,8 @@ instances of a specific class.
 checking with mypy/pyright.
 * **Advanced Functionality**: Includes features like write-once dictionaries, 
 timestamping of entries, and tools for handling file-system-safe keys.
+* **ETag-Based Conditional Operations**: Optimistic concurrency helpers for
+conditional reads, writes, and deletes based on per-key ETags.
 * **Hierarchical Keys**: Keys can be sequences of strings, 
 creating a directory-like structure within the storage backend.
 
@@ -262,6 +264,26 @@ from the dictionary when assigned to a key.
 | `discard(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
 | `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `mixinforge` API. |
 
+### 6.1 ETag-Based Conditional Operations
+
+PersiDict exposes ETag-aware methods for optimistic concurrency. On local
+backends, ETags default to stringified timestamps; on S3 they use native object
+ETags. These methods let you avoid overwriting concurrent updates by checking
+the last-seen ETag before reading or writing.
+
+Common methods and return flags:
+
+* `etag(key) -> str | None`
+* `set_item_get_etag(key, value) -> str | None`
+* `get_item_if_etag_changed(key, etag) -> tuple[Any, str|None] | ETAG_HAS_NOT_CHANGED`
+* `get_item_if_etag_not_changed(key, etag) -> tuple[Any, str|None] | ETAG_HAS_CHANGED`
+* `set_item_if_etag_not_changed(key, value, etag) -> str | None | ETAG_HAS_CHANGED`
+* `set_item_if_etag_changed(key, value, etag) -> str | None | ETAG_HAS_NOT_CHANGED`
+* `delete_item_if_etag_not_changed(key, etag) -> None | ETAG_HAS_CHANGED`
+* `delete_item_if_etag_changed(key, etag) -> None | ETAG_HAS_NOT_CHANGED`
+* `discard_item_if_etag_not_changed(key, etag) -> bool`
+* `discard_item_if_etag_changed(key, etag) -> bool`
+
 ## 7. Installation
 
 The source code is hosted on GitHub at:
@@ -322,11 +344,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 5181 | 6583 | 11764 |
-| Source Lines Of Code (SLOC) | 1980 | 4122 | 6102 |
-| Classes | 20 | 8 | 28 |
-| Functions / Methods | 218 | 354 | 572 |
-| Files | 18 | 67 | 85 |
+| Lines Of Code (LOC) | 6057 | 6604 | 12661 |
+| Source Lines Of Code (SLOC) | 2483 | 4137 | 6620 |
+| Classes | 21 | 8 | 29 |
+| Functions / Methods | 266 | 355 | 621 |
+| Files | 18 | 68 | 86 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing
