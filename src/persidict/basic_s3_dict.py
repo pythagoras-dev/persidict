@@ -570,14 +570,30 @@ class BasicS3Dict(PersiDict[ValueType]):
     ) -> None | ETagHasChangedFlag:
         """Delete a key only if its ETag has not changed.
 
-        Warning:
-            Atomic conditional deletes are NOT supported by S3.
-            This method relies on the non-atomic base implementation:
-            it checks the ETag and then issues a delete request.
-            A race condition exists where the object could be modified
-            by another client between the check and the delete.
+        Uses conditional S3 deletes (If-Match) to avoid deleting objects
+        modified by other writers between the check and the delete.
         """
-        return super().delete_item_if_etag_not_changed(key, etag)
+        key = NonEmptySafeStrTuple(key)
+        if etag is None:
+            # Preserve KeyError for missing keys while matching prior behavior.
+            self.etag(key)
+            return ETAG_HAS_CHANGED
+
+        try:
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=self._build_full_objectname(key),
+                IfMatch=etag
+            )
+            return None
+        except ClientError as e:
+            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+            code = e.response.get('Error', {}).get('Code')
+            if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
+                return ETAG_HAS_CHANGED
+            if not_found_error(e):
+                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+            raise
 
 
     def delete_item_if_etag_changed(
@@ -588,11 +604,8 @@ class BasicS3Dict(PersiDict[ValueType]):
         """Delete a key only if its ETag has changed.
 
         Warning:
-            Atomic conditional deletes are NOT supported by S3.
-            This method relies on the non-atomic base implementation:
-            it checks the ETag and then issues a delete request.
-            A race condition exists where the object could be modified
-            by another client between the check and the delete.
+            S3 does not support an If-None-Match delete condition, so this
+            relies on the non-atomic base implementation.
         """
         return super().delete_item_if_etag_changed(key, etag)
 
