@@ -22,8 +22,7 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 from mixinforge import sort_dict_by_keys
 
-from .jokers_and_status_flags import (Joker, EXECUTION_IS_COMPLETE,
-                                      ETagHasNotChangedFlag, ETagHasChangedFlag,
+from .jokers_and_status_flags import (Joker, ETagHasNotChangedFlag, ETagHasChangedFlag,
                                       ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
                                       KEEP_CURRENT, DELETE_CURRENT)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
@@ -967,6 +966,23 @@ class FileDirDict(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
         return os.path.getmtime(filename)
+
+    def etag(self, key:NonEmptyPersiDictKey) -> str:
+        """Return a stable ETag derived from mtime and file size.
+
+        Uses a single stat call and combines st_mtime_ns with st_size. Falls
+        back to a float-based mtime representation if nanosecond precision
+        is not available.
+        """
+        key = NonEmptySafeStrTuple(key)
+        filename = self._build_full_path(key)
+        stat_result = os.stat(filename)
+        mtime_ns = getattr(stat_result, "st_mtime_ns", None)
+        if mtime_ns is None:
+            mtime_part = f"{stat_result.st_mtime:.6f}"
+        else:
+            mtime_part = str(mtime_ns)
+        return f"{mtime_part}:{stat_result.st_size}"
 
 
     def random_key(self) -> NonEmptySafeStrTuple | None:
