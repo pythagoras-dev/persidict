@@ -578,6 +578,9 @@ class BasicS3Dict(PersiDict[ValueType]):
             # Preserve KeyError for missing keys while matching prior behavior.
             self.etag(key)
             return ETAG_HAS_CHANGED
+        current_etag = self.etag(key)
+        if etag != current_etag:
+            return ETAG_HAS_CHANGED
 
         try:
             self.s3_client.delete_object(
