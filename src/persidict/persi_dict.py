@@ -311,7 +311,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 or NonEmptySafeStrTuple.
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against. If None, the condition
+                will fail unless the current ETag is also None (which may
+                occur for backends that don't support ETags).
 
         Returns:
             str | None | ETagHasChangedFlag: The ETag of the newly stored
@@ -351,7 +353,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 or NonEmptySafeStrTuple.
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against. If None, the condition
+                will succeed only if the current ETag is also None (which may
+                occur for backends that don't support ETags).
 
         Returns:
             str | None | ETagHasNotChangedFlag: The ETag of the newly stored
