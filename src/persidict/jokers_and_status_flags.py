@@ -85,6 +85,20 @@ class ETagHasNotChangedFlag(StatusFlag):
 
     pass
 
+class ETagHasChangedFlag(StatusFlag):
+    """Flag indicating that an ETag has changed.
+
+    Usage:
+        This flag can be used in contexts where a notification is needed
+        to indicate that an ETag (entity tag) comparison detected a change,
+        typically in conditional write scenarios.
+
+    Note:
+        This is a singleton class; constructing it repeatedly returns the same
+        instance.
+    """
+    pass
+
 
 class ContinueNormalExecutionFlag(StatusFlag):
     """Flag indicating to continue normal execution without special handling.
@@ -189,9 +203,18 @@ that an ETag (entity tag) comparison shows no changes.
 
 When this flag is returned from a processing step, it indicates that the
 resource's ETag matches and no content updates are necessary.
+"""
+
+_ETagHasChanged = ETagHasChangedFlag()
+ETAG_HAS_CHANGED: Final[ETagHasChangedFlag] = ETagHasChangedFlag()
+"""Flag indicating that an ETag value has changed.
+
+This flag can be used in contexts where a notification is needed to indicate
+that an ETag comparison detected a change and a conditional operation was
+not performed.
 
 Example:
-    >>> if check_resource_etag(url) is ETAG_HAS_NOT_CHANGED:
-    ...     # Skip resource update
-    ...     return cached_content
+    >>> if compare_etag(old, new) is ETAG_HAS_CHANGED:
+    ...     # Resource changed; retry or fetch new content
+    ...     return None
 """
