@@ -25,7 +25,8 @@ from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
                                       ETAG_HAS_NOT_CHANGED, ETagHasChangedFlag,
-                                      ETAG_HAS_CHANGED, KEEP_CURRENT, DELETE_CURRENT)
+                                      ETAG_HAS_CHANGED, KEEP_CURRENT, DELETE_CURRENT,
+                                      Joker)
 
 
 def not_found_error(e:ClientError) -> bool:
@@ -321,6 +322,66 @@ class BasicS3Dict(PersiDict[ValueType]):
             KeyError: If the key does not exist in S3.
         """
         return self.get_item_if_etag_changed(key, None)[0]
+
+    def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
+        """Insert key with default value if absent; return the current value.
+
+        Uses an S3 conditional put (If-None-Match: *) to avoid overwriting
+        existing values under concurrent writers. On conditional failure,
+        returns the current value without modifying it.
+
+        Args:
+            key: Key (string, sequence of strings, or SafeStrTuple).
+            default: Value to insert if the key is not present. Defaults to None.
+
+        Returns:
+            Existing value if key is present; otherwise the provided default value.
+
+        Raises:
+            TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT),
+                or if the key is missing and default violates value type constraints.
+        """
+        key = NonEmptySafeStrTuple(key)
+        if isinstance(default, Joker):
+            raise TypeError("default must be a regular value, not a Joker command")
+
+        invalid_default = isinstance(default, PersiDict)
+        if not invalid_default and self.base_class_for_values is not None:
+            invalid_default = not isinstance(default, self.base_class_for_values)
+
+        if invalid_default:
+            try:
+                return self[key]
+            except KeyError:
+                if isinstance(default, PersiDict):
+                    raise TypeError("Cannot store a PersiDict instance directly")
+                raise TypeError(f"Value must be an instance of"
+                                f" {self.base_class_for_values.__name__}")
+
+        try:
+            serialized_data, content_type = self._serialize_value_for_s3(default)
+        except Exception as exc:
+            try:
+                return self[key]
+            except KeyError:
+                raise exc from None
+        obj_name = self._build_full_objectname(key)
+
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=obj_name,
+                Body=serialized_data,
+                ContentType=content_type,
+                IfNoneMatch="*"
+            )
+            return default
+        except ClientError as e:
+            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+            code = e.response.get('Error', {}).get('Code')
+            if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
+                return self[key]
+            raise
 
 
     def _serialize_value_for_s3(self, value: Any) -> tuple[bytes, str]:
