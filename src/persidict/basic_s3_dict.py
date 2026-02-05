@@ -455,7 +455,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         """Store a value only if the ETag has not changed (compare-and-set).
 
         Uses conditional S3 writes (If-Match) to avoid overwriting changes
-        made by other writers between the ETag check and the write.
+        made by other writers; the ETag check is enforced server-side.
 
         Args:
             key: Dictionary key (string or sequence of strings)
@@ -476,14 +476,16 @@ class BasicS3Dict(PersiDict[ValueType]):
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-
-        # Check current etag - this also validates key existence (raises KeyError if missing)
-        current_etag = self.etag(key)
-        if etag != current_etag:
+        if etag is None:
+            # Preserve KeyError for missing keys while matching prior behavior.
+            self.etag(key)
             return ETAG_HAS_CHANGED
 
         self._validate_setitem_args(key, value)
         if value is KEEP_CURRENT:
+            current_etag = self.etag(key)
+            if etag != current_etag:
+                return ETAG_HAS_CHANGED
             return None
         if value is DELETE_CURRENT:
             return self.delete_item_if_etag_not_changed(key, etag)
@@ -502,7 +504,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
             code = e.response.get('Error', {}).get('Code')
             if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
-                # ETag changed between our check and the write - return indication
+                # Precondition failed (ETag did not match).
                 return ETAG_HAS_CHANGED
             if not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
