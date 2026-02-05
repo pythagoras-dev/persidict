@@ -24,7 +24,8 @@ from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
-from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
+from .jokers_and_status_flags import (ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED,
+                                      EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
                                       ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
                                       Joker)
 
@@ -285,13 +286,12 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")
         key = NonEmptySafeStrTuple(key)
-        if key not in self:
-            raise KeyError(f"Key {key} does not exist; cannot perform "
-                           "ETag-conditional set on missing key")
+        current_etag = self.etag(key)
+        if etag != current_etag:
+            return ETAG_HAS_CHANGED
         if value is KEEP_CURRENT:
-            return etag
-        else:
-            raise ValueError("append-only dicts do not support modifying existing items")
+            return None
+        raise ValueError("append-only dicts do not support modifying existing items")
 
 
     def set_item_if_etag_changed(
@@ -300,13 +300,16 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: Optional[str]
     ) -> Optional[str] | ETagHasNotChangedFlag:
-        """ Append-only dicts do not support modifying existing items.
-        """
+        """Append-only dicts do not support modifying existing items."""
+        if value is DELETE_CURRENT:
+            raise TypeError("append-only dicts do not support deletion")
         key = NonEmptySafeStrTuple(key)
-        if key in self:
+        current_etag = self.etag(key)
+        if etag == current_etag:
             return ETAG_HAS_NOT_CHANGED
-        else:
-            raise KeyError(f"Key {key} does not exist.")
+        if value is KEEP_CURRENT:
+            return None
+        raise ValueError("append-only dicts do not support modifying existing items")
 
 
 

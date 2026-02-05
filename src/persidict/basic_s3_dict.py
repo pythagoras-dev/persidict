@@ -326,7 +326,7 @@ class BasicS3Dict(PersiDict[ValueType]):
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
 
-        Uses an S3 conditional put (If-None-Match: *) to avoid overwriting
+        Uses an S3 conditional put (If-None-Match: ``*``) to avoid overwriting
         existing values under concurrent writers. On conditional failure,
         returns the current value without modifying it.
 

@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from moto import mock_aws
+
+from persidict import BasicS3Dict, FileDirDict, LocalDict, S3Dict_FileDirCached
+from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED
+
+
+def test_set_item_if_etag_changed_none_local():
+    d = LocalDict(serialization_format="json")
+    d["k"] = "v1"
+
+    res = d.set_item_if_etag_changed("k", "v2", None)
+
+    assert res is not ETAG_HAS_NOT_CHANGED
+    assert d["k"] == "v2"
+
+
+def test_set_item_if_etag_changed_none_file(tmp_path):
+    d = FileDirDict(base_dir=str(tmp_path / "file"), serialization_format="json")
+    d["k"] = "v1"
+
+    res = d.set_item_if_etag_changed("k", "v2", None)
+
+    assert res is not ETAG_HAS_NOT_CHANGED
+    assert d["k"] == "v2"
+
+
+@mock_aws
+def test_set_item_if_etag_changed_none_basic_s3():
+    d = BasicS3Dict(bucket_name="etag-none-basic", serialization_format="json")
+    d["k"] = "v1"
+
+    res = d.set_item_if_etag_changed("k", "v2", None)
+
+    assert res is not ETAG_HAS_NOT_CHANGED
+    assert d["k"] == "v2"
+
+
+@mock_aws
+def test_set_item_if_etag_changed_none_s3_cached(tmp_path):
+    d = S3Dict_FileDirCached(
+        base_dir=str(tmp_path / "cache"),
+        bucket_name="etag-none-cached",
+        serialization_format="json",
+    )
+    d["k"] = "v1"
+
+    res = d.set_item_if_etag_changed("k", "v2", None)
+
+    assert res is not ETAG_HAS_NOT_CHANGED
+    assert d["k"] == "v2"
