@@ -109,6 +109,21 @@ class ETagHasChangedFlag(StatusFlag):
     pass
 
 
+class ETagConditionFlag(SingletonMixin):
+    """Base class for ETag condition selectors."""
+    pass
+
+
+class ETagEqualFlag(ETagConditionFlag):
+    """Condition requiring ETag equality."""
+    pass
+
+
+class ETagDifferentFlag(ETagConditionFlag):
+    """Condition requiring ETag inequality."""
+    pass
+
+
 class ContinueNormalExecutionFlag(StatusFlag):
     """Flag indicating to continue normal execution without special handling.
 
@@ -238,3 +253,9 @@ explicit in call sites.
 """
 
 ETagInput: TypeAlias = str | ETagUnknownFlag
+
+_EtagEqual = ETagEqualFlag()
+EQUAL_ETAG: Final[ETagEqualFlag] = ETagEqualFlag()
+
+_EtagDifferent = ETagDifferentFlag()
+DIFFERENT_ETAG: Final[ETagDifferentFlag] = ETagDifferentFlag()
