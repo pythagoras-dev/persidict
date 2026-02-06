@@ -271,6 +271,9 @@ backends, ETags default to stringified timestamps; on S3 they use native object
 ETags. These methods let you avoid overwriting concurrent updates by checking
 the last-seen ETag before reading or writing.
 
+Pass `ETAG_UNKNOWN` when you do not have a prior ETag value; this makes the
+intent explicit and avoids extra fetches.
+
 Common methods and return flags:
 
 * `etag(key) -> str | None`
@@ -283,6 +286,7 @@ Common methods and return flags:
 * `delete_item_if_etag_changed(key, etag) -> None | ETAG_HAS_NOT_CHANGED`
 * `discard_item_if_etag_not_changed(key, etag) -> bool`
 * `discard_item_if_etag_changed(key, etag) -> bool`
+* `ETAG_UNKNOWN` (sentinel for unknown ETag inputs)
 
 ## 7. Installation
 
@@ -344,11 +348,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6222 | 6841 | 13063 |
-| Source Lines Of Code (SLOC) | 2563 | 4329 | 6892 |
-| Classes | 21 | 8 | 29 |
-| Functions / Methods | 269 | 369 | 638 |
-| Files | 18 | 71 | 89 |
+| Lines Of Code (LOC) | 6281 | 8911 | 15192 |
+| Source Lines Of Code (SLOC) | 2614 | 5693 | 8307 |
+| Classes | 22 | 8 | 30 |
+| Functions / Methods | 270 | 500 | 770 |
+| Files | 18 | 84 | 102 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing

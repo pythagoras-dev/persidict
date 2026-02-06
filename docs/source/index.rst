@@ -319,6 +319,9 @@ ETags default to stringified timestamps; on S3 they use native object ETags.
 Use them to avoid overwriting concurrent updates by checking the last-seen ETag
 before reading or writing.
 
+Use ``ETAG_UNKNOWN`` when you do not have a prior ETag value; this makes the
+intent explicit without an extra fetch.
+
 .. code-block:: python
 
    from persidict import FileDirDict, ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED
@@ -343,6 +346,9 @@ before reading or writing.
        etag = res
 
 .. code-block:: python
+
+   ETAG_UNKNOWN
+       Sentinel for unknown ETag inputs
 
    etag(key) -> str | None
        Returns ETag for the key (or timestamp-based equivalent)
@@ -719,25 +725,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6222
-     - 6841
-     - 13063
+     - 6281
+     - 8911
+     - 15192
    * - Source Lines Of Code (SLOC)
-     - 2563
-     - 4329
-     - 6892
+     - 2614
+     - 5693
+     - 8307
    * - Classes
-     - 21
+     - 22
      - 8
-     - 29
+     - 30
    * - Functions / Methods
-     - 269
-     - 369
-     - 638
+     - 270
+     - 500
+     - 770
    * - Files
      - 18
-     - 71
-     - 89
+     - 84
+     - 102
 
 .. MIXINFORGE_STATS_END
 
