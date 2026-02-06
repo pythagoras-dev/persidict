@@ -324,7 +324,13 @@ intent explicit without an extra fetch.
 
 .. code-block:: python
 
-   from persidict import FileDirDict, ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED
+   from persidict import (
+       FileDirDict,
+       ETAG_HAS_CHANGED,
+       ETAG_HAS_NOT_CHANGED,
+       EQUAL_ETAG,
+       DIFFERENT_ETAG,
+   )
 
    d = FileDirDict(base_dir="my_app_data")
    d["counter"] = 1
@@ -332,14 +338,14 @@ intent explicit without an extra fetch.
    etag = d.etag("counter")
 
    # Conditional read: only fetch if changed.
-   res = d.get_item_if_etag_changed("counter", etag)
+   res = d.get_item_if_etag("counter", etag, DIFFERENT_ETAG)
    if res is ETAG_HAS_NOT_CHANGED:
        print("No change")
    else:
        value, etag = res
 
    # Conditional write: compare-and-set.
-   res = d.set_item_if_etag_not_changed("counter", value + 1, etag)
+   res = d.set_item_if_etag("counter", value + 1, etag, EQUAL_ETAG)
    if res is ETAG_HAS_CHANGED:
        print("Conflict; reload and retry")
    else:
@@ -349,6 +355,8 @@ intent explicit without an extra fetch.
 
    ETAG_UNKNOWN
        Sentinel for unknown ETag inputs
+   EQUAL_ETAG / DIFFERENT_ETAG
+       Condition selectors for ETag-based operations
 
    etag(key) -> str | None
        Returns ETag for the key (or timestamp-based equivalent)
@@ -356,29 +364,17 @@ intent explicit without an extra fetch.
    set_item_get_etag(key, value) -> str | None
        Stores value and returns new ETag
 
-   get_item_if_etag_changed(key, etag) -> tuple[Any, str|None] | ETagHasNotChangedFlag
-       Retrieves value only if ETag changed
+   get_item_if_etag(key, etag, condition) -> tuple[Any, str|None] | ETagHasChangedFlag | ETagHasNotChangedFlag
+       Retrieves value only if ETag satisfies condition
 
-   get_item_if_etag_not_changed(key, etag) -> tuple[Any, str|None] | ETagHasChangedFlag
-       Retrieves value only if ETag has not changed
+   set_item_if_etag(key, value, etag, condition) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag
+       Stores value only if ETag satisfies condition
 
-   set_item_if_etag_not_changed(key, value, etag) -> str | None | ETagHasChangedFlag
-       Stores value only if ETag has not changed
+   delete_item_if_etag(key, etag, condition) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag
+       Deletes key only if ETag satisfies condition
 
-   set_item_if_etag_changed(key, value, etag) -> str | None | ETagHasNotChangedFlag
-       Stores value only if ETag has changed
-
-   delete_item_if_etag_not_changed(key, etag) -> None | ETagHasChangedFlag
-       Deletes key only if ETag has not changed
-
-   delete_item_if_etag_changed(key, etag) -> None | ETagHasNotChangedFlag | ETagHasChangedFlag
-       Deletes key only if ETag has changed
-
-   discard_item_if_etag_not_changed(key, etag) -> bool
-       Discards key only if ETag has not changed
-
-   discard_item_if_etag_changed(key, etag) -> bool
-       Discards key only if ETag has changed
+   discard_item_if_etag(key, etag, condition) -> bool
+       Discards key only if ETag satisfies condition
 
 Enhanced Iterators
 ^^^^^^^^^^^^^^^^^^
@@ -725,21 +721,21 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6281
-     - 8911
-     - 15192
+     - 6017
+     - 8939
+     - 14956
    * - Source Lines Of Code (SLOC)
-     - 2614
-     - 5693
-     - 8307
+     - 2544
+     - 5721
+     - 8265
    * - Classes
-     - 22
+     - 25
      - 8
-     - 30
+     - 33
    * - Functions / Methods
-     - 270
+     - 249
      - 500
-     - 770
+     - 749
    * - Files
      - 18
      - 84

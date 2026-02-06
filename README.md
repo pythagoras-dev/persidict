@@ -278,14 +278,11 @@ Common methods and return flags:
 
 * `etag(key) -> str | None`
 * `set_item_get_etag(key, value) -> str | None`
-* `get_item_if_etag_changed(key, etag) -> tuple[Any, str|None] | ETAG_HAS_NOT_CHANGED`
-* `get_item_if_etag_not_changed(key, etag) -> tuple[Any, str|None] | ETAG_HAS_CHANGED`
-* `set_item_if_etag_not_changed(key, value, etag) -> str | None | ETAG_HAS_CHANGED`
-* `set_item_if_etag_changed(key, value, etag) -> str | None | ETAG_HAS_NOT_CHANGED`
-* `delete_item_if_etag_not_changed(key, etag) -> None | ETAG_HAS_CHANGED`
-* `delete_item_if_etag_changed(key, etag) -> None | ETAG_HAS_NOT_CHANGED`
-* `discard_item_if_etag_not_changed(key, etag) -> bool`
-* `discard_item_if_etag_changed(key, etag) -> bool`
+* `get_item_if_etag(key, etag, condition) -> tuple[Any, str|None] | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
+* `set_item_if_etag(key, value, etag, condition) -> str | None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
+* `delete_item_if_etag(key, etag, condition) -> None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
+* `discard_item_if_etag(key, etag, condition) -> bool`
+* `EQUAL_ETAG` / `DIFFERENT_ETAG` (condition selectors)
 * `ETAG_UNKNOWN` (sentinel for unknown ETag inputs)
 
 ## 7. Installation
@@ -348,10 +345,10 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6281 | 8911 | 15192 |
-| Source Lines Of Code (SLOC) | 2614 | 5693 | 8307 |
-| Classes | 22 | 8 | 30 |
-| Functions / Methods | 270 | 500 | 770 |
+| Lines Of Code (LOC) | 6017 | 8939 | 14956 |
+| Source Lines Of Code (SLOC) | 2544 | 5721 | 8265 |
+| Classes | 25 | 8 | 33 |
+| Functions / Methods | 249 | 500 | 749 |
 | Files | 18 | 84 | 102 |
 <!-- MIXINFORGE_STATS_END -->
 
