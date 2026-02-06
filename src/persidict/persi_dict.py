@@ -30,7 +30,8 @@ from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
                                       ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED,
                                       ETagHasChangedFlag, ETAG_HAS_CHANGED,
-                                      ETagInput, ETAG_UNKNOWN)
+                                      ETagInput, ETAG_UNKNOWN,
+                                      ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -223,49 +224,45 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                                     " and cannot check items directly")
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
-                                 ) -> tuple[ValueType, str|None]|ETagHasNotChangedFlag:
-        """Retrieve the value for a key only if its ETag has changed.
+    def _etag_condition_holds(
+            self,
+            condition: ETagConditionFlag,
+            etag: ETagInput,
+            current_etag: str | None
+    ) -> bool:
+        if condition is EQUAL_ETAG:
+            return etag == current_etag
+        if condition is DIFFERENT_ETAG:
+            return etag != current_etag
+        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
 
-        This method is absent in the original dict API.
-        By default, the timestamp is used in lieu of ETag.
 
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-
-        Returns:
-            tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized
-                value if the ETag has changed, along with the new ETag,
-                or ETAG_HAS_NOT_CHANGED if it matches the provided etag.
-
-        Raises:
-            KeyError: If the key does not exist.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if etag == current_etag:
+    def _etag_condition_failure_flag(
+            self,
+            condition: ETagConditionFlag
+    ) -> ETagHasChangedFlag | ETagHasNotChangedFlag:
+        if condition is EQUAL_ETAG:
+            return ETAG_HAS_CHANGED
+        if condition is DIFFERENT_ETAG:
             return ETAG_HAS_NOT_CHANGED
-        else:
-            return self[key], current_etag
+        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
 
 
-    def get_item_if_etag_not_changed(
+    def get_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> tuple[ValueType, str | None] | ETagHasChangedFlag:
-        """Retrieve the value for a key only if its ETag has not changed.
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> tuple[ValueType, str | None] | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Retrieve the value for a key only if its ETag satisfies a condition.
 
         This method is absent in the original dict API.
         By default, the timestamp is used in lieu of ETag.
 
         Warning:
             This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the write operation. Subclasses
-            that require concurrency safety should override this method with an
+            condition between the ETag check and the read. Subclasses that
+            require concurrency safety should override this method with an
             atomic implementation (e.g., using file locks or conditional HTTP
             headers).
 
@@ -273,31 +270,35 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Dictionary key (string or sequence of strings)
                 or NonEmptySafeStrTuple.
             etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
+                require a mismatch.
 
         Returns:
-            tuple[Any, str|None] | ETagHasChangedFlag: The deserialized value
-                if the ETag has not changed, along with the current ETag,
-                or ETAG_HAS_CHANGED if it differs from the provided etag.
+            tuple[Any, str|None] | ETagHasChangedFlag | ETagHasNotChangedFlag:
+                The deserialized value if the condition succeeds, along with
+                the current ETag; otherwise a sentinel flag describing why the
+                condition failed.
 
         Raises:
             KeyError: If the key does not exist.
+            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
         """
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
-        if etag == current_etag:
-            return self[key], current_etag
-        else:
-            return ETAG_HAS_CHANGED
+        if not self._etag_condition_holds(condition, etag, current_etag):
+            return self._etag_condition_failure_flag(condition)
+        return self[key], current_etag
 
 
-    def set_item_if_etag_not_changed(
+    def set_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: ETagInput
-    ) -> str | None | ETagHasChangedFlag:
-        """Store a value only if the ETag has not changed.
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Store a value only if the ETag satisfies a condition.
 
         This method is absent in the original dict API.
         By default, the timestamp-based ETag is used for comparison.
@@ -315,72 +316,33 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
             etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-                ETAG_UNKNOWN always fails this condition.
+            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
+                require a mismatch.
 
         Returns:
-            str | None | ETagHasChangedFlag: The ETag of the newly stored
-                object if the condition succeeds, or ETAG_HAS_CHANGED if the
-                current ETag does not match the provided one.
+            str | None | ETagHasChangedFlag | ETagHasNotChangedFlag: The ETag of
+                the newly stored object if the condition succeeds, or a sentinel
+                flag if the condition fails.
 
         Raises:
             KeyError: If the key does not exist.
+            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
         """
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
-        if etag != current_etag:
-            return ETAG_HAS_CHANGED
+        if not self._etag_condition_holds(condition, etag, current_etag):
+            return self._etag_condition_failure_flag(condition)
         return self.set_item_get_etag(key, value)
 
 
-    def set_item_if_etag_changed(
+    def delete_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput
-    ) -> str | None | ETagHasNotChangedFlag:
-        """Store a value only if the ETag has changed.
-
-        This method is absent in the original dict API.
-        By default, the timestamp-based ETag is used for comparison.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the write operation. Subclasses
-            that require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            value: Value to store, or a joker command (KEEP_CURRENT or
-                DELETE_CURRENT).
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-                ETAG_UNKNOWN always satisfies this condition.
-
-        Returns:
-            str | None | ETagHasNotChangedFlag: The ETag of the newly stored
-                object if the condition succeeds, or ETAG_HAS_NOT_CHANGED if
-                the provided ETag matches the current one.
-
-        Raises:
-            KeyError: If the key does not exist.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if etag == current_etag:
-            return ETAG_HAS_NOT_CHANGED
-        return self.set_item_get_etag(key, value)
-
-
-    def delete_item_if_etag_not_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasChangedFlag:
-        """Delete a key only if its ETag has not changed.
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Delete a key only if its ETag satisfies a condition.
 
         Warning:
             This base class implementation is not atomic: there is a TOCTOU race
@@ -393,64 +355,33 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Dictionary key (string or sequence of strings)
                 or NonEmptySafeStrTuple.
             etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
+                require a mismatch.
 
         Returns:
-            None | ETagHasChangedFlag: None if deletion succeeded, or
-            ETAG_HAS_CHANGED if the current ETag does not match the provided one.
+            None | ETagHasChangedFlag | ETagHasNotChangedFlag: None if deletion
+            succeeded, or a sentinel flag if the condition fails.
 
         Raises:
             KeyError: If the key does not exist.
+            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
         """
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
-        if etag != current_etag:
-            return ETAG_HAS_CHANGED
+        if not self._etag_condition_holds(condition, etag, current_etag):
+            return self._etag_condition_failure_flag(condition)
         del self[key]
         return None
 
 
-    def delete_item_if_etag_changed(
+    def discard_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasNotChangedFlag:
-        """Delete a key only if its ETag has changed.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the delete operation. Subclasses
-            that require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-
-        Returns:
-            None | ETagHasNotChangedFlag: None if deletion succeeded, or
-            ETAG_HAS_NOT_CHANGED if the provided ETag matches the current one.
-
-        Raises:
-            KeyError: If the key does not exist.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if etag == current_etag:
-            return ETAG_HAS_NOT_CHANGED
-        del self[key]
-        return None
-
-
-    def discard_item_if_etag_not_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
+            etag: ETagInput,
+            condition: ETagConditionFlag
     ) -> bool:
-        """Discard a key only if its ETag has not changed.
+        """Discard a key only if its ETag satisfies a condition.
 
         Warning:
             This base class implementation is not atomic: there is a TOCTOU race
@@ -468,35 +399,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             current_etag = self.etag(key)
         except (KeyError, FileNotFoundError):
             return False
-        if etag != current_etag:
-            return False
-        return self.discard(key)
-
-
-    def discard_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> bool:
-        """Discard a key only if its ETag has changed.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the discard operation. Subclasses
-            that require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
-
-        Returns:
-            bool: True if the item existed and was deleted; False otherwise.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        try:
-            current_etag = self.etag(key)
-        except (KeyError, FileNotFoundError):
-            return False
-        if etag == current_etag:
+        if not self._etag_condition_holds(condition, etag, current_etag):
             return False
         return self.discard(key)
 

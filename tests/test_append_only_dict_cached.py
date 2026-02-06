@@ -2,7 +2,7 @@ import pytest
 
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
-from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, ETAG_UNKNOWN
+from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, ETAG_UNKNOWN, DIFFERENT_ETAG
 from persidict.jokers_and_status_flags import KEEP_CURRENT
 
 
@@ -48,14 +48,14 @@ def test_timestamp_passthrough(append_only_env):
     assert ts_wr == ts_main
 
 
-def test_get_item_if_etag_changed_populates_cache(append_only_env):
+def test_get_item_if_etag_different_populates_cache(append_only_env):
     main, cache, wrapper = append_only_env
 
     # Put directly to main (simulate data appearing outside of cache)
     main[("x",)] = "v1"
 
     # First call with ETAG_UNKNOWN returns value and etag, and must cache it
-    res = wrapper.get_item_if_etag_changed(("x",), ETAG_UNKNOWN)
+    res = wrapper.get_item_if_etag(("x",), ETAG_UNKNOWN, DIFFERENT_ETAG)
     assert res is not ETAG_HAS_NOT_CHANGED
     v, etag = res
     assert v == "v1"
@@ -63,7 +63,7 @@ def test_get_item_if_etag_changed_populates_cache(append_only_env):
     assert ("x",) in cache and cache[("x",)] == "v1"
 
     # Second call with the same etag should report not changed and keep cache
-    res2 = wrapper.get_item_if_etag_changed(("x",), etag)
+    res2 = wrapper.get_item_if_etag(("x",), etag, DIFFERENT_ETAG)
     assert res2 is ETAG_HAS_NOT_CHANGED
     assert cache[("x",)] == "v1"
 
@@ -195,7 +195,7 @@ def test_len_and_iteration_ignore_cache_only_keys(append_only_env):
     assert dict(wrapper.items()) == dict(main.items())
 
 
-def test_get_item_if_etag_changed_absent_key_does_not_cache(append_only_env):
+def test_get_item_if_etag_different_absent_key_does_not_cache(append_only_env):
     main, cache, wrapper = append_only_env
 
     # Ensure key is absent everywhere
@@ -203,7 +203,7 @@ def test_get_item_if_etag_changed_absent_key_does_not_cache(append_only_env):
     assert key not in main and key not in cache
 
     with pytest.raises((KeyError, FileNotFoundError)):
-        wrapper.get_item_if_etag_changed(key, ETAG_UNKNOWN)
+        wrapper.get_item_if_etag(key, ETAG_UNKNOWN, DIFFERENT_ETAG)
 
     # Cache should remain untouched
     assert key not in cache

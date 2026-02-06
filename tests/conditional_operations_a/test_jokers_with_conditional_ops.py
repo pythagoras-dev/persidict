@@ -10,7 +10,7 @@ from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
     ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, ETAG_UNKNOWN,
-    KEEP_CURRENT, DELETE_CURRENT
+    KEEP_CURRENT, DELETE_CURRENT, EQUAL_ETAG, DIFFERENT_ETAG
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -20,7 +20,7 @@ MIN_SLEEP = 0.02
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_not_changed_with_keep_current_verifies_etag(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_equal_with_keep_current_verifies_etag(tmpdir, DictToTest, kwargs):
     """Critical: KEEP_CURRENT with wrong etag should return ETAG_HAS_CHANGED.
 
     This test verifies that even when KEEP_CURRENT is used (which doesn't modify
@@ -31,7 +31,7 @@ def test_set_item_if_etag_not_changed_with_keep_current_verifies_etag(tmpdir, Di
     correct_etag = d.etag("key1")
     wrong_etag = "definitely_wrong_etag"
 
-    result = d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, wrong_etag)
+    result = d.set_item_if_etag("key1", KEEP_CURRENT, wrong_etag, EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
     assert d["key1"] == "original"  # Value unchanged
@@ -39,13 +39,13 @@ def test_set_item_if_etag_not_changed_with_keep_current_verifies_etag(tmpdir, Di
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_not_changed_with_keep_current_matching_etag(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_equal_with_keep_current_matching_etag(tmpdir, DictToTest, kwargs):
     """Verify KEEP_CURRENT with matching etag returns None and keeps value."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
     etag = d.etag("key1")
 
-    result = d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, etag)
+    result = d.set_item_if_etag("key1", KEEP_CURRENT, etag, EQUAL_ETAG)
 
     assert result is None  # KEEP_CURRENT always returns None on success
     assert d["key1"] == "original"
@@ -54,13 +54,13 @@ def test_set_item_if_etag_not_changed_with_keep_current_matching_etag(tmpdir, Di
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_not_changed_with_delete_current_succeeds(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_equal_with_delete_current_succeeds(tmpdir, DictToTest, kwargs):
     """Verify DELETE_CURRENT with matching etag deletes the key."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.set_item_if_etag_not_changed("key1", DELETE_CURRENT, etag)
+    result = d.set_item_if_etag("key1", DELETE_CURRENT, etag, EQUAL_ETAG)
 
     assert result is None  # DELETE_CURRENT returns None on success
     assert "key1" not in d
@@ -68,7 +68,7 @@ def test_set_item_if_etag_not_changed_with_delete_current_succeeds(tmpdir, DictT
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_not_changed_with_delete_current_fails_on_wrong_etag(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_equal_with_delete_current_fails_on_wrong_etag(tmpdir, DictToTest, kwargs):
     """Verify DELETE_CURRENT with wrong etag returns ETAG_HAS_CHANGED and preserves key."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
@@ -77,7 +77,7 @@ def test_set_item_if_etag_not_changed_with_delete_current_fails_on_wrong_etag(tm
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.set_item_if_etag_not_changed("key1", DELETE_CURRENT, old_etag)
+    result = d.set_item_if_etag("key1", DELETE_CURRENT, old_etag, EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
     assert "key1" in d
@@ -86,13 +86,13 @@ def test_set_item_if_etag_not_changed_with_delete_current_fails_on_wrong_etag(tm
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_changed_with_keep_current_verifies_etag(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_different_with_keep_current_verifies_etag(tmpdir, DictToTest, kwargs):
     """Verify KEEP_CURRENT with unchanged etag returns ETAG_HAS_NOT_CHANGED."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
     current_etag = d.etag("key1")
 
-    result = d.set_item_if_etag_changed("key1", KEEP_CURRENT, current_etag)
+    result = d.set_item_if_etag("key1", KEEP_CURRENT, current_etag, DIFFERENT_ETAG)
 
     assert result is ETAG_HAS_NOT_CHANGED
     assert d["key1"] == "original"
@@ -100,7 +100,7 @@ def test_set_item_if_etag_changed_with_keep_current_verifies_etag(tmpdir, DictTo
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_changed_with_keep_current_changed_etag(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_different_with_keep_current_changed_etag(tmpdir, DictToTest, kwargs):
     """Verify KEEP_CURRENT with changed etag returns None (success, no modification)."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
@@ -109,7 +109,7 @@ def test_set_item_if_etag_changed_with_keep_current_changed_etag(tmpdir, DictToT
     time.sleep(1.1)
     d["key1"] = "modified"
 
-    result = d.set_item_if_etag_changed("key1", KEEP_CURRENT, old_etag)
+    result = d.set_item_if_etag("key1", KEEP_CURRENT, old_etag, DIFFERENT_ETAG)
 
     assert result is None  # KEEP_CURRENT returns None
     assert d["key1"] == "modified"  # Value stays as modified
@@ -117,7 +117,7 @@ def test_set_item_if_etag_changed_with_keep_current_changed_etag(tmpdir, DictToT
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_changed_with_delete_current_succeeds(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_different_with_delete_current_succeeds(tmpdir, DictToTest, kwargs):
     """Verify DELETE_CURRENT with changed etag deletes the key."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
@@ -126,7 +126,7 @@ def test_set_item_if_etag_changed_with_delete_current_succeeds(tmpdir, DictToTes
     time.sleep(1.1)
     d["key1"] = "modified"
 
-    result = d.set_item_if_etag_changed("key1", DELETE_CURRENT, old_etag)
+    result = d.set_item_if_etag("key1", DELETE_CURRENT, old_etag, DIFFERENT_ETAG)
 
     assert result is None
     assert "key1" not in d
@@ -134,13 +134,13 @@ def test_set_item_if_etag_changed_with_delete_current_succeeds(tmpdir, DictToTes
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_changed_with_delete_current_unchanged_etag(tmpdir, DictToTest, kwargs):
+def test_set_item_if_etag_different_with_delete_current_unchanged_etag(tmpdir, DictToTest, kwargs):
     """Verify DELETE_CURRENT with unchanged etag returns ETAG_HAS_NOT_CHANGED."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result = d.set_item_if_etag_changed("key1", DELETE_CURRENT, current_etag)
+    result = d.set_item_if_etag("key1", DELETE_CURRENT, current_etag, DIFFERENT_ETAG)
 
     assert result is ETAG_HAS_NOT_CHANGED
     assert "key1" in d
@@ -154,7 +154,7 @@ def test_joker_keep_current_on_missing_key_conditional(tmpdir, DictToTest, kwarg
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
     with pytest.raises((KeyError, FileNotFoundError)):
-        d.set_item_if_etag_not_changed("nonexistent", KEEP_CURRENT, "some_etag")
+        d.set_item_if_etag("nonexistent", KEEP_CURRENT, "some_etag", EQUAL_ETAG)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -164,7 +164,7 @@ def test_joker_delete_current_on_missing_key_conditional(tmpdir, DictToTest, kwa
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
     with pytest.raises((KeyError, FileNotFoundError)):
-        d.set_item_if_etag_not_changed("nonexistent", DELETE_CURRENT, "some_etag")
+        d.set_item_if_etag("nonexistent", DELETE_CURRENT, "some_etag", EQUAL_ETAG)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -176,7 +176,7 @@ def test_keep_current_preserves_exact_value(tmpdir, DictToTest, kwargs):
     d["key1"] = original
     etag = d.etag("key1")
 
-    d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, etag)
+    d.set_item_if_etag("key1", KEEP_CURRENT, etag, EQUAL_ETAG)
 
     assert d["key1"] == original
 
@@ -190,7 +190,7 @@ def test_delete_current_removes_key_completely(tmpdir, DictToTest, kwargs):
     d["key2"] = "value2"
     etag = d.etag("key1")
 
-    d.set_item_if_etag_not_changed("key1", DELETE_CURRENT, etag)
+    d.set_item_if_etag("key1", DELETE_CURRENT, etag, EQUAL_ETAG)
 
     assert "key1" not in d
     assert "key1" not in list(d.keys())
@@ -207,12 +207,12 @@ def test_jokers_with_tuple_keys(tmpdir, DictToTest, kwargs):
     etag = d.etag(key)
 
     # Test KEEP_CURRENT
-    result = d.set_item_if_etag_not_changed(key, KEEP_CURRENT, etag)
+    result = d.set_item_if_etag(key, KEEP_CURRENT, etag, EQUAL_ETAG)
     assert result is None
     assert d[key] == "value"
 
     # Test DELETE_CURRENT
-    result = d.set_item_if_etag_not_changed(key, DELETE_CURRENT, etag)
+    result = d.set_item_if_etag(key, DELETE_CURRENT, etag, EQUAL_ETAG)
     assert result is None
     assert key not in d
 
@@ -225,7 +225,7 @@ def test_keep_current_does_not_update_etag(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     etag_before = d.etag("key1")
 
-    d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, etag_before)
+    d.set_item_if_etag("key1", KEEP_CURRENT, etag_before, EQUAL_ETAG)
     etag_after = d.etag("key1")
 
     assert etag_before == etag_after
@@ -238,7 +238,7 @@ def test_keep_current_with_unknown_etag_fails(tmpdir, DictToTest, kwargs):
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, ETAG_UNKNOWN)
+    result = d.set_item_if_etag("key1", KEEP_CURRENT, ETAG_UNKNOWN, EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
     assert d["key1"] == "value"
@@ -251,7 +251,7 @@ def test_delete_current_with_unknown_etag_fails(tmpdir, DictToTest, kwargs):
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if_etag_not_changed("key1", DELETE_CURRENT, ETAG_UNKNOWN)
+    result = d.set_item_if_etag("key1", DELETE_CURRENT, ETAG_UNKNOWN, EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
     assert "key1" in d

@@ -15,7 +15,14 @@ import time
 from deepdiff import DeepDiff
 from mixinforge import sort_dict_by_keys
 
-from .jokers_and_status_flags import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag, ETagInput
+from .jokers_and_status_flags import (
+    KEEP_CURRENT,
+    KeepCurrentFlag,
+    ETagHasNotChangedFlag,
+    ETagHasChangedFlag,
+    ETagInput,
+    ETagConditionFlag,
+)
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .file_dir_dict import FileDirDict
 import random
@@ -185,10 +192,13 @@ class WriteOnceDict(PersiDict[ValueType]):
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
-    def set_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: ETagInput):
-        raise NotImplementedError("Operation not supported on WriteOnceDict.")
-
-    def set_item_if_etag_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: ETagInput):
+    def set_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ):
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -266,18 +276,14 @@ class WriteOnceDict(PersiDict[ValueType]):
         return self._wrapped_dict[key]
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
-                                 ) -> tuple[Any, str|None] |ETagHasNotChangedFlag:
-        """Retrieve a value and its etag if the etag is new.
-        Args:
-            key: Key to look up.
-            etag: Previous etag to compare against.
-        Returns:
-            tuple[Any, str|None] | ETagHasNotChangedFlag: Stored value and its
-                etag if the etag is new, or ETAG_HAS_NOT_CHANGED if the
-                etag matches the current one.
-        """
-        return self._wrapped_dict.get_item_if_etag_changed(key, etag)
+    def get_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> tuple[Any, str | None] | ETagHasNotChangedFlag | ETagHasChangedFlag:
+        """Retrieve a value and its etag if the condition is satisfied."""
+        return self._wrapped_dict.get_item_if_etag(key, etag, condition)
 
     def __len__(self):
         """Return the number of items stored.

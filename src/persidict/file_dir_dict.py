@@ -24,7 +24,8 @@ from mixinforge import sort_dict_by_keys
 
 from .jokers_and_status_flags import (Joker, ETagHasNotChangedFlag, ETagHasChangedFlag,
                                       ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
-                                      KEEP_CURRENT, DELETE_CURRENT, ETagInput)
+                                      KEEP_CURRENT, DELETE_CURRENT, ETagInput,
+                                      ETagConditionFlag)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
@@ -710,13 +711,14 @@ class FileDirDict(PersiDict[ValueType]):
             self._save_to_file(filename, value)
 
 
-    def set_item_if_etag_not_changed(
+    def set_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: ETagInput
-    ) -> str | None | ETagHasChangedFlag:
-        """Store a value only if the ETag has not changed.
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Store a value only if the ETag satisfies a condition.
 
         Uses a per-key file lock to make the compare-and-write sequence
         safe across concurrent writers on the same filesystem.
@@ -725,36 +727,8 @@ class FileDirDict(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             current_etag = self.etag(key)
-            if etag != current_etag:
-                return ETAG_HAS_CHANGED
-            key = self._validate_setitem_args(key, value)
-            if value is KEEP_CURRENT:
-                return None
-            if value is DELETE_CURRENT:
-                self._delitem_locked(key)
-                return None
-            filename = self._build_full_path(key, create_subdirs=True)
-            self._save_to_file(filename, value)
-            return self.etag(key)
-
-
-    def set_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput
-    ) -> str | None | ETagHasNotChangedFlag:
-        """Store a value only if the ETag has changed.
-
-        Uses a per-key file lock to make the compare-and-write sequence
-        safe across concurrent writers on the same filesystem.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        with self._acquire_key_lock(key):
-            current_etag = self.etag(key)
-            if etag == current_etag:
-                return ETAG_HAS_NOT_CHANGED
+            if not self._etag_condition_holds(condition, etag, current_etag):
+                return self._etag_condition_failure_flag(condition)
             key = self._validate_setitem_args(key, value)
             if value is KEEP_CURRENT:
                 return None
@@ -778,44 +752,30 @@ class FileDirDict(PersiDict[ValueType]):
         os.remove(filename)
 
 
-    def delete_item_if_etag_not_changed(
+    def delete_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasChangedFlag:
-        """Delete a key only if its ETag has not changed (with per-key lock)."""
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Delete a key only if its ETag satisfies a condition (with per-key lock)."""
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             current_etag = self.etag(key)
-            if etag != current_etag:
-                return ETAG_HAS_CHANGED
+            if not self._etag_condition_holds(condition, etag, current_etag):
+                return self._etag_condition_failure_flag(condition)
             self._delitem_locked(key)
             return None
 
 
-    def delete_item_if_etag_changed(
+    def discard_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasNotChangedFlag:
-        """Delete a key only if its ETag has changed (with per-key lock)."""
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        with self._acquire_key_lock(key):
-            current_etag = self.etag(key)
-            if etag == current_etag:
-                return ETAG_HAS_NOT_CHANGED
-            self._delitem_locked(key)
-            return None
-
-
-    def discard_item_if_etag_not_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
+            etag: ETagInput,
+            condition: ETagConditionFlag
     ) -> bool:
-        """Discard a key only if its ETag has not changed (with per-key lock)."""
+        """Discard a key only if its ETag satisfies a condition (with per-key lock)."""
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
@@ -823,29 +783,7 @@ class FileDirDict(PersiDict[ValueType]):
                 current_etag = self.etag(key)
             except (KeyError, FileNotFoundError):
                 return False
-            if etag != current_etag:
-                return False
-            try:
-                self._delitem_locked(key)
-                return True
-            except KeyError:
-                return False
-
-
-    def discard_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> bool:
-        """Discard a key only if its ETag has changed (with per-key lock)."""
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        with self._acquire_key_lock(key):
-            try:
-                current_etag = self.etag(key)
-            except (KeyError, FileNotFoundError):
-                return False
-            if etag == current_etag:
+            if not self._etag_condition_holds(condition, etag, current_etag):
                 return False
             try:
                 self._delitem_locked(key)

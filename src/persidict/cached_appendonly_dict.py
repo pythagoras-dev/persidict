@@ -27,7 +27,8 @@ from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED,
                                       EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
                                       ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput)
+                                      Joker, ETagInput,
+                                      ETagConditionFlag)
 
 
 class AppendOnlyDictCached(PersiDict[ValueType]):
@@ -199,30 +200,19 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             return value
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
-        """Return value only if its ETag changed; cache the value if so.
-
-        Delegates to the main dict. If the ETag differs from the provided one,
-        the new value is cached and the (value, etag) tuple is returned.
-        Otherwise, returns ETAG_HAS_NOT_CHANGED.
-
-        Args:
-            key: Dictionary key (string or sequence of strings) or
-                NonEmptySafeStrTuple.
-            etag: Previously seen ETag, or ETAG_UNKNOWN if unset.
-
-        Returns:
-            tuple[Any, str|None] | ETagHasNotChangedFlag: The value and the new
-            ETag when changed; ETAG_HAS_NOT_CHANGED otherwise.
-
-        Raises:
-            KeyError: If the key does not exist in the main dict.
-        """
+    def get_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ):
+        """Return value only if its ETag satisfies a condition; cache on success."""
         key = NonEmptySafeStrTuple(key)
-        res = self._main.get_item_if_etag_changed(key, etag)
-        if res is not ETAG_HAS_NOT_CHANGED:
-            value, _ = res
-            self._data_cache[key] = value
+        res = self._main.get_item_if_etag(key, etag, condition)
+        if res is ETAG_HAS_CHANGED or res is ETAG_HAS_NOT_CHANGED:
+            return res
+        value, _ = res
+        self._data_cache[key] = value
         return res
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -276,94 +266,44 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         return etag
 
 
-    def set_item_if_etag_not_changed(
+    def set_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: ETagInput
-    ) -> Optional[str] | ETagHasChangedFlag:
-        """Set item only if ETag has not changed; update cache on success."""
-        if value is DELETE_CURRENT:
-            raise TypeError("append-only dicts do not support deletion")
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if etag != current_etag:
-            return ETAG_HAS_CHANGED
-        if value is KEEP_CURRENT:
-            return None
-        raise ValueError("append-only dicts do not support modifying existing items")
-
-
-    def set_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput
-    ) -> Optional[str] | ETagHasNotChangedFlag:
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> Optional[str] | ETagHasChangedFlag | ETagHasNotChangedFlag:
         """Append-only dicts do not support modifying existing items."""
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
-        if etag == current_etag:
-            return ETAG_HAS_NOT_CHANGED
+        if not self._etag_condition_holds(condition, etag, current_etag):
+            return self._etag_condition_failure_flag(condition)
         if value is KEEP_CURRENT:
             return None
         raise ValueError("append-only dicts do not support modifying existing items")
 
 
 
-    def delete_item_if_etag_not_changed(
+    def delete_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasChangedFlag:
-        """Deletion is not supported for append-only dictionaries.
-
-        Raises:
-            TypeError: Always raised to indicate append-only restriction.
-        """
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 
 
-    def delete_item_if_etag_changed(
+    def discard_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasNotChangedFlag:
-        """Deletion is not supported for append-only dictionaries.
-
-        Raises:
-            TypeError: Always raised to indicate append-only restriction.
-        """
-        raise TypeError("append-only dicts do not support deletion")
-
-
-    def discard_item_if_etag_not_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
+            etag: ETagInput,
+            condition: ETagConditionFlag
     ) -> bool:
-        """Deletion is not supported for append-only dictionaries.
-
-        Raises:
-            TypeError: Always raised to indicate append-only restriction.
-        """
-        raise TypeError("append-only dicts do not support deletion")
-
-
-    def discard_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> bool:
-        """Deletion is not supported for append-only dictionaries.
-
-        Raises:
-            TypeError: Always raised to indicate append-only restriction.
-        """
+        """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 
     def __delitem__(self, key: NonEmptyPersiDictKey):

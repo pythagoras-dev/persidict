@@ -9,7 +9,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED
+    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, EQUAL_ETAG, DIFFERENT_ETAG
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -89,7 +89,7 @@ def test_conditional_ops_with_empty_string_value(tmpdir, DictToTest, kwargs):
     d["key1"] = ""
     etag = d.etag("key1")
 
-    result = d.set_item_if_etag_not_changed("key1", "updated", etag)
+    result = d.set_item_if_etag("key1", "updated", etag, EQUAL_ETAG)
 
     assert result is not ETAG_HAS_CHANGED
     assert d["key1"] == "updated"
@@ -105,7 +105,7 @@ def test_conditional_ops_with_none_value(tmpdir, DictToTest, kwargs):
 
     assert d["key1"] is None
 
-    result = d.set_item_if_etag_not_changed("key1", "updated", etag)
+    result = d.set_item_if_etag("key1", "updated", etag, EQUAL_ETAG)
 
     assert result is not ETAG_HAS_CHANGED
     assert d["key1"] == "updated"
@@ -130,7 +130,7 @@ def test_etag_equality_comparison_not_identity(tmpdir, DictToTest, kwargs):
     assert etag1 == etag2
 
     # The conditional operation should work with either
-    result = d.set_item_if_etag_not_changed("key1", "updated", etag2)
+    result = d.set_item_if_etag("key1", "updated", etag2, EQUAL_ETAG)
     assert result is not ETAG_HAS_CHANGED
 
 
@@ -151,7 +151,7 @@ def test_concurrent_modification_detection_simulation(tmpdir, DictToTest, kwargs
     d["key1"] = "modified_by_other"
 
     # Our conditional operation should detect the change
-    result = d.set_item_if_etag_not_changed("key1", "our_value", stale_etag)
+    result = d.set_item_if_etag("key1", "our_value", stale_etag, EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
     assert d["key1"] == "modified_by_other"
@@ -159,50 +159,50 @@ def test_concurrent_modification_detection_simulation(tmpdir, DictToTest, kwargs
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_return_type_set_item_if_etag_not_changed_success(tmpdir, DictToTest, kwargs):
-    """Verify return type is str on successful set_item_if_etag_not_changed."""
+def test_return_type_set_item_if_etag_equal_success(tmpdir, DictToTest, kwargs):
+    """Verify return type is str on successful set_item_if_etag with EQUAL_ETAG."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.set_item_if_etag_not_changed("key1", "updated", etag)
+    result = d.set_item_if_etag("key1", "updated", etag, EQUAL_ETAG)
 
     assert isinstance(result, str)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_return_type_set_item_if_etag_not_changed_failure(tmpdir, DictToTest, kwargs):
+def test_return_type_set_item_if_etag_equal_failure(tmpdir, DictToTest, kwargs):
     """Verify return type is ETAG_HAS_CHANGED flag on failure."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if_etag_not_changed("key1", "updated", "wrong_etag")
+    result = d.set_item_if_etag("key1", "updated", "wrong_etag", EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_return_type_delete_item_if_etag_not_changed_success(tmpdir, DictToTest, kwargs):
-    """Verify return type is None on successful delete_item_if_etag_not_changed."""
+def test_return_type_delete_item_if_etag_equal_success(tmpdir, DictToTest, kwargs):
+    """Verify return type is None on successful delete_item_if_etag."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.delete_item_if_etag_not_changed("key1", etag)
+    result = d.delete_item_if_etag("key1", etag, EQUAL_ETAG)
 
     assert result is None
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_return_type_delete_item_if_etag_not_changed_failure(tmpdir, DictToTest, kwargs):
+def test_return_type_delete_item_if_etag_equal_failure(tmpdir, DictToTest, kwargs):
     """Verify return type is ETAG_HAS_CHANGED flag on failure."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.delete_item_if_etag_not_changed("key1", "wrong_etag")
+    result = d.delete_item_if_etag("key1", "wrong_etag", EQUAL_ETAG)
 
     assert result is ETAG_HAS_CHANGED
 
@@ -215,8 +215,8 @@ def test_return_type_discard_is_bool(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result_success = d.discard_item_if_etag_not_changed("key1", etag)
-    result_missing = d.discard_item_if_etag_not_changed("key1", etag)  # Now missing
+    result_success = d.discard_item_if_etag("key1", etag, EQUAL_ETAG)
+    result_missing = d.discard_item_if_etag("key1", etag, EQUAL_ETAG)  # Now missing
 
     assert isinstance(result_success, bool)
     assert isinstance(result_missing, bool)
@@ -241,7 +241,7 @@ def test_conditional_ops_with_complex_nested_value(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Verify we can do conditional get
-    result = d.get_item_if_etag_not_changed("key1", etag)
+    result = d.get_item_if_etag("key1", etag, EQUAL_ETAG)
     assert result is not ETAG_HAS_CHANGED
     value, _ = result
     assert value == complex_value
@@ -276,12 +276,12 @@ def test_conditional_set_then_delete_in_sequence(tmpdir, DictToTest, kwargs):
     etag1 = d.etag("key1")
 
     # Conditional set
-    etag2 = d.set_item_if_etag_not_changed("key1", "updated", etag1)
+    etag2 = d.set_item_if_etag("key1", "updated", etag1, EQUAL_ETAG)
     assert etag2 is not ETAG_HAS_CHANGED
     assert d["key1"] == "updated"
 
     # Conditional delete with new etag
-    result = d.delete_item_if_etag_not_changed("key1", etag2)
+    result = d.delete_item_if_etag("key1", etag2, EQUAL_ETAG)
     assert result is None
     assert "key1" not in d
 
@@ -295,7 +295,7 @@ def test_conditional_delete_then_recreate(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Delete
-    d.delete_item_if_etag_not_changed("key1", etag)
+    d.delete_item_if_etag("key1", etag, EQUAL_ETAG)
     assert "key1" not in d
 
     # Recreate
@@ -313,8 +313,8 @@ def test_status_flags_are_singleton_instances(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result1 = d.set_item_if_etag_not_changed("key1", "new", "wrong_etag")
-    result2 = d.set_item_if_etag_changed("key1", "new", current_etag)
+    result1 = d.set_item_if_etag("key1", "new", "wrong_etag", EQUAL_ETAG)
+    result2 = d.set_item_if_etag("key1", "new", current_etag, DIFFERENT_ETAG)
 
     # Status flags should be the exact same singleton objects
     assert result1 is ETAG_HAS_CHANGED
@@ -344,7 +344,7 @@ def test_get_item_if_etag_preserves_value_type(tmpdir, DictToTest, kwargs):
         d[key] = test_value
         etag = d.etag(key)
 
-        result = d.get_item_if_etag_not_changed(key, etag)
+        result = d.get_item_if_etag(key, etag, EQUAL_ETAG)
         assert result is not ETAG_HAS_CHANGED
         retrieved_value, _ = result
         assert retrieved_value == test_value
@@ -360,7 +360,7 @@ def test_long_key_tuples(tmpdir, DictToTest, kwargs):
     d[key] = "deep_value"
     etag = d.etag(key)
 
-    result = d.set_item_if_etag_not_changed(key, "updated_deep", etag)
+    result = d.set_item_if_etag(key, "updated_deep", etag, EQUAL_ETAG)
 
     assert result is not ETAG_HAS_CHANGED
     assert d[key] == "updated_deep"

@@ -26,7 +26,8 @@ from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
                                       ETAG_HAS_NOT_CHANGED, ETagHasChangedFlag,
                                       ETAG_HAS_CHANGED, KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput, ETAG_UNKNOWN)
+                                      Joker, ETagInput, ETAG_UNKNOWN,
+                                      ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 
 
 def not_found_error(e:ClientError) -> bool:
@@ -252,9 +253,13 @@ class BasicS3Dict(PersiDict[ValueType]):
             else:
                 raise
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
-                                 ) -> tuple[ValueType, str|None] | ETagHasNotChangedFlag:
-        """Retrieve the value for a key only if its ETag has changed.
+    def get_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> tuple[ValueType, str | None] | ETagHasNotChangedFlag | ETagHasChangedFlag:
+        """Retrieve the value for a key only if its ETag satisfies a condition.
 
         This method is absent in the original dict API.
 
@@ -262,27 +267,40 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: Dictionary key (string or sequence of strings
                 or NonEmptySafeStrTuple).
             etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
+                require a mismatch.
 
         Returns:
-            tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized value
-                if the ETag has changed, along with the new ETag,
-                or ETAG_HAS_NOT_CHANGED if the etag matches the current one.
+            tuple[Any, str|None] | ETagHasNotChangedFlag | ETagHasChangedFlag:
+                The deserialized value if the condition succeeds, along with
+                the current ETag, or a sentinel flag if the condition fails.
 
         Raises:
             KeyError: If the key does not exist in S3.
+            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
         """
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
+        failure_flag = self._etag_condition_failure_flag(condition)
 
         try:
             get_kwargs = {'Bucket': self.bucket_name, 'Key': obj_name}
-            if etag is not ETAG_UNKNOWN:
-                get_kwargs['IfNoneMatch'] = etag
+            if condition is DIFFERENT_ETAG:
+                if etag is not ETAG_UNKNOWN:
+                    get_kwargs['IfNoneMatch'] = etag
+            elif condition is EQUAL_ETAG:
+                if etag is ETAG_UNKNOWN:
+                    # Preserve KeyError for missing keys while matching prior behavior.
+                    self.etag(key)
+                    return failure_flag
+                get_kwargs['IfMatch'] = etag
+            else:
+                raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
 
             response = self.s3_client.get_object(**get_kwargs)
 
-            # 200 OK: object was downloaded, either because it's new or changed.
+            # 200 OK: object was downloaded, either because it's new or matches.
             body = response['Body']
             s3_etag = response.get("ETag")
 
@@ -300,13 +318,17 @@ class BasicS3Dict(PersiDict[ValueType]):
             return (deserialized_value, s3_etag)
 
         except ClientError as e:
-            if e.response['ResponseMetadata']['HTTPStatusCode'] == 304:
-                # HTTP 304 Not Modified: the version is current, no download needed
-                return ETAG_HAS_NOT_CHANGED
-            elif not_found_error(e):
+            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+            code = e.response.get('Error', {}).get('Code')
+            if condition is DIFFERENT_ETAG and status == 304:
+                # HTTP 304 Not Modified: the version is current, no download needed.
+                return failure_flag
+            if condition is EQUAL_ETAG and (status in (409, 412)
+                                            or code in ("ConditionalRequestConflict", "PreconditionFailed")):
+                return failure_flag
+            if not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
-            else:
-                raise
+            raise
 
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
@@ -322,7 +344,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         Raises:
             KeyError: If the key does not exist in S3.
         """
-        return self.get_item_if_etag_changed(key, ETAG_UNKNOWN)[0]
+        return self.get_item_if_etag(key, ETAG_UNKNOWN, DIFFERENT_ETAG)[0]
 
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
@@ -447,16 +469,20 @@ class BasicS3Dict(PersiDict[ValueType]):
         return response.get("ETag")
 
 
-    def set_item_if_etag_not_changed(
+    def set_item_if_etag(
             self,
             key: NonEmptyPersiDictKey,
             value: Any,
-            etag: ETagInput
-    ) -> str | None | ETagHasChangedFlag:
-        """Store a value only if the ETag has not changed (compare-and-set).
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Store a value only if the ETag satisfies a condition.
 
-        Uses conditional S3 writes (If-Match) to avoid overwriting changes
-        made by other writers; the ETag check is enforced server-side.
+        For EQUAL_ETAG, uses conditional S3 writes (If-Match) to avoid
+        overwriting changes made by other writers; the ETag check is enforced
+        server-side. For DIFFERENT_ETAG, performs an ETag comparison and then
+        writes without a conditional header (last-write-wins semantics under
+        concurrency).
 
         Args:
             key: Dictionary key (string or sequence of strings)
@@ -464,155 +490,128 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
             etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-                ETAG_UNKNOWN always fails for existing keys because S3 always
-                returns ETags.
+            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
+                require a mismatch.
 
         Returns:
-            str | None | ETagHasChangedFlag: The ETag of the newly stored
-                object if the condition succeeds, or ETAG_HAS_CHANGED if the
-                current ETag does not match the provided one.
+            str | None | ETagHasChangedFlag | ETagHasNotChangedFlag: The ETag
+                of the newly stored object if the condition succeeds, or a
+                sentinel flag if the condition fails.
 
         Raises:
             KeyError: If the key does not exist.
+            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
         """
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
-        if etag is ETAG_UNKNOWN:
-            # Preserve KeyError for missing keys while matching prior behavior.
-            self.etag(key)
-            return ETAG_HAS_CHANGED
+        failure_flag = self._etag_condition_failure_flag(condition)
 
-        self._validate_setitem_args(key, value)
-        if value is KEEP_CURRENT:
+        if condition is EQUAL_ETAG:
+            if etag is ETAG_UNKNOWN:
+                # Preserve KeyError for missing keys while matching prior behavior.
+                self.etag(key)
+                return failure_flag
+
+            self._validate_setitem_args(key, value)
+            if value is KEEP_CURRENT:
+                current_etag = self.etag(key)
+                if etag != current_etag:
+                    return failure_flag
+                return None
+            if value is DELETE_CURRENT:
+                return self.delete_item_if_etag(key, etag, condition)
+            serialized_data, content_type = self._serialize_value_for_s3(value)
+
+            try:
+                response = self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=self._build_full_objectname(key),
+                    Body=serialized_data,
+                    ContentType=content_type,
+                    IfMatch=etag
+                )
+                return response.get("ETag")
+            except ClientError as e:
+                status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                code = e.response.get('Error', {}).get('Code')
+                if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
+                    # Precondition failed (ETag did not match).
+                    return failure_flag
+                if not_found_error(e):
+                    raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise
+
+        if condition is DIFFERENT_ETAG:
+            current_etag = self.etag(key)
+            if etag == current_etag:
+                return failure_flag
+
+            if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
+                return None
+            serialized_data, content_type = self._serialize_value_for_s3(value)
+
+            try:
+                response = self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=self._build_full_objectname(key),
+                    Body=serialized_data,
+                    ContentType=content_type
+                )
+                return response.get("ETag")
+            except ClientError as e:
+                if not_found_error(e):
+                    raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise
+
+        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
+
+
+    def delete_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+        """Delete a key only if its ETag satisfies a condition.
+
+        For EQUAL_ETAG, uses conditional S3 deletes (If-Match) to avoid deleting
+        objects modified by other writers between the check and the delete. For
+        DIFFERENT_ETAG, falls back to the non-atomic base implementation (S3
+        does not support an If-None-Match delete condition).
+        """
+        etag = self._normalize_etag_input(etag)
+        key = NonEmptySafeStrTuple(key)
+        failure_flag = self._etag_condition_failure_flag(condition)
+
+        if condition is EQUAL_ETAG:
+            if etag is ETAG_UNKNOWN:
+                # Preserve KeyError for missing keys while matching prior behavior.
+                self.etag(key)
+                return failure_flag
             current_etag = self.etag(key)
             if etag != current_etag:
-                return ETAG_HAS_CHANGED
-            return None
-        if value is DELETE_CURRENT:
-            return self.delete_item_if_etag_not_changed(key, etag)
-        serialized_data, content_type = self._serialize_value_for_s3(value)
+                return failure_flag
 
-        try:
-            response = self.s3_client.put_object(
-                Bucket=self.bucket_name,
-                Key=self._build_full_objectname(key),
-                Body=serialized_data,
-                ContentType=content_type,
-                IfMatch=etag
-            )
-            return response.get("ETag")
-        except ClientError as e:
-            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
-            code = e.response.get('Error', {}).get('Code')
-            if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
-                # Precondition failed (ETag did not match).
-                return ETAG_HAS_CHANGED
-            if not_found_error(e):
-                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
-            raise
+            try:
+                self.s3_client.delete_object(
+                    Bucket=self.bucket_name,
+                    Key=self._build_full_objectname(key),
+                    IfMatch=etag
+                )
+                return None
+            except ClientError as e:
+                status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                code = e.response.get('Error', {}).get('Code')
+                if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
+                    return failure_flag
+                if not_found_error(e):
+                    raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise
 
+        if condition is DIFFERENT_ETAG:
+            return super().delete_item_if_etag(key, etag, condition)
 
-    def set_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            value: Any,
-            etag: ETagInput
-    ) -> str | None | ETagHasNotChangedFlag:
-        """Store a value only if the ETag has changed.
-
-        Performs an ETag comparison and then writes without a conditional
-        If-Match header (last-write-wins semantics under concurrency).
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            value: Value to store, or a joker command (KEEP_CURRENT or
-                DELETE_CURRENT).
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-                ETAG_UNKNOWN always succeeds for existing keys because S3
-                always returns ETags.
-
-        Returns:
-            str | None | ETagHasNotChangedFlag: The ETag of the newly stored
-                object if the condition succeeds, or ETAG_HAS_NOT_CHANGED if
-                the provided ETag matches the current one.
-
-        Raises:
-            KeyError: If the key does not exist.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if etag == current_etag:
-            return ETAG_HAS_NOT_CHANGED
-
-        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
-            return None
-        serialized_data, content_type = self._serialize_value_for_s3(value)
-
-        try:
-            response = self.s3_client.put_object(
-                Bucket=self.bucket_name,
-                Key=self._build_full_objectname(key),
-                Body=serialized_data,
-                ContentType=content_type
-            )
-            return response.get("ETag")
-        except ClientError as e:
-            if not_found_error(e):
-                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
-            raise
-
-
-    def delete_item_if_etag_not_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasChangedFlag:
-        """Delete a key only if its ETag has not changed.
-
-        Uses conditional S3 deletes (If-Match) to avoid deleting objects
-        modified by other writers between the check and the delete.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        if etag is ETAG_UNKNOWN:
-            # Preserve KeyError for missing keys while matching prior behavior.
-            self.etag(key)
-            return ETAG_HAS_CHANGED
-        current_etag = self.etag(key)
-        if etag != current_etag:
-            return ETAG_HAS_CHANGED
-
-        try:
-            self.s3_client.delete_object(
-                Bucket=self.bucket_name,
-                Key=self._build_full_objectname(key),
-                IfMatch=etag
-            )
-            return None
-        except ClientError as e:
-            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
-            code = e.response.get('Error', {}).get('Code')
-            if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
-                return ETAG_HAS_CHANGED
-            if not_found_error(e):
-                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
-            raise
-
-
-    def delete_item_if_etag_changed(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput
-    ) -> None | ETagHasNotChangedFlag:
-        """Delete a key only if its ETag has changed.
-
-        Warning:
-            S3 does not support an If-None-Match delete condition, so this
-            relies on the non-atomic base implementation.
-        """
-        return super().delete_item_if_etag_changed(key, etag)
+        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
 
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:

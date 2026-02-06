@@ -34,6 +34,7 @@ Constants:
 
     KEEP_CURRENT, DELETE_CURRENT: Special joker values for conditional operations.
     ETAG_UNKNOWN: Sentinel value for unknown ETag inputs.
+    EQUAL_ETAG, DIFFERENT_ETAG: Condition selectors for ETag-based operations.
 
 Note:
 
@@ -58,6 +59,8 @@ from .jokers_and_status_flags import (
     ETAG_HAS_NOT_CHANGED,
     ETAG_HAS_CHANGED,
     ETAG_UNKNOWN,
+    EQUAL_ETAG,
+    DIFFERENT_ETAG,
 )
 from .overlapping_multi_dict import OverlappingMultiDict
 from .cached_appendonly_dict import AppendOnlyDictCached
@@ -93,6 +96,8 @@ __all__ = [
     'ETAG_HAS_NOT_CHANGED',
     'ETAG_HAS_CHANGED',
     'ETAG_UNKNOWN',
+    'EQUAL_ETAG',
+    'DIFFERENT_ETAG',
     'Joker',
     'KeepCurrentFlag',
     'DeleteCurrentFlag',

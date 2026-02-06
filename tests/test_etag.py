@@ -5,7 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, KEEP_CURRENT, DELETE_CURRENT
+    ETAG_HAS_NOT_CHANGED, KEEP_CURRENT, DELETE_CURRENT, DIFFERENT_ETAG
 )
 
 from .data_for_mutable_tests import mutable_tests
@@ -68,8 +68,8 @@ def test_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_get_item_if_etag_changed_returns_value_when_changed(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag_changed returns (value, new_etag) when etag differs."""
+def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs):
+    """Verify get_item_if_etag returns (value, new_etag) when etag differs."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value1"
     old_etag = d.etag("key1")
@@ -77,7 +77,7 @@ def test_get_item_if_etag_changed_returns_value_when_changed(tmpdir, DictToTest,
     time.sleep(MIN_SLEEP)
     d["key1"] = "value2"
 
-    result = d.get_item_if_etag_changed("key1", old_etag)
+    result = d.get_item_if_etag("key1", old_etag, DIFFERENT_ETAG)
 
     assert result != ETAG_HAS_NOT_CHANGED
     value, new_etag = result
@@ -87,26 +87,26 @@ def test_get_item_if_etag_changed_returns_value_when_changed(tmpdir, DictToTest,
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_get_item_if_etag_changed_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag_changed returns ETAG_HAS_NOT_CHANGED when etag matches."""
+def test_get_item_if_etag_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs):
+    """Verify get_item_if_etag returns ETAG_HAS_NOT_CHANGED when etag matches."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value1"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if_etag_changed("key1", current_etag)
+    result = d.get_item_if_etag("key1", current_etag, DIFFERENT_ETAG)
 
     assert result is ETAG_HAS_NOT_CHANGED
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_get_item_if_etag_changed_missing_key_raises_error(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag_changed raises an error for nonexistent keys."""
+def test_get_item_if_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
+    """Verify get_item_if_etag raises an error for nonexistent keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
     # Different backends may raise different errors (KeyError, FileNotFoundError)
     with pytest.raises((KeyError, FileNotFoundError)):
-        d.get_item_if_etag_changed("nonexistent", "some_etag")
+        d.get_item_if_etag("nonexistent", "some_etag", DIFFERENT_ETAG)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

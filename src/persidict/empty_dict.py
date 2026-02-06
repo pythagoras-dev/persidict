@@ -10,7 +10,7 @@ from typing import Any, Iterator
 
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
-from .jokers_and_status_flags import ETagInput
+from .jokers_and_status_flags import ETagInput, ETagConditionFlag
 
 
 class EmptyDict(PersiDict[ValueType]):
@@ -43,25 +43,12 @@ class EmptyDict(PersiDict[ValueType]):
         raise KeyError(key)
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
-                                 ) -> tuple[ValueType, str|None]:
-        """Always raises KeyError as EmptyDict contains nothing.
-
-        Args:
-            key: Dictionary key (ignored, as EmptyDict has no items).
-            etag: ETag value to compare against (ignored).
-
-        Returns:
-            tuple[Any, str|None]: Never returns as KeyError is always raised.
-
-        Raises:
-            KeyError: Always raised as EmptyDict contains no items.
-        """
-        raise KeyError(key)
-
-
-    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
-                                     ) -> tuple[ValueType, str|None]:
+    def get_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> tuple[ValueType, str|None]:
         """Always raises KeyError as EmptyDict contains nothing."""
         raise KeyError(key)
 
@@ -151,11 +138,12 @@ class EmptyDict(PersiDict[ValueType]):
         """Always returns False as the key never exists."""
         return False
 
-    def discard_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput) -> bool:
-        """Always returns False as the key never exists."""
-        return False
-
-    def discard_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput) -> bool:
+    def discard_item_if_etag(
+            self,
+            key: NonEmptyPersiDictKey,
+            etag: ETagInput,
+            condition: ETagConditionFlag
+    ) -> bool:
         """Always returns False as the key never exists."""
         return False
 

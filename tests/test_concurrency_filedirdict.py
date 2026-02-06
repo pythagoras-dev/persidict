@@ -3,7 +3,7 @@ import random
 import time
 
 from persidict import FileDirDict, NonEmptySafeStrTuple
-from persidict.jokers_and_status_flags import ETagInput
+from persidict.jokers_and_status_flags import ETagInput, EQUAL_ETAG
 
 # Protect multiprocessing code on Windows from infinite recursion
 multiprocessing.freeze_support()
@@ -60,7 +60,7 @@ def _conditional_write_with_pause(
         return original_save(file_name, value)
 
     d._save_to_file = slow_save
-    result_queue.put(d.set_item_if_etag_not_changed(key, "conditional", etag))
+    result_queue.put(d.set_item_if_etag(key, "conditional", etag, EQUAL_ETAG))
 
 def _unconditional_write(
     base_dir: str,

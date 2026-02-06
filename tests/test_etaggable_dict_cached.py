@@ -5,7 +5,14 @@ from persidict.cached_mutable_dict import MutableDictCached
 from persidict.persi_dict import PersiDict
 from persidict.local_dict import LocalDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple
-from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, KEEP_CURRENT, DELETE_CURRENT
+from persidict.jokers_and_status_flags import (
+    ETAG_HAS_NOT_CHANGED,
+    ETAG_HAS_CHANGED,
+    KEEP_CURRENT,
+    DELETE_CURRENT,
+    EQUAL_ETAG,
+    DIFFERENT_ETAG,
+)
 
 
 class FakeETagMain(PersiDict):
@@ -67,15 +74,20 @@ class FakeETagMain(PersiDict):
             raise KeyError(key)
         return self._store[key][0]
 
-    def get_item_if_etag_changed(self, key, etag):
+    def get_item_if_etag(self, key, etag, condition):
         key = NonEmptySafeStrTuple(key)
         if key not in self._store:
             raise KeyError(key)
         current_etag = self._store[key][1]
-        if etag == current_etag:
-            return ETAG_HAS_NOT_CHANGED
-        else:
+        if condition == DIFFERENT_ETAG:
+            if etag == current_etag:
+                return ETAG_HAS_NOT_CHANGED
             return self._store[key][0], current_etag
+        if condition == EQUAL_ETAG:
+            if etag != current_etag:
+                return ETAG_HAS_CHANGED
+            return self._store[key][0], current_etag
+        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
 
     def set_item_get_etag(self, key, value):
         key = NonEmptySafeStrTuple(key)
@@ -152,16 +164,16 @@ def test_getitem_read_through_and_cache_population(cached_env):
     assert data_cache[("k1",)] == "v1"
 
 
-def test_get_item_if_etag_changed_semantics(cached_env):
+def test_get_item_if_etag_different_semantics(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
     etag1 = wrapper.set_item_get_etag("key", {"a": 1})
     # Ask with current etag: must return sentinel and not modify caches
-    res = wrapper.get_item_if_etag_changed("key", etag1)
+    res = wrapper.get_item_if_etag("key", etag1, DIFFERENT_ETAG)
     assert res is ETAG_HAS_NOT_CHANGED
     # Update value -> new etag; call with old etag should return new value and update caches
     etag2 = wrapper.set_item_get_etag("key", {"a": 2})
     assert etag2 != etag1
-    val, new_etag = wrapper.get_item_if_etag_changed("key", etag1)
+    val, new_etag = wrapper.get_item_if_etag("key", etag1, DIFFERENT_ETAG)
     assert val == {"a": 2}
     assert new_etag == etag2
     assert data_cache["key"] == {"a": 2}
