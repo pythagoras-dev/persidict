@@ -33,6 +33,7 @@ Functions:
 Constants:
 
     KEEP_CURRENT, DELETE_CURRENT: Special joker values for conditional operations.
+    ETAG_UNKNOWN: Sentinel value for unknown ETag inputs.
 
 Note:
 
@@ -50,8 +51,14 @@ from .s3_dict_file_dir_cached import S3Dict_FileDirCached, S3Dict
 from .basic_s3_dict import BasicS3Dict
 from .write_once_dict import WriteOnceDict
 from .empty_dict import EmptyDict
-from .jokers_and_status_flags import Joker, KeepCurrentFlag, DeleteCurrentFlag
-from .jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT, ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED
+from .jokers_and_status_flags import Joker, KeepCurrentFlag, DeleteCurrentFlag, ETagUnknownFlag
+from .jokers_and_status_flags import (
+    KEEP_CURRENT,
+    DELETE_CURRENT,
+    ETAG_HAS_NOT_CHANGED,
+    ETAG_HAS_CHANGED,
+    ETAG_UNKNOWN,
+)
 from .overlapping_multi_dict import OverlappingMultiDict
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
@@ -85,7 +92,9 @@ __all__ = [
     'DELETE_CURRENT',
     'ETAG_HAS_NOT_CHANGED',
     'ETAG_HAS_CHANGED',
+    'ETAG_UNKNOWN',
     'Joker',
     'KeepCurrentFlag',
     'DeleteCurrentFlag',
+    'ETagUnknownFlag',
 ]

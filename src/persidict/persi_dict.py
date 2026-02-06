@@ -29,7 +29,8 @@ from . import NonEmptySafeStrTuple
 from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
                                       ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED,
-                                      ETagHasChangedFlag, ETAG_HAS_CHANGED)
+                                      ETagHasChangedFlag, ETAG_HAS_CHANGED,
+                                      ETagInput, ETAG_UNKNOWN)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -222,7 +223,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                                     " and cannot check items directly")
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
                                  ) -> tuple[ValueType, str|None]|ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
@@ -232,7 +233,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Args:
             key: Dictionary key (string or sequence of strings)
                 or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
 
         Returns:
             tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized
@@ -242,6 +243,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag == current_etag:
@@ -253,7 +255,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def get_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> tuple[ValueType, str | None] | ETagHasChangedFlag:
         """Retrieve the value for a key only if its ETag has not changed.
 
@@ -270,7 +272,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Args:
             key: Dictionary key (string or sequence of strings)
                 or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
 
         Returns:
             tuple[Any, str|None] | ETagHasChangedFlag: The deserialized value
@@ -280,6 +282,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag == current_etag:
@@ -292,7 +295,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: str | None
+            etag: ETagInput
     ) -> str | None | ETagHasChangedFlag:
         """Store a value only if the ETag has not changed.
 
@@ -311,9 +314,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 or NonEmptySafeStrTuple.
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
-            etag: The ETag value to compare against. If None, the condition
-                will fail unless the current ETag is also None (which may
-                occur for backends that don't support ETags).
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+                ETAG_UNKNOWN always fails this condition.
 
         Returns:
             str | None | ETagHasChangedFlag: The ETag of the newly stored
@@ -323,6 +325,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag != current_etag:
@@ -334,7 +337,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: str | None
+            etag: ETagInput
     ) -> str | None | ETagHasNotChangedFlag:
         """Store a value only if the ETag has changed.
 
@@ -353,9 +356,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 or NonEmptySafeStrTuple.
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
-            etag: The ETag value to compare against. If None, the condition
-                will succeed only if the current ETag is also None (which may
-                occur for backends that don't support ETags).
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+                ETAG_UNKNOWN always satisfies this condition.
 
         Returns:
             str | None | ETagHasNotChangedFlag: The ETag of the newly stored
@@ -365,6 +367,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag == current_etag:
@@ -375,7 +378,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def delete_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> None | ETagHasChangedFlag:
         """Delete a key only if its ETag has not changed.
 
@@ -389,7 +392,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Args:
             key: Dictionary key (string or sequence of strings)
                 or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
 
         Returns:
             None | ETagHasChangedFlag: None if deletion succeeded, or
@@ -398,6 +401,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag != current_etag:
@@ -409,7 +413,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def delete_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> None | ETagHasNotChangedFlag:
         """Delete a key only if its ETag has changed.
 
@@ -423,7 +427,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Args:
             key: Dictionary key (string or sequence of strings)
                 or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
 
         Returns:
             None | ETagHasNotChangedFlag: None if deletion succeeded, or
@@ -432,6 +436,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag == current_etag:
@@ -443,7 +448,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def discard_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> bool:
         """Discard a key only if its ETag has not changed.
 
@@ -457,6 +462,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             bool: True if the item existed and was deleted; False otherwise.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         try:
             current_etag = self.etag(key)
@@ -470,7 +476,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def discard_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> bool:
         """Discard a key only if its ETag has changed.
 
@@ -484,6 +490,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             bool: True if the item existed and was deleted; False otherwise.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         try:
             current_etag = self.etag(key)
@@ -545,6 +552,11 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                                     f" {self.base_class_for_values.__name__}")
 
         return key
+
+    @staticmethod
+    def _normalize_etag_input(etag: ETagInput | None) -> ETagInput:
+        """Normalize legacy None to ETAG_UNKNOWN for conditional ETag APIs."""
+        return ETAG_UNKNOWN if etag is None else etag
 
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                               ) -> StatusFlag:

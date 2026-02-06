@@ -5,7 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED
+    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, ETAG_UNKNOWN
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -151,13 +151,13 @@ def test_get_item_if_etag_returns_correct_complex_values(tmpdir, DictToTest, kwa
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_get_item_if_etag_changed_with_none_etag(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag_changed behavior with None etag."""
+def test_get_item_if_etag_changed_with_unknown_etag(tmpdir, DictToTest, kwargs):
+    """Verify get_item_if_etag_changed behavior with ETAG_UNKNOWN."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    # None etag differs from actual etag, so should return value
-    result = d.get_item_if_etag_changed("key1", None)
+    # ETAG_UNKNOWN differs from actual etag, so should return value
+    result = d.get_item_if_etag_changed("key1", ETAG_UNKNOWN)
 
     assert result is not ETAG_HAS_NOT_CHANGED
     value, etag = result
@@ -167,13 +167,13 @@ def test_get_item_if_etag_changed_with_none_etag(tmpdir, DictToTest, kwargs):
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_get_item_if_etag_not_changed_with_none_etag(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag_not_changed behavior with None etag."""
+def test_get_item_if_etag_not_changed_with_unknown_etag(tmpdir, DictToTest, kwargs):
+    """Verify get_item_if_etag_not_changed behavior with ETAG_UNKNOWN."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    # None etag differs from actual etag, so should return ETAG_HAS_CHANGED
-    result = d.get_item_if_etag_not_changed("key1", None)
+    # ETAG_UNKNOWN differs from actual etag, so should return ETAG_HAS_CHANGED
+    result = d.get_item_if_etag_not_changed("key1", ETAG_UNKNOWN)
 
     assert result is ETAG_HAS_CHANGED
 

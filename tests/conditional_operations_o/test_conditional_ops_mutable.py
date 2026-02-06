@@ -21,7 +21,7 @@ MUTABLE_SPECS = [
         "kwargs": {"serialization_format": "json"},
         "needs_base_dir": False,
         "uses_s3": False,
-        "none_etag_means_changed": False,
+        "unknown_etag_means_changed": False,
     },
     {
         "name": "file",
@@ -29,7 +29,7 @@ MUTABLE_SPECS = [
         "kwargs": {"serialization_format": "json"},
         "needs_base_dir": True,
         "uses_s3": False,
-        "none_etag_means_changed": False,
+        "unknown_etag_means_changed": False,
     },
     {
         "name": "basic_s3",
@@ -37,7 +37,7 @@ MUTABLE_SPECS = [
         "kwargs": {"serialization_format": "json", "bucket_name": "etag-basic"},
         "needs_base_dir": False,
         "uses_s3": True,
-        "none_etag_means_changed": True,
+        "unknown_etag_means_changed": True,
     },
     {
         "name": "s3_cached",
@@ -45,7 +45,7 @@ MUTABLE_SPECS = [
         "kwargs": {"serialization_format": "json", "bucket_name": "etag-cached"},
         "needs_base_dir": True,
         "uses_s3": True,
-        "none_etag_means_changed": True,
+        "unknown_etag_means_changed": True,
     },
 ]
 
@@ -66,9 +66,9 @@ def build_dict(spec: dict, tmp_path):
     return spec["cls"](**params)
 
 
-def mismatched_etag(spec: dict, current_etag: str | None) -> str:
+def mismatched_etag(spec: dict, current_etag: str) -> str:
     if spec["uses_s3"]:
-        base = "" if current_etag is None else str(current_etag).strip('"')
+        base = str(current_etag).strip('"')
         return f"\"{base}-mismatch\""
     return "bogus"
 

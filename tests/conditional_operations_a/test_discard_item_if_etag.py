@@ -8,6 +8,8 @@ import time
 import pytest
 from moto import mock_aws
 
+from persidict.jokers_and_status_flags import ETAG_UNKNOWN
+
 from tests.data_for_mutable_tests import mutable_tests
 
 MIN_SLEEP = 0.02
@@ -58,12 +60,12 @@ def test_discard_item_if_etag_not_changed_returns_false_for_missing_key(tmpdir, 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_discard_item_if_etag_not_changed_with_none_etag(tmpdir, DictToTest, kwargs):
-    """Verify discard_item_if_etag_not_changed returns False with None etag for existing key."""
+def test_discard_item_if_etag_not_changed_with_unknown_etag(tmpdir, DictToTest, kwargs):
+    """Verify discard_item_if_etag_not_changed returns False with ETAG_UNKNOWN for existing key."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.discard_item_if_etag_not_changed("key1", None)
+    result = d.discard_item_if_etag_not_changed("key1", ETAG_UNKNOWN)
 
     assert result is False
     assert "key1" in d
@@ -114,13 +116,13 @@ def test_discard_item_if_etag_changed_returns_false_for_missing_key(tmpdir, Dict
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_discard_item_if_etag_changed_with_none_etag(tmpdir, DictToTest, kwargs):
-    """Verify discard_item_if_etag_changed behavior with None etag."""
+def test_discard_item_if_etag_changed_with_unknown_etag(tmpdir, DictToTest, kwargs):
+    """Verify discard_item_if_etag_changed behavior with ETAG_UNKNOWN."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    # None etag differs from actual etag, so discard should succeed
-    result = d.discard_item_if_etag_changed("key1", None)
+    # ETAG_UNKNOWN differs from actual etag, so discard should succeed
+    result = d.discard_item_if_etag_changed("key1", ETAG_UNKNOWN)
 
     assert result is True
     assert "key1" not in d
@@ -190,7 +192,7 @@ def test_discard_item_if_etag_not_changed_idempotent_for_missing(tmpdir, DictToT
 
     result1 = d.discard_item_if_etag_not_changed("nonexistent", "etag1")
     result2 = d.discard_item_if_etag_not_changed("nonexistent", "etag2")
-    result3 = d.discard_item_if_etag_not_changed("nonexistent", None)
+    result3 = d.discard_item_if_etag_not_changed("nonexistent", ETAG_UNKNOWN)
 
     assert result1 is False
     assert result2 is False

@@ -7,7 +7,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
                                       EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
                                       ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker)
+                                      Joker, ETagInput, ETAG_UNKNOWN)
 
 
 class MutableDictCached(PersiDict[ValueType]):
@@ -140,8 +140,8 @@ class MutableDictCached(PersiDict[ValueType]):
             KeyError: If the key does not exist in the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        cached_etag = self._etag_cache.get(key, None)
-        if cached_etag is not None:
+        cached_etag = self._etag_cache.get(key, ETAG_UNKNOWN)
+        if cached_etag is not ETAG_UNKNOWN:
             return cached_etag
         # Not in cache - fetch from main_dict and cache it
         etag = self._main_dict.etag(key)
@@ -179,20 +179,20 @@ class MutableDictCached(PersiDict[ValueType]):
             KeyError: If the key does not exist in the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        old_etag = self._etag_cache.get(key, None)
+        old_etag = self._etag_cache.get(key, ETAG_UNKNOWN)
         res = self.get_item_if_etag_changed(key, old_etag)
         if res is ETAG_HAS_NOT_CHANGED:
             try:
                 return self._data_cache[key]
             except KeyError:
-                value, _ =  self.get_item_if_etag_changed(key, None)
+                value, _ =  self.get_item_if_etag_changed(key, ETAG_UNKNOWN)
                 return value
         else:
             value, _ = res
             return value
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Fetch value if the ETag is different from the provided one.
 
         Delegates to main_dict.get_item_if_new_etag. On change, updates both
@@ -201,7 +201,7 @@ class MutableDictCached(PersiDict[ValueType]):
 
         Args:
             key: Non-empty key to fetch.
-            etag: Previously known ETag, or None to force fetching the value.
+            etag: Previously known ETag, or ETAG_UNKNOWN to force fetching the value.
 
         Returns:
             tuple[Any, str] | ETAG_HAS_NOT_CHANGED: Either (value, new_etag) when
@@ -218,7 +218,7 @@ class MutableDictCached(PersiDict[ValueType]):
         return res
 
 
-    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Return value only if the ETag matches the provided one.
 
         Validates against the main dict to avoid stale cached ETags. On success,
@@ -283,7 +283,7 @@ class MutableDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> Optional[str] | ETagHasChangedFlag:
         """Set item only if ETag has not changed; update caches on success."""
         key = NonEmptySafeStrTuple(key)
@@ -305,7 +305,7 @@ class MutableDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> Optional[str] | ETagHasNotChangedFlag:
         """Set item only if ETag has changed; update caches on success."""
         key = NonEmptySafeStrTuple(key)
@@ -326,7 +326,7 @@ class MutableDictCached(PersiDict[ValueType]):
     def delete_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> None | ETagHasChangedFlag:
         """Delete item only if ETag has not changed; update caches on success."""
         key = NonEmptySafeStrTuple(key)
@@ -341,7 +341,7 @@ class MutableDictCached(PersiDict[ValueType]):
     def delete_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> None | ETagHasNotChangedFlag:
         """Delete item only if ETag has changed; update caches on success."""
         key = NonEmptySafeStrTuple(key)
@@ -356,7 +356,7 @@ class MutableDictCached(PersiDict[ValueType]):
     def discard_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> bool:
         """Discard item only if ETag has not changed; update caches on success."""
         key = NonEmptySafeStrTuple(key)
@@ -370,7 +370,7 @@ class MutableDictCached(PersiDict[ValueType]):
     def discard_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> bool:
         """Discard item only if ETag has changed; update caches on success."""
         key = NonEmptySafeStrTuple(key)

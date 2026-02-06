@@ -26,7 +26,7 @@ from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
                                       ETAG_HAS_NOT_CHANGED, ETagHasChangedFlag,
                                       ETAG_HAS_CHANGED, KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker)
+                                      Joker, ETagInput, ETAG_UNKNOWN)
 
 
 def not_found_error(e:ClientError) -> bool:
@@ -252,7 +252,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             else:
                 raise
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
                                  ) -> tuple[ValueType, str|None] | ETagHasNotChangedFlag:
         """Retrieve the value for a key only if its ETag has changed.
 
@@ -261,7 +261,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         Args:
             key: Dictionary key (string or sequence of strings
                 or NonEmptySafeStrTuple).
-            etag: The ETag value to compare against.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
 
         Returns:
             tuple[Any, str|None] | ETagHasNotChangedFlag: The deserialized value
@@ -271,12 +271,13 @@ class BasicS3Dict(PersiDict[ValueType]):
         Raises:
             KeyError: If the key does not exist in S3.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
 
         try:
             get_kwargs = {'Bucket': self.bucket_name, 'Key': obj_name}
-            if etag:
+            if etag is not ETAG_UNKNOWN:
                 get_kwargs['IfNoneMatch'] = etag
 
             response = self.s3_client.get_object(**get_kwargs)
@@ -321,7 +322,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         Raises:
             KeyError: If the key does not exist in S3.
         """
-        return self.get_item_if_etag_changed(key, None)[0]
+        return self.get_item_if_etag_changed(key, ETAG_UNKNOWN)[0]
 
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
@@ -450,7 +451,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: Any,
-            etag: str | None
+            etag: ETagInput
     ) -> str | None | ETagHasChangedFlag:
         """Store a value only if the ETag has not changed (compare-and-set).
 
@@ -462,10 +463,9 @@ class BasicS3Dict(PersiDict[ValueType]):
                 or NonEmptySafeStrTuple.
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
-            etag: The ETag value to compare against. If None, the condition
-                will fail unless the current ETag is also None (which may
-                occur for backends that don't support ETags). Since S3 always
-                returns ETags, passing None will always fail for existing keys.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+                ETAG_UNKNOWN always fails for existing keys because S3 always
+                returns ETags.
 
         Returns:
             str | None | ETagHasChangedFlag: The ETag of the newly stored
@@ -475,8 +475,9 @@ class BasicS3Dict(PersiDict[ValueType]):
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
-        if etag is None:
+        if etag is ETAG_UNKNOWN:
             # Preserve KeyError for missing keys while matching prior behavior.
             self.etag(key)
             return ETAG_HAS_CHANGED
@@ -515,7 +516,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: Any,
-            etag: str | None
+            etag: ETagInput
     ) -> str | None | ETagHasNotChangedFlag:
         """Store a value only if the ETag has changed.
 
@@ -527,10 +528,9 @@ class BasicS3Dict(PersiDict[ValueType]):
                 or NonEmptySafeStrTuple.
             value: Value to store, or a joker command (KEEP_CURRENT or
                 DELETE_CURRENT).
-            etag: The ETag value to compare against. If None, the condition
-                will succeed only if the current ETag is also None (which may
-                occur for backends that don't support ETags). Since S3 always
-                returns ETags, passing None will always succeed for existing keys.
+            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
+                ETAG_UNKNOWN always succeeds for existing keys because S3
+                always returns ETags.
 
         Returns:
             str | None | ETagHasNotChangedFlag: The ETag of the newly stored
@@ -540,6 +540,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         Raises:
             KeyError: If the key does not exist.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag == current_etag:
@@ -566,15 +567,16 @@ class BasicS3Dict(PersiDict[ValueType]):
     def delete_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> None | ETagHasChangedFlag:
         """Delete a key only if its ETag has not changed.
 
         Uses conditional S3 deletes (If-Match) to avoid deleting objects
         modified by other writers between the check and the delete.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
-        if etag is None:
+        if etag is ETAG_UNKNOWN:
             # Preserve KeyError for missing keys while matching prior behavior.
             self.etag(key)
             return ETAG_HAS_CHANGED
@@ -602,7 +604,7 @@ class BasicS3Dict(PersiDict[ValueType]):
     def delete_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> None | ETagHasNotChangedFlag:
         """Delete a key only if its ETag has changed.
 

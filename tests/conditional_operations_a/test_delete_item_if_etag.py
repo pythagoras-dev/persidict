@@ -5,7 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED
+    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, ETAG_UNKNOWN
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -57,12 +57,12 @@ def test_delete_item_if_etag_not_changed_missing_key_raises_keyerror(tmpdir, Dic
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_delete_item_if_etag_not_changed_with_none_etag_returns_changed(tmpdir, DictToTest, kwargs):
-    """Verify delete_item_if_etag_not_changed with None etag returns ETAG_HAS_CHANGED."""
+def test_delete_item_if_etag_not_changed_with_unknown_etag_returns_changed(tmpdir, DictToTest, kwargs):
+    """Verify delete_item_if_etag_not_changed with ETAG_UNKNOWN returns ETAG_HAS_CHANGED."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.delete_item_if_etag_not_changed("key1", None)
+    result = d.delete_item_if_etag_not_changed("key1", ETAG_UNKNOWN)
 
     assert result is ETAG_HAS_CHANGED
     assert "key1" in d  # Key not deleted
@@ -70,12 +70,12 @@ def test_delete_item_if_etag_not_changed_with_none_etag_returns_changed(tmpdir, 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_delete_item_if_etag_not_changed_with_none_etag_missing_key_raises(tmpdir, DictToTest, kwargs):
-    """Verify delete_item_if_etag_not_changed with None etag raises KeyError for missing keys."""
+def test_delete_item_if_etag_not_changed_with_unknown_etag_missing_key_raises(tmpdir, DictToTest, kwargs):
+    """Verify delete_item_if_etag_not_changed with ETAG_UNKNOWN raises KeyError for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
     with pytest.raises((KeyError, FileNotFoundError)):
-        d.delete_item_if_etag_not_changed("nonexistent", None)
+        d.delete_item_if_etag_not_changed("nonexistent", ETAG_UNKNOWN)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -174,14 +174,14 @@ def test_delete_item_if_etag_not_changed_verifies_etag_before_delete(tmpdir, Dic
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_delete_item_if_etag_changed_with_none_etag(tmpdir, DictToTest, kwargs):
-    """Verify delete_item_if_etag_changed behavior with None etag."""
+def test_delete_item_if_etag_changed_with_unknown_etag(tmpdir, DictToTest, kwargs):
+    """Verify delete_item_if_etag_changed behavior with ETAG_UNKNOWN."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    # None etag should always differ from actual etag (S3 always has etags)
-    result = d.delete_item_if_etag_changed("key1", None)
+    # ETAG_UNKNOWN differs from actual etag (S3 always has etags)
+    result = d.delete_item_if_etag_changed("key1", ETAG_UNKNOWN)
 
-    # Should succeed since None != actual_etag
+    # Should succeed since ETAG_UNKNOWN != actual_etag
     assert result is None
     assert "key1" not in d

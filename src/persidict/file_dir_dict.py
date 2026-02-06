@@ -24,7 +24,7 @@ from mixinforge import sort_dict_by_keys
 
 from .jokers_and_status_flags import (Joker, ETagHasNotChangedFlag, ETagHasChangedFlag,
                                       ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
-                                      KEEP_CURRENT, DELETE_CURRENT)
+                                      KEEP_CURRENT, DELETE_CURRENT, ETagInput)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
@@ -714,13 +714,14 @@ class FileDirDict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: str | None
+            etag: ETagInput
     ) -> str | None | ETagHasChangedFlag:
         """Store a value only if the ETag has not changed.
 
         Uses a per-key file lock to make the compare-and-write sequence
         safe across concurrent writers on the same filesystem.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             current_etag = self.etag(key)
@@ -741,13 +742,14 @@ class FileDirDict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: str | None
+            etag: ETagInput
     ) -> str | None | ETagHasNotChangedFlag:
         """Store a value only if the ETag has changed.
 
         Uses a per-key file lock to make the compare-and-write sequence
         safe across concurrent writers on the same filesystem.
         """
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             current_etag = self.etag(key)
@@ -779,9 +781,10 @@ class FileDirDict(PersiDict[ValueType]):
     def delete_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> None | ETagHasChangedFlag:
         """Delete a key only if its ETag has not changed (with per-key lock)."""
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             current_etag = self.etag(key)
@@ -794,9 +797,10 @@ class FileDirDict(PersiDict[ValueType]):
     def delete_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> None | ETagHasNotChangedFlag:
         """Delete a key only if its ETag has changed (with per-key lock)."""
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             current_etag = self.etag(key)
@@ -809,9 +813,10 @@ class FileDirDict(PersiDict[ValueType]):
     def discard_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> bool:
         """Discard a key only if its ETag has not changed (with per-key lock)."""
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             try:
@@ -830,9 +835,10 @@ class FileDirDict(PersiDict[ValueType]):
     def discard_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: str | None
+            etag: ETagInput
     ) -> bool:
         """Discard a key only if its ETag has changed (with per-key lock)."""
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         with self._acquire_key_lock(key):
             try:

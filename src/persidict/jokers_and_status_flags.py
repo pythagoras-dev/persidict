@@ -15,7 +15,7 @@ Examples:
     >>> d[key] = KEEP_CURRENT  # Do not alter existing value
     >>> d[key] = DELETE_CURRENT  # Remove key if present
 """
-from typing import Final
+from typing import Final, TypeAlias
 
 from mixinforge import SingletonMixin
 
@@ -70,6 +70,15 @@ class StatusFlag(SingletonMixin):
     """
     pass
 
+
+class ETagUnknownFlag(SingletonMixin):
+    """Flag indicating an unknown (unset) ETag input.
+
+    Use this singleton as the explicit placeholder when a conditional ETag
+    method is called without a prior ETag value. This keeps the API explicit
+    while avoiding extra calls to fetch an ETag.
+    """
+    pass
 class ETagHasNotChangedFlag(StatusFlag):
     """Flag indicating that an ETag has not changed.
 
@@ -218,3 +227,14 @@ Example:
     ...     # Resource changed; retry or fetch new content
     ...     return None
 """
+
+_ETagUnknown = ETagUnknownFlag()
+ETAG_UNKNOWN: Final[ETagUnknownFlag] = ETagUnknownFlag()
+"""Flag indicating an unknown (unset) ETag input.
+
+Pass this sentinel to conditional ETag operations when you do not have a
+previous ETag value. It is treated as "no prior ETag" and keeps the intent
+explicit in call sites.
+"""
+
+ETagInput: TypeAlias = str | ETagUnknownFlag

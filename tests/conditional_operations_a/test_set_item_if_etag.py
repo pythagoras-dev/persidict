@@ -5,7 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED
+    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, ETAG_UNKNOWN
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -59,12 +59,12 @@ def test_set_item_if_etag_not_changed_missing_key_raises_keyerror(tmpdir, DictTo
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_not_changed_with_none_etag_returns_changed(tmpdir, DictToTest, kwargs):
-    """Verify set_item_if_etag_not_changed with None etag returns ETAG_HAS_CHANGED."""
+def test_set_item_if_etag_not_changed_with_unknown_etag_returns_changed(tmpdir, DictToTest, kwargs):
+    """Verify set_item_if_etag_not_changed with ETAG_UNKNOWN returns ETAG_HAS_CHANGED."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
 
-    result = d.set_item_if_etag_not_changed("key1", "new_value", None)
+    result = d.set_item_if_etag_not_changed("key1", "new_value", ETAG_UNKNOWN)
 
     assert result is ETAG_HAS_CHANGED
     assert d["key1"] == "original"  # Value unchanged
@@ -72,12 +72,12 @@ def test_set_item_if_etag_not_changed_with_none_etag_returns_changed(tmpdir, Dic
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_set_item_if_etag_not_changed_with_none_etag_missing_key_raises(tmpdir, DictToTest, kwargs):
-    """Verify set_item_if_etag_not_changed with None etag raises KeyError for missing keys."""
+def test_set_item_if_etag_not_changed_with_unknown_etag_missing_key_raises(tmpdir, DictToTest, kwargs):
+    """Verify set_item_if_etag_not_changed with ETAG_UNKNOWN raises KeyError for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
     with pytest.raises((KeyError, FileNotFoundError)):
-        d.set_item_if_etag_not_changed("nonexistent", "value", None)
+        d.set_item_if_etag_not_changed("nonexistent", "value", ETAG_UNKNOWN)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

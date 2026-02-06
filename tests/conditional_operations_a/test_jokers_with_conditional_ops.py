@@ -9,7 +9,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
+    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, ETAG_UNKNOWN,
     KEEP_CURRENT, DELETE_CURRENT
 )
 
@@ -233,12 +233,12 @@ def test_keep_current_does_not_update_etag(tmpdir, DictToTest, kwargs):
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_keep_current_with_none_etag_fails(tmpdir, DictToTest, kwargs):
-    """Verify KEEP_CURRENT with None etag returns ETAG_HAS_CHANGED."""
+def test_keep_current_with_unknown_etag_fails(tmpdir, DictToTest, kwargs):
+    """Verify KEEP_CURRENT with ETAG_UNKNOWN returns ETAG_HAS_CHANGED."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, None)
+    result = d.set_item_if_etag_not_changed("key1", KEEP_CURRENT, ETAG_UNKNOWN)
 
     assert result is ETAG_HAS_CHANGED
     assert d["key1"] == "value"
@@ -246,12 +246,12 @@ def test_keep_current_with_none_etag_fails(tmpdir, DictToTest, kwargs):
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_delete_current_with_none_etag_fails(tmpdir, DictToTest, kwargs):
-    """Verify DELETE_CURRENT with None etag returns ETAG_HAS_CHANGED."""
+def test_delete_current_with_unknown_etag_fails(tmpdir, DictToTest, kwargs):
+    """Verify DELETE_CURRENT with ETAG_UNKNOWN returns ETAG_HAS_CHANGED."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if_etag_not_changed("key1", DELETE_CURRENT, None)
+    result = d.set_item_if_etag_not_changed("key1", DELETE_CURRENT, ETAG_UNKNOWN)
 
     assert result is ETAG_HAS_CHANGED
     assert "key1" in d

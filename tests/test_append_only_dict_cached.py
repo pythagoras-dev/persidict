@@ -2,7 +2,7 @@ import pytest
 
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
-from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED
+from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, ETAG_UNKNOWN
 from persidict.jokers_and_status_flags import KEEP_CURRENT
 
 
@@ -54,8 +54,8 @@ def test_get_item_if_etag_changed_populates_cache(append_only_env):
     # Put directly to main (simulate data appearing outside of cache)
     main[("x",)] = "v1"
 
-    # First call with None etag returns value and etag, and must cache it
-    res = wrapper.get_item_if_etag_changed(("x",), None)
+    # First call with ETAG_UNKNOWN returns value and etag, and must cache it
+    res = wrapper.get_item_if_etag_changed(("x",), ETAG_UNKNOWN)
     assert res is not ETAG_HAS_NOT_CHANGED
     v, etag = res
     assert v == "v1"
@@ -203,7 +203,7 @@ def test_get_item_if_etag_changed_absent_key_does_not_cache(append_only_env):
     assert key not in main and key not in cache
 
     with pytest.raises((KeyError, FileNotFoundError)):
-        wrapper.get_item_if_etag_changed(key, None)
+        wrapper.get_item_if_etag_changed(key, ETAG_UNKNOWN)
 
     # Cache should remain untouched
     assert key not in cache

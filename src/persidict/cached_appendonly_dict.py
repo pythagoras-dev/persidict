@@ -27,7 +27,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED,
                                       EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
                                       ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker)
+                                      Joker, ETagInput)
 
 
 class AppendOnlyDictCached(PersiDict[ValueType]):
@@ -199,7 +199,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             return value
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Return value only if its ETag changed; cache the value if so.
 
         Delegates to the main dict. If the ETag differs from the provided one,
@@ -209,7 +209,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         Args:
             key: Dictionary key (string or sequence of strings) or
                 NonEmptySafeStrTuple.
-            etag: Previously seen ETag or None.
+            etag: Previously seen ETag, or ETAG_UNKNOWN if unset.
 
         Returns:
             tuple[Any, str|None] | ETagHasNotChangedFlag: The value and the new
@@ -280,11 +280,12 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> Optional[str] | ETagHasChangedFlag:
         """Set item only if ETag has not changed; update cache on success."""
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag != current_etag:
@@ -298,11 +299,12 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> Optional[str] | ETagHasNotChangedFlag:
         """Append-only dicts do not support modifying existing items."""
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")
+        etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)
         current_etag = self.etag(key)
         if etag == current_etag:
@@ -316,7 +318,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def delete_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> None | ETagHasChangedFlag:
         """Deletion is not supported for append-only dictionaries.
 
@@ -329,7 +331,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def delete_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> None | ETagHasNotChangedFlag:
         """Deletion is not supported for append-only dictionaries.
 
@@ -342,7 +344,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def discard_item_if_etag_not_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> bool:
         """Deletion is not supported for append-only dictionaries.
 
@@ -355,7 +357,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def discard_item_if_etag_changed(
             self,
             key: NonEmptyPersiDictKey,
-            etag: Optional[str]
+            etag: ETagInput
     ) -> bool:
         """Deletion is not supported for append-only dictionaries.
 

@@ -265,7 +265,7 @@ def test_cache_edge_cases_missing_etag_or_value(cached_env):
     # Case A: etag missing but data present -> force fetch from main and re-store etag
     del etag_cache[("c",)]
     assert ("c",) in data_cache and ("c",) not in etag_cache
-    # Access triggers fetch with etag=None; value same, etag restored
+    # Access triggers fetch with ETAG_UNKNOWN; value same, etag restored
     assert wrapper[("c",)] == 111
     assert ("c",) in etag_cache
 

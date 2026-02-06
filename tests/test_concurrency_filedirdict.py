@@ -3,6 +3,7 @@ import random
 import time
 
 from persidict import FileDirDict, NonEmptySafeStrTuple
+from persidict.jokers_and_status_flags import ETagInput
 
 # Protect multiprocessing code on Windows from infinite recursion
 multiprocessing.freeze_support()
@@ -45,7 +46,7 @@ def _timed_setitem(
 def _conditional_write_with_pause(
     base_dir: str,
     key: str,
-    etag: str | None,
+    etag: ETagInput,
     ready_event: multiprocessing.Event,
     proceed_event: multiprocessing.Event,
     result_queue: multiprocessing.Queue,

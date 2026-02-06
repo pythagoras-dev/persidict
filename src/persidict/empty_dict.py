@@ -10,6 +10,7 @@ from typing import Any, Iterator
 
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
+from .jokers_and_status_flags import ETagInput
 
 
 class EmptyDict(PersiDict[ValueType]):
@@ -42,7 +43,7 @@ class EmptyDict(PersiDict[ValueType]):
         raise KeyError(key)
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
                                  ) -> tuple[ValueType, str|None]:
         """Always raises KeyError as EmptyDict contains nothing.
 
@@ -59,7 +60,7 @@ class EmptyDict(PersiDict[ValueType]):
         raise KeyError(key)
 
 
-    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
                                      ) -> tuple[ValueType, str|None]:
         """Always raises KeyError as EmptyDict contains nothing."""
         raise KeyError(key)
@@ -150,11 +151,11 @@ class EmptyDict(PersiDict[ValueType]):
         """Always returns False as the key never exists."""
         return False
 
-    def discard_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: str | None) -> bool:
+    def discard_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput) -> bool:
         """Always returns False as the key never exists."""
         return False
 
-    def discard_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None) -> bool:
+    def discard_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput) -> bool:
         """Always returns False as the key never exists."""
         return False
 

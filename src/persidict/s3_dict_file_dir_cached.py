@@ -11,6 +11,7 @@ from .file_dir_dict import FileDirDict
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
+from .jokers_and_status_flags import ETagInput
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .overlapping_multi_dict import OverlappingMultiDict
 
@@ -230,7 +231,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         """
         return self._cached_dict.etag(key)
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Get item only if ETag has changed (for mutable dicts)."""
         if hasattr(self._cached_dict, 'get_item_if_etag_changed'):
             return self._cached_dict.get_item_if_etag_changed(key, etag)
@@ -238,45 +239,45 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             # For append-only dicts, just get the item
             return self._cached_dict.__getitem__(key)
 
-    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def get_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Get item only if ETag has not changed."""
         if hasattr(self._cached_dict, 'get_item_if_etag_not_changed'):
             return self._cached_dict.get_item_if_etag_not_changed(key, etag)
         return PersiDict.get_item_if_etag_not_changed(self, key, etag)
 
-    def set_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: Optional[str]):
+    def set_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: ETagInput):
         """Set item only if ETag has not changed; delegate to cached dict."""
         if hasattr(self._cached_dict, 'set_item_if_etag_not_changed'):
             return self._cached_dict.set_item_if_etag_not_changed(key, value, etag)
         # Fallback to base behavior if the wrapped dict doesn't implement it
         return PersiDict.set_item_if_etag_not_changed(self, key, value, etag)
 
-    def set_item_if_etag_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: Optional[str]):
+    def set_item_if_etag_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: ETagInput):
         """Set item only if ETag has changed; delegate to cached dict."""
         if hasattr(self._cached_dict, 'set_item_if_etag_changed'):
             return self._cached_dict.set_item_if_etag_changed(key, value, etag)
         # Fallback to base behavior if the wrapped dict doesn't implement it
         return PersiDict.set_item_if_etag_changed(self, key, value, etag)
 
-    def delete_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def delete_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Delete item only if ETag has not changed; delegate to cached dict."""
         if hasattr(self._cached_dict, 'delete_item_if_etag_not_changed'):
             return self._cached_dict.delete_item_if_etag_not_changed(key, etag)
         return PersiDict.delete_item_if_etag_not_changed(self, key, etag)
 
-    def delete_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]):
+    def delete_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput):
         """Delete item only if ETag has changed; delegate to cached dict."""
         if hasattr(self._cached_dict, 'delete_item_if_etag_changed'):
             return self._cached_dict.delete_item_if_etag_changed(key, etag)
         return PersiDict.delete_item_if_etag_changed(self, key, etag)
 
-    def discard_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]) -> bool:
+    def discard_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput) -> bool:
         """Discard item only if ETag has not changed; delegate to cached dict."""
         if hasattr(self._cached_dict, 'discard_item_if_etag_not_changed'):
             return self._cached_dict.discard_item_if_etag_not_changed(key, etag)
         return PersiDict.discard_item_if_etag_not_changed(self, key, etag)
 
-    def discard_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: Optional[str]) -> bool:
+    def discard_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput) -> bool:
         """Discard item only if ETag has changed; delegate to cached dict."""
         if hasattr(self._cached_dict, 'discard_item_if_etag_changed'):
             return self._cached_dict.discard_item_if_etag_changed(key, etag)

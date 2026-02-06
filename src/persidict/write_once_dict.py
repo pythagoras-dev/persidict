@@ -15,7 +15,7 @@ import time
 from deepdiff import DeepDiff
 from mixinforge import sort_dict_by_keys
 
-from .jokers_and_status_flags import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag
+from .jokers_and_status_flags import KEEP_CURRENT, KeepCurrentFlag, ETagHasNotChangedFlag, ETagInput
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .file_dir_dict import FileDirDict
 import random
@@ -185,10 +185,10 @@ class WriteOnceDict(PersiDict[ValueType]):
     def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
-    def set_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: str | None):
+    def set_item_if_etag_not_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: ETagInput):
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
-    def set_item_if_etag_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: str | None):
+    def set_item_if_etag_changed(self, key: NonEmptyPersiDictKey, value: ValueType, etag: ETagInput):
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -266,7 +266,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         return self._wrapped_dict[key]
 
 
-    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: str | None
+    def get_item_if_etag_changed(self, key: NonEmptyPersiDictKey, etag: ETagInput
                                  ) -> tuple[Any, str|None] |ETagHasNotChangedFlag:
         """Retrieve a value and its etag if the etag is new.
         Args:
