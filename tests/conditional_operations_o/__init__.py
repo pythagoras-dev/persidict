@@ -1,1 +1,0 @@
-"""ETag conditional operation tests."""

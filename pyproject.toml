@@ -90,6 +90,10 @@ addopts = [
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_live_action.py"]
 markers = [
+    """unit: fast, isolated semantics tests (default category)""",
+    """integration: local-only integration tests (no network)""",
+    """slow: tests that exceed the default time budget""",
+    """smoke: high-signal regression subset for PRs""",
     """live_actions: marks tests as live actions that operate on the actual project (deselect with '-m \"not live_actions\"')""",
 ]
 

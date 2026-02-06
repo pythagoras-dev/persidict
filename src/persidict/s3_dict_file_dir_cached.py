@@ -132,6 +132,11 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     def base_url(self) -> str:
         """Get the base S3 URL."""
         return self._main_dict.base_url
+
+    @property
+    def root_prefix(self) -> str:
+        """Get the S3 root prefix for this dictionary."""
+        return self._main_dict.root_prefix
     
     @property
     def base_dir(self) -> str:

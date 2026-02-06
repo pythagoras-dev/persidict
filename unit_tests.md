@@ -22,7 +22,10 @@ Unit tests serve two purposes:
 commands:
   install_dev: "uv pip install -e '.[dev]' --system"
   run_tests: "pytest -q"
+  fast_profile: 'pytest -q -m "not slow and not integration and not live_actions"'
+  smoke_profile: 'pytest -q -m "smoke and not slow and not integration and not live_actions"'
   with_coverage: "coverage run -m pytest && coverage html"
+  durations: 'pytest -q --durations=20 -m "not slow and not integration and not live_actions"'
 
 naming_conventions:
   test_files: "test_*.py (mirror features/use-cases)"
@@ -35,6 +38,13 @@ test_structure:
   size: "12-25 lines ideal"
   focus: "One behavior per test"
   file_size: "Under 300-400 lines; split by feature if larger"
+
+markers:
+  unit: "Fast, isolated semantics tests (default category)"
+  integration: "Local-only integration tests (no network)"
+  slow: "Exceeds the default time budget; opt-in via profile"
+  smoke: "High-signal regression subset for PRs"
+  live_actions: "Operate on real project files; opt-in only"
 
 critical_dos:
   - "Test semantics and intent, not mechanics"
@@ -67,11 +77,35 @@ fixtures_and_data:
   - `uv pip install -e ".[dev]" --system`
   - (or `pip install -e ".[dev]"`)
 - Run tests: `pytest -q`
+- Fast profile (default for PRs): `pytest -q -m "not slow and not integration and not live_actions"`
+- Smoke regression subset: `pytest -q -m "smoke and not slow and not integration and not live_actions"`
 - Run only live actions: `pytest -m live_actions`
 - Run tests excluding live actions: `pytest -m "not live_actions"`
 - Optional coverage using `coverage` (HTML report in `htmlcov/`):
   - `coverage run -m pytest`
   - `coverage html` (open `htmlcov/index.html`)
+
+## Suite Tiers and Run Profiles
+Markers keep runtime predictable and navigation clear:
+- `unit`: fast, isolated semantics tests; default category
+- `integration`: local-only integration tests (no network)
+- `slow`: exceeds the default time budget; opt-in via profile
+- `smoke`: high-signal regression subset for PRs
+- `live_actions`: operates on real project files; opt-in only
+- Tests without a tier marker are treated as `unit` and must stay fast.
+
+Marker auto-assignments live in `tests/conftest.py`:
+- `integration`: tests/simple_storage_service/,
+  tests/compatibility_serialization/, tests/entity_tag_operations/, or
+  any test module that imports/uses `mock_aws` or `mutable_tests`
+- `slow`: tests/atomic_type_support/, tests/timestamp_behavior/,
+  tests/storage_backends/test_concurrency_filedirdict.py
+
+Recommended run profiles:
+- Fast local/PR: `pytest -q -m "not slow and not integration and not live_actions"`
+- Smoke regression: `pytest -q -m "smoke and not slow and not integration and not live_actions"`
+- Full (no live actions): `pytest -q -m "not live_actions"`
+- Live actions only: `pytest -m live_actions`
 
 ## Core Principles
 - Test Contract Semantics and Intent, Not Internal Mechanics
@@ -98,8 +132,8 @@ fixtures_and_data:
 
 ## Layout and Naming
 - All tests live in `tests/` organized into subdirectories by feature
-  or component (e.g., tests for FileDirDict functionality go in
-  `file_dir_dict/`, tests for S3Dict go in `s3_dict/`).
+  or component (e.g., FileDirDict tests go in `storage_backends/`,
+  S3Dict tests go in `simple_storage_service/`).
 - Test files start with `test_` and describe the specific behavior or
   use-case being tested.
 - Each test subdirectory should contain an `__init__.py` file to ensure
@@ -117,6 +151,12 @@ fixtures_and_data:
   extract to `tests/utils.py` or a fixture module.
 - Prefer installed imports (e.g., `from persidict ...`) over relative
   imports.
+
+## Test Map and Ownership
+- Maintain `tests/README.md` as the index of features -> test files.
+- Maintain `tests/ownership.yaml` as a coarse mapping from source paths
+  to test paths for selective reruns in CI.
+- Update both when adding, moving, or deleting tests or modules.
 
 ## Test Style
 - Use plain `assert` statements (pytest style). Keep Arrange–Act–Assert
@@ -162,6 +202,14 @@ fixtures_and_data:
   Avoid mocking internal functions.
 - Verify interactions (e.g., call counts) only when they are part of
   the contract; otherwise assert effects/results.
+
+## Test Matrices
+- `tests/data_for_mutable_tests.py` defines a minimal `mutable_tests`
+  matrix for broad backend coverage with low redundancy.
+- Use `mutable_tests_digest_len` and `mutable_tests_root_prefix` for
+  configuration-specific coverage.
+- Avoid expanding `mutable_tests` unless adding a new backend or
+  serialization format.
 
 ## Randomness, Time, and Concurrency
 - If behavior depends on randomness, seed locally inside the test to
@@ -220,6 +268,24 @@ fixtures_and_data:
   inputs, or heavy loops in unit tests.
 - If a slower test is valuable, mark it accordingly (e.g.,
   `@pytest.mark.slow`) and keep it isolated.
+- Target fast profile runtime under 2 minutes on a typical dev machine;
+  revisit tests if it grows beyond that.
+- Use `pytest --durations=20` to find slow tests and decide whether to
+  optimize, split, or mark them as `slow`.
+
+## Regression Subset (smoke)
+- The `smoke` marker is a small, high-signal regression subset for PRs.
+- Include tests that lock down the main public API contracts and past
+  regressions with minimal runtime.
+- Keep `smoke` fast and stable; avoid large inputs, optional deps, or
+  heavy I/O.
+
+## Redundancy and Pruning
+- Avoid overlapping tests that assert the same behavior in the same way.
+- Consolidate duplicates into a single clear semantic test with
+  parametrization when appropriate.
+- Use coverage and durations data to spot low-signal slow tests and
+  replace them with smaller semantic checks.
 
 ## Adding New Tests
 - Start from the behavior/contract/intent: what must hold true for
@@ -227,10 +293,14 @@ fixtures_and_data:
 - Add both positive and negative cases; include boundary values and
   representative real-world inputs.
 - Prefer parametrized tests for input matrices.
+- Assign a tier marker (`unit` or `integration`) and add `slow`/`smoke`
+  if applicable.
 - Mirror existing structure and naming. For a new branch/marker, a
   dedicated `test_..._branch.py` that explains intent is welcome.
 - Keep tests clear and maintainable. If a reader can't tell what
   behavior is specified, add a docstring.
+- Update `tests/README.md` and `tests/ownership.yaml` when adding or
+  moving tests.
 
 ## LLM-Friendly Test Patterns
 
