@@ -364,13 +364,13 @@ intent explicit without an extra fetch.
    set_item_get_etag(key, value) -> str | None
        Stores value and returns new ETag
 
-   get_item_if_etag(key, etag, condition) -> tuple[Any, str|None] | ETagHasChangedFlag | ETagHasNotChangedFlag
+   get_item_if_etag(key, etag, condition) -> tuple[Any, str|None] | ETagChangeFlag
        Retrieves value only if ETag satisfies condition
 
-   set_item_if_etag(key, value, etag, condition) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag
+   set_item_if_etag(key, value, etag, condition) -> str | None | ETagChangeFlag
        Stores value only if ETag satisfies condition
 
-   delete_item_if_etag(key, etag, condition) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag
+   delete_item_if_etag(key, etag, condition) -> None | ETagChangeFlag
        Deletes key only if ETag satisfies condition
 
    discard_item_if_etag(key, etag, condition) -> bool
@@ -721,17 +721,17 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6017
+     - 6019
      - 8939
-     - 14956
+     - 14958
    * - Source Lines Of Code (SLOC)
-     - 2544
+     - 2543
      - 5721
-     - 8265
+     - 8264
    * - Classes
-     - 25
+     - 26
      - 8
-     - 33
+     - 34
    * - Functions / Methods
      - 249
      - 500
