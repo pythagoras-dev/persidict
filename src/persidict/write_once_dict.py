@@ -18,8 +18,7 @@ from mixinforge import sort_dict_by_keys
 from .jokers_and_status_flags import (
     KEEP_CURRENT,
     KeepCurrentFlag,
-    ETagHasNotChangedFlag,
-    ETagHasChangedFlag,
+    ETagChangeFlag,
     ETagInput,
     ETagConditionFlag,
 )
@@ -281,7 +280,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[Any, str | None] | ETagHasNotChangedFlag | ETagHasChangedFlag:
+    ) -> tuple[Any, str | None] | ETagChangeFlag:
         """Retrieve a value and its etag if the condition is satisfied."""
         return self._wrapped_dict.get_item_if_etag(key, etag, condition)
 

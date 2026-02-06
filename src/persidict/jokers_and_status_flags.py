@@ -79,7 +79,12 @@ class ETagUnknownFlag(SingletonMixin):
     while avoiding extra calls to fetch an ETag.
     """
     pass
-class ETagHasNotChangedFlag(StatusFlag):
+
+class ETagChangeFlag(StatusFlag):
+    """Base class for ETag change status flags."""
+    pass
+
+class ETagHasNotChangedFlag(ETagChangeFlag):
     """Flag indicating that an ETag has not changed.
 
     Usage:
@@ -94,7 +99,7 @@ class ETagHasNotChangedFlag(StatusFlag):
 
     pass
 
-class ETagHasChangedFlag(StatusFlag):
+class ETagHasChangedFlag(ETagChangeFlag):
     """Flag indicating that an ETag has changed.
 
     Usage:

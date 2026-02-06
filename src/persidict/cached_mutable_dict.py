@@ -5,8 +5,8 @@ from typing import Optional
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
-                                      EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
-                                      ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
+                                      EXECUTION_IS_COMPLETE, ETagChangeFlag,
+                                      KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagInput, ETAG_UNKNOWN,
                                       ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 
@@ -276,7 +276,7 @@ class MutableDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> Optional[str] | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> Optional[str] | ETagChangeFlag:
         """Set item only if ETag satisfies a condition; update caches on success."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.set_item_if_etag(key, value, etag, condition)
@@ -298,7 +298,7 @@ class MutableDictCached(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> None | ETagChangeFlag:
         """Delete item only if ETag satisfies a condition; update caches on success."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.delete_item_if_etag(key, etag, condition)

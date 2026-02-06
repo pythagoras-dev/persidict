@@ -25,8 +25,8 @@ from typing import Optional
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED,
-                                      EXECUTION_IS_COMPLETE, ETagHasChangedFlag,
-                                      ETagHasNotChangedFlag, KEEP_CURRENT, DELETE_CURRENT,
+                                      EXECUTION_IS_COMPLETE, ETagChangeFlag,
+                                      KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagInput,
                                       ETagConditionFlag)
 
@@ -272,7 +272,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> Optional[str] | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> Optional[str] | ETagChangeFlag:
         """Append-only dicts do not support modifying existing items."""
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")
@@ -292,7 +292,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> None | ETagChangeFlag:
         """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 

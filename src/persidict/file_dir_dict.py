@@ -22,8 +22,7 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 from mixinforge import sort_dict_by_keys
 
-from .jokers_and_status_flags import (Joker, ETagHasNotChangedFlag, ETagHasChangedFlag,
-                                      ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
+from .jokers_and_status_flags import (Joker, ETagChangeFlag,
                                       KEEP_CURRENT, DELETE_CURRENT, ETagInput,
                                       ETagConditionFlag)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
@@ -717,7 +716,7 @@ class FileDirDict(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> str | None | ETagChangeFlag:
         """Store a value only if the ETag satisfies a condition.
 
         Uses a per-key file lock to make the compare-and-write sequence
@@ -757,7 +756,7 @@ class FileDirDict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> None | ETagChangeFlag:
         """Delete a key only if its ETag satisfies a condition (with per-key lock)."""
         etag = self._normalize_etag_input(etag)
         key = NonEmptySafeStrTuple(key)

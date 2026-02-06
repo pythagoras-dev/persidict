@@ -23,9 +23,8 @@ from mixinforge import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
-from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagHasNotChangedFlag,
-                                      ETAG_HAS_NOT_CHANGED, ETagHasChangedFlag,
-                                      ETAG_HAS_CHANGED, KEEP_CURRENT, DELETE_CURRENT,
+from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagChangeFlag,
+                                      KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagInput, ETAG_UNKNOWN,
                                       ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 
@@ -258,7 +257,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[ValueType, str | None] | ETagHasNotChangedFlag | ETagHasChangedFlag:
+    ) -> tuple[ValueType, str | None] | ETagChangeFlag:
         """Retrieve the value for a key only if its ETag satisfies a condition.
 
         This method is absent in the original dict API.
@@ -271,7 +270,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 require a mismatch.
 
         Returns:
-            tuple[Any, str|None] | ETagHasNotChangedFlag | ETagHasChangedFlag:
+            tuple[Any, str|None] | ETagChangeFlag:
                 The deserialized value if the condition succeeds, along with
                 the current ETag, or a sentinel flag if the condition fails.
 
@@ -475,7 +474,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: Any,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> str | None | ETagChangeFlag:
         """Store a value only if the ETag satisfies a condition.
 
         For EQUAL_ETAG, uses conditional S3 writes (If-Match) to avoid
@@ -494,7 +493,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 require a mismatch.
 
         Returns:
-            str | None | ETagHasChangedFlag | ETagHasNotChangedFlag: The ETag
+            str | None | ETagChangeFlag: The ETag
                 of the newly stored object if the condition succeeds, or a
                 sentinel flag if the condition fails.
 
@@ -571,7 +570,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> None | ETagChangeFlag:
         """Delete a key only if its ETag satisfies a condition.
 
         For EQUAL_ETAG, uses conditional S3 deletes (If-Match) to avoid deleting

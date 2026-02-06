@@ -28,8 +28,8 @@ from mixinforge import ParameterizableMixin, sort_dict_by_keys
 from . import NonEmptySafeStrTuple
 from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
-                                      ETagHasNotChangedFlag, ETAG_HAS_NOT_CHANGED,
-                                      ETagHasChangedFlag, ETAG_HAS_CHANGED,
+                                      ETagChangeFlag, ETAG_HAS_NOT_CHANGED,
+                                      ETAG_HAS_CHANGED,
                                       ETagInput, ETAG_UNKNOWN,
                                       ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 from .safe_chars import contains_unsafe_chars
@@ -240,7 +240,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def _etag_condition_failure_flag(
             self,
             condition: ETagConditionFlag
-    ) -> ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> ETagChangeFlag:
         if condition is EQUAL_ETAG:
             return ETAG_HAS_CHANGED
         if condition is DIFFERENT_ETAG:
@@ -253,7 +253,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[ValueType, str | None] | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> tuple[ValueType, str | None] | ETagChangeFlag:
         """Retrieve the value for a key only if its ETag satisfies a condition.
 
         This method is absent in the original dict API.
@@ -274,7 +274,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 require a mismatch.
 
         Returns:
-            tuple[Any, str|None] | ETagHasChangedFlag | ETagHasNotChangedFlag:
+            tuple[Any, str|None] | ETagChangeFlag:
                 The deserialized value if the condition succeeds, along with
                 the current ETag; otherwise a sentinel flag describing why the
                 condition failed.
@@ -297,7 +297,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> str | None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> str | None | ETagChangeFlag:
         """Store a value only if the ETag satisfies a condition.
 
         This method is absent in the original dict API.
@@ -320,7 +320,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 require a mismatch.
 
         Returns:
-            str | None | ETagHasChangedFlag | ETagHasNotChangedFlag: The ETag of
+            str | None | ETagChangeFlag: The ETag of
                 the newly stored object if the condition succeeds, or a sentinel
                 flag if the condition fails.
 
@@ -341,7 +341,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> None | ETagHasChangedFlag | ETagHasNotChangedFlag:
+    ) -> None | ETagChangeFlag:
         """Delete a key only if its ETag satisfies a condition.
 
         Warning:
@@ -359,7 +359,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 require a mismatch.
 
         Returns:
-            None | ETagHasChangedFlag | ETagHasNotChangedFlag: None if deletion
+            None | ETagChangeFlag: None if deletion
             succeeded, or a sentinel flag if the condition fails.
 
         Raises:
