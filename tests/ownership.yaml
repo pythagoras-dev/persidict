@@ -1,0 +1,119 @@
+version: 1
+description: "Coarse ownership map from source paths to test areas for selective reruns."
+rules:
+  - name: core_api
+    paths:
+      - src/persidict/persi_dict.py
+      - src/persidict/empty_dict.py
+      - src/persidict/write_once_dict.py
+      - src/persidict/overlapping_multi_dict.py
+      - src/persidict/safe_chars.py
+      - src/persidict/safe_str_tuple.py
+      - src/persidict/safe_str_tuple_signing.py
+      - src/persidict/jokers_and_status_flags.py
+    tests:
+      - tests/core_behavior/test_basics.py
+      - tests/core_behavior/test_advanced_dict_methods.py
+      - tests/core_behavior/test_update_method.py
+      - tests/core_behavior/test_copy_methods.py
+      - tests/core_behavior/test_iterators.py
+      - tests/core_behavior/test_setdefault.py
+      - tests/core_behavior/test_delete_current.py
+      - tests/core_behavior/test_delete_if_exists.py
+      - tests/core_behavior/test_discard.py
+      - tests/core_behavior/test_discard_empty_dict.py
+      - tests/core_behavior/test_empty_dict.py
+      - tests/core_behavior/test_bool.py
+      - tests/core_behavior/test_equality.py
+      - tests/core_behavior/test_case_sensitivity.py
+      - tests/core_behavior/test_random_key.py
+      - tests/core_behavior/test_ior.py
+      - tests/core_behavior/test_keep_current.py
+      - tests/core_behavior/test_unpicklable.py
+      - tests/core_behavior/test_typing.py
+      - tests/core_behavior/test_jokers.py
+      - tests/key_handling/test_safe_chars.py
+      - tests/key_handling/test_safe_str_tuple.py
+      - tests/key_handling/test_complex_keys.py
+
+  - name: file_dir_and_local
+    paths:
+      - src/persidict/file_dir_dict.py
+      - src/persidict/local_dict.py
+    tests:
+      - tests/storage_backends/test_digest_length_matrix.py
+      - tests/storage_backends/test_filedirdict_setdefault.py
+      - tests/storage_backends/test_filedirdict_etag_fallback.py
+      - tests/storage_backends/test_concurrency_filedirdict.py
+      - tests/storage_backends/test_local_dict.py
+      - tests/storage_backends/test_discard_local_dict.py
+      - tests/storage_backends/test_unc_support.py
+
+  - name: simple_storage_service
+    paths:
+      - src/persidict/basic_s3_dict.py
+      - src/persidict/s3_dict_file_dir_cached.py
+    tests:
+      - tests/simple_storage_service/test_basic_s3_setdefault.py
+      - tests/simple_storage_service/test_basic_s3_iteration_and_metadata.py
+      - tests/simple_storage_service/test_root_prefix_behavior.py
+      - tests/simple_storage_service/test_s3_append_only_etag.py
+      - tests/simple_storage_service/test_actual_s3.py
+
+  - name: cached_variants
+    paths:
+      - src/persidict/cached_appendonly_dict.py
+      - src/persidict/cached_mutable_dict.py
+    tests:
+      - tests/dictionary_variants/test_append_only_dict_cached.py
+      - tests/dictionary_variants/test_write_once_dict.py
+      - tests/dictionary_variants/test_overlapping_multi_dict.py
+      - tests/dictionary_variants/test_etaggable_dict_cached.py
+
+  - name: entity_tag_operations
+    paths:
+      - src/persidict/jokers_and_status_flags.py
+    tests:
+      - tests/entity_tag_operations/test_etag.py
+      - tests/entity_tag_operations/conditional_operations_contract/
+      - tests/entity_tag_operations/conditional_operations_mutable/
+
+  - name: subdicts
+    paths:
+      - src/persidict/persi_dict.py
+    tests:
+      - tests/subdictionary_operations/test_subdicts.py
+      - tests/subdictionary_operations/test_subdicts_method.py
+      - tests/subdictionary_operations/test_get_subdict.py
+
+  - name: timestamp_behavior
+    paths:
+      - src/persidict/persi_dict.py
+    tests:
+      - tests/timestamp_behavior/test_timestamp.py
+      - tests/timestamp_behavior/test_timestamp_functions.py
+      - tests/timestamp_behavior/test_timestamp_comprehensive.py
+
+  - name: compatibility
+    paths:
+      - src/persidict/persi_dict.py
+      - src/persidict/file_dir_dict.py
+      - src/persidict/local_dict.py
+      - src/persidict/basic_s3_dict.py
+      - src/persidict/s3_dict_file_dir_cached.py
+    tests:
+      - tests/compatibility_serialization/test_work_with_basic_datatypes.py
+      - tests/compatibility_serialization/test_work_with_pandas.py
+      - tests/compatibility_serialization/test_work_with_python_src.py
+
+  - name: atomic_type_support
+    paths:
+      - src/persidict/persi_dict.py
+    tests:
+      - tests/atomic_type_support/
+
+  - name: versioning
+    paths:
+      - src/persidict/_version_info.py
+    tests:
+      - tests/version_behavior/
