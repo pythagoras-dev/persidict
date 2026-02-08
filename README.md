@@ -276,12 +276,13 @@ intent explicit and avoids extra fetches.
 
 Common methods and return flags:
 
-* `etag(key) -> str | None`
-* `set_item_get_etag(key, value) -> str | None`
-* `get_item_if_etag(key, etag, condition) -> tuple[Any, str|None] | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
-* `set_item_if_etag(key, value, etag, condition) -> str | None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
+* `etag(key) -> ETagValue | None`
+* `set_item_get_etag(key, value) -> ETagValue | None`
+* `get_item_if_etag(key, etag, condition) -> tuple[Any, ETagValue | None] | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
+* `set_item_if_etag(key, value, etag, condition) -> ETagValue | None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
 * `delete_item_if_etag(key, etag, condition) -> None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
 * `discard_item_if_etag(key, etag, condition) -> bool`
+* `ETagValue` (NewType over `str`)
 * `EQUAL_ETAG` / `DIFFERENT_ETAG` (condition selectors)
 * `ETAG_UNKNOWN` (sentinel for unknown ETag inputs)
 
@@ -345,11 +346,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6024 | 9259 | 15283 |
-| Source Lines Of Code (SLOC) | 2546 | 5947 | 8493 |
+| Lines Of Code (LOC) | 5986 | 9259 | 15245 |
+| Source Lines Of Code (SLOC) | 2517 | 5947 | 8464 |
 | Classes | 26 | 8 | 34 |
-| Functions / Methods | 250 | 520 | 770 |
-| Files | 18 | 97 | 115 |
+| Functions / Methods | 248 | 520 | 768 |
+| Files | 16 | 97 | 113 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing

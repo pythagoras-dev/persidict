@@ -355,19 +355,21 @@ intent explicit without an extra fetch.
 
    ETAG_UNKNOWN
        Sentinel for unknown ETag inputs
+   ETagValue
+       Type for ETag strings (NewType over ``str``)
    EQUAL_ETAG / DIFFERENT_ETAG
        Condition selectors for ETag-based operations
 
-   etag(key) -> str | None
+   etag(key) -> ETagValue | None
        Returns ETag for the key (or timestamp-based equivalent)
 
-   set_item_get_etag(key, value) -> str | None
+   set_item_get_etag(key, value) -> ETagValue | None
        Stores value and returns new ETag
 
-   get_item_if_etag(key, etag, condition) -> tuple[Any, str|None] | ETagChangeFlag
+   get_item_if_etag(key, etag, condition) -> tuple[Any, ETagValue | None] | ETagChangeFlag
        Retrieves value only if ETag satisfies condition
 
-   set_item_if_etag(key, value, etag, condition) -> str | None | ETagChangeFlag
+   set_item_if_etag(key, value, etag, condition) -> ETagValue | None | ETagChangeFlag
        Stores value only if ETag satisfies condition
 
    delete_item_if_etag(key, etag, condition) -> None | ETagChangeFlag
@@ -721,25 +723,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6024
+     - 5986
      - 9259
-     - 15283
+     - 15245
    * - Source Lines Of Code (SLOC)
-     - 2546
+     - 2517
      - 5947
-     - 8493
+     - 8464
    * - Classes
      - 26
      - 8
      - 34
    * - Functions / Methods
-     - 250
+     - 248
      - 520
-     - 770
+     - 768
    * - Files
-     - 18
+     - 16
      - 97
-     - 115
+     - 113
 
 .. MIXINFORGE_STATS_END
 
