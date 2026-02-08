@@ -15,7 +15,7 @@ Examples:
     >>> d[key] = KEEP_CURRENT  # Do not alter existing value
     >>> d[key] = DELETE_CURRENT  # Remove key if present
 """
-from typing import Final, TypeAlias
+from typing import Final, NewType, TypeAlias
 
 from mixinforge import SingletonMixin
 
@@ -83,6 +83,9 @@ class ETagUnknownFlag(SingletonMixin):
 class ETagChangeFlag(StatusFlag):
     """Base class for ETag change status flags."""
     pass
+
+ETagValue = NewType("ETagValue", str)
+"""Type for ETag string values."""
 
 class ETagHasNotChangedFlag(ETagChangeFlag):
     """Flag indicating that an ETag has not changed.
@@ -257,7 +260,7 @@ previous ETag value. It is treated as "no prior ETag" and keeps the intent
 explicit in call sites.
 """
 
-ETagInput: TypeAlias = str | ETagUnknownFlag
+ETagInput: TypeAlias = ETagValue | ETagUnknownFlag
 
 _EtagEqual = ETagEqualFlag()
 EQUAL_ETAG: Final[ETagEqualFlag] = ETagEqualFlag()

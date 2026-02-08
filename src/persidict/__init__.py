@@ -52,7 +52,7 @@ from .s3_dict_file_dir_cached import S3Dict_FileDirCached, S3Dict
 from .basic_s3_dict import BasicS3Dict
 from .write_once_dict import WriteOnceDict
 from .empty_dict import EmptyDict
-from .jokers_and_status_flags import Joker, KeepCurrentFlag, DeleteCurrentFlag, ETagUnknownFlag
+from .jokers_and_status_flags import Joker, KeepCurrentFlag, DeleteCurrentFlag, ETagUnknownFlag, ETagValue
 from .jokers_and_status_flags import (
     KEEP_CURRENT,
     DELETE_CURRENT,
@@ -102,4 +102,5 @@ __all__ = [
     'KeepCurrentFlag',
     'DeleteCurrentFlag',
     'ETagUnknownFlag',
+    'ETagValue',
 ]

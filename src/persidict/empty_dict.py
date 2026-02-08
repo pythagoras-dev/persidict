@@ -10,7 +10,7 @@ from typing import Any, Iterator
 
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
-from .jokers_and_status_flags import ETagInput, ETagConditionFlag
+from .jokers_and_status_flags import ETagInput, ETagConditionFlag, ETagValue
 
 
 class EmptyDict(PersiDict[ValueType]):
@@ -48,7 +48,7 @@ class EmptyDict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[ValueType, str|None]:
+    ) -> tuple[ValueType, ETagValue | None]:
         """Always raises KeyError as EmptyDict contains nothing."""
         raise KeyError(key)
 
@@ -61,7 +61,7 @@ class EmptyDict(PersiDict[ValueType]):
         # Do nothing - discard the write like /dev/null
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> ETagValue | None:
         """Accepts any write operation, discards the data, returns None as etag.
 
         Args:
@@ -69,7 +69,7 @@ class EmptyDict(PersiDict[ValueType]):
             value: Value to store (processed for validation but discarded).
 
         Returns:
-            str|None: Always returns None as no actual storage occurs.
+            ETagValue | None: Always returns None as no actual storage occurs.
 
         Raises:
             KeyError: If attempting to modify when append_only is True.

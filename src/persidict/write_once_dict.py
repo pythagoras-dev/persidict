@@ -20,6 +20,7 @@ from .jokers_and_status_flags import (
     KeepCurrentFlag,
     ETagChangeFlag,
     ETagInput,
+    ETagValue,
     ETagConditionFlag,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
@@ -188,7 +189,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> ETagValue | None:
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
     def set_item_if_etag(
@@ -280,7 +281,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[Any, str | None] | ETagChangeFlag:
+    ) -> tuple[Any, ETagValue | None] | ETagChangeFlag:
         """Retrieve a value and its etag if the condition is satisfied."""
         return self._wrapped_dict.get_item_if_etag(key, etag, condition)
 

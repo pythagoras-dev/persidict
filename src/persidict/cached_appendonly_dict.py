@@ -27,7 +27,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED,
                                       EXECUTION_IS_COMPLETE, ETagChangeFlag,
                                       KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput,
+                                      Joker, ETagInput, ETagValue,
                                       ETagConditionFlag)
 
 
@@ -161,7 +161,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main.timestamp(key)
 
-    def etag(self, key: NonEmptyPersiDictKey) -> str | None:
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue | None:
         """Return the ETag from the main dict.
 
         Delegating to the main dict preserves backend-specific ETag semantics
@@ -238,7 +238,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         self._main[key] = value
         self._data_cache[key] = value
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[str]:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[ETagValue]:
         """Store a value and return the ETag from the main dict.
 
         After validation via _process_setitem_args, the value is written to the
@@ -250,7 +250,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: The value to store, or a joker (KEEP_CURRENT/DELETE_CURRENT).
 
         Returns:
-            str | None: The ETag produced by the main dict, or None if a joker
+            ETagValue | None: The ETag produced by the main dict, or None if a joker
             short-circuited the operation or the backend doesn't support ETags.
 
         Raises:
@@ -272,7 +272,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> Optional[str] | ETagChangeFlag:
+    ) -> Optional[ETagValue] | ETagChangeFlag:
         """Append-only dicts do not support modifying existing items."""
         if value is DELETE_CURRENT:
             raise TypeError("append-only dicts do not support deletion")

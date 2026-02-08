@@ -24,7 +24,7 @@ from mixinforge import sort_dict_by_keys
 
 from .jokers_and_status_flags import (Joker, ETagChangeFlag,
                                       KEEP_CURRENT, DELETE_CURRENT, ETagInput,
-                                      ETagConditionFlag)
+                                      ETagConditionFlag, ETagValue)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
@@ -716,7 +716,7 @@ class FileDirDict(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> str | None | ETagChangeFlag:
+    ) -> ETagValue | None | ETagChangeFlag:
         """Store a value only if the ETag satisfies a condition.
 
         Uses a per-key file lock to make the compare-and-write sequence
@@ -910,7 +910,7 @@ class FileDirDict(PersiDict[ValueType]):
         filename = self._build_full_path(key)
         return os.path.getmtime(filename)
 
-    def etag(self, key:NonEmptyPersiDictKey) -> str:
+    def etag(self, key:NonEmptyPersiDictKey) -> ETagValue:
         """Return a stable ETag derived from mtime and file size.
 
         Uses a single stat call and combines st_mtime_ns with st_size. Falls
@@ -925,7 +925,7 @@ class FileDirDict(PersiDict[ValueType]):
             mtime_part = f"{stat_result.st_mtime:.6f}"
         else:
             mtime_part = str(mtime_ns)
-        return f"{mtime_part}:{stat_result.st_size}"
+        return ETagValue(f"{mtime_part}:{stat_result.st_size}")
 
 
     def random_key(self) -> NonEmptySafeStrTuple | None:

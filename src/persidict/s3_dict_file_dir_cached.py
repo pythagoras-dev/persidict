@@ -11,7 +11,7 @@ from .file_dir_dict import FileDirDict
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
-from .jokers_and_status_flags import ETagInput, ETagConditionFlag
+from .jokers_and_status_flags import ETagInput, ETagConditionFlag, ETagValue
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .overlapping_multi_dict import OverlappingMultiDict
 
@@ -218,7 +218,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         """Get the timestamp of when the item was last modified."""
         return self._cached_dict.timestamp(key)
 
-    def etag(self, key: NonEmptyPersiDictKey) -> str:
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
         """Get the ETag for an item.
 
         For mutable dicts, returns the cached S3 native ETag if available,
@@ -229,7 +229,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             key: Non-empty key to query.
 
         Returns:
-            str: The ETag string for the key.
+            ETagValue: The ETag string for the key.
 
         Raises:
             KeyError: If the key does not exist.
@@ -281,7 +281,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             return self._cached_dict.discard_item_if_etag(key, etag, condition)
         return PersiDict.discard_item_if_etag(self, key, etag, condition)
     
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[str]:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[ETagValue]:
         """Set item and return ETag (for mutable dicts)."""
         if hasattr(self._cached_dict, 'set_item_get_etag'):
             return self._cached_dict.set_item_get_etag(key, value)

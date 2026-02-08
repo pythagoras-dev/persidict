@@ -30,7 +30,7 @@ from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
                                       ETagChangeFlag, ETAG_HAS_NOT_CHANGED,
                                       ETAG_HAS_CHANGED,
-                                      ETagInput, ETAG_UNKNOWN,
+                                      ETagInput, ETagValue, ETAG_UNKNOWN,
                                       ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
@@ -228,7 +228,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self,
             condition: ETagConditionFlag,
             etag: ETagInput,
-            current_etag: str | None
+            current_etag: ETagValue | None
     ) -> bool:
         if condition is EQUAL_ETAG:
             return etag == current_etag
@@ -253,7 +253,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[ValueType, str | None] | ETagChangeFlag:
+    ) -> tuple[ValueType, ETagValue | None] | ETagChangeFlag:
         """Retrieve the value for a key only if its ETag satisfies a condition.
 
         This method is absent in the original dict API.
@@ -274,7 +274,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 require a mismatch.
 
         Returns:
-            tuple[Any, str|None] | ETagChangeFlag:
+            tuple[Any, ETagValue | None] | ETagChangeFlag:
                 The deserialized value if the condition succeeds, along with
                 the current ETag; otherwise a sentinel flag describing why the
                 condition failed.
@@ -297,7 +297,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> str | None | ETagChangeFlag:
+    ) -> ETagValue | None | ETagChangeFlag:
         """Store a value only if the ETag satisfies a condition.
 
         This method is absent in the original dict API.
@@ -320,7 +320,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 require a mismatch.
 
         Returns:
-            str | None | ETagChangeFlag: The ETag of
+            ETagValue | None | ETagChangeFlag: The ETag of
                 the newly stored object if the condition succeeds, or a sentinel
                 flag if the condition fails.
 
@@ -459,7 +459,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     @staticmethod
     def _normalize_etag_input(etag: ETagInput | None) -> ETagInput:
         """Normalize legacy None to ETAG_UNKNOWN for conditional ETag APIs."""
-        return ETAG_UNKNOWN if etag is None else etag
+        if etag is None or etag is ETAG_UNKNOWN:
+            return ETAG_UNKNOWN
+        return ETagValue(etag)
 
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                               ) -> StatusFlag:
@@ -494,7 +496,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return CONTINUE_NORMAL_EXECUTION
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> ETagValue | None:
         """Store a value for a key directly in the dict and return the new ETag.
 
         Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
@@ -511,7 +513,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 DELETE_CURRENT).
 
         Returns:
-            str|None: The ETag of the newly stored object,
+            ETagValue | None: The ETag of the newly stored object,
             or None if the ETag was not provided as a result of the operation.
 
         Raises:
@@ -949,7 +951,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             raise NotImplementedError("PersiDict is an abstract base class"
                                       " and cannot provide timestamps directly")
 
-    def etag(self, key:NonEmptyPersiDictKey) -> str|None:
+    def etag(self, key:NonEmptyPersiDictKey) -> ETagValue | None:
         """Return the ETag of a key.
 
         By default, this returns a stringified timestamp of the last
@@ -958,7 +960,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         This method is absent in the original Python dict API.
         """
-        return f"{self.timestamp(key):.6f}"
+        return ETagValue(f"{self.timestamp(key):.6f}")
 
 
     def oldest_keys(self, max_n: int|None=None) -> list[NonEmptySafeStrTuple]:

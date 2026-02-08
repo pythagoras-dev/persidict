@@ -7,7 +7,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
                                       EXECUTION_IS_COMPLETE, ETagChangeFlag,
                                       KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput, ETAG_UNKNOWN,
+                                      Joker, ETagInput, ETagValue, ETAG_UNKNOWN,
                                       ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 
 
@@ -34,7 +34,7 @@ class MutableDictCached(PersiDict[ValueType]):
     def __init__(self,
                  main_dict: PersiDict[ValueType],
                  data_cache: PersiDict[ValueType],
-                 etag_cache: PersiDict[str]) -> None:
+                 etag_cache: PersiDict[ETagValue]) -> None:
         """Initialize with a main dict and two caches (data and ETag).
 
         Args:
@@ -73,7 +73,7 @@ class MutableDictCached(PersiDict[ValueType]):
 
         self._main_dict: PersiDict[ValueType] = main_dict
         self._data_cache: PersiDict[ValueType] = data_cache
-        self._etag_cache: PersiDict[str] = etag_cache
+        self._etag_cache: PersiDict[ETagValue] = etag_cache
 
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
@@ -120,7 +120,7 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main_dict.timestamp(key)
 
-    def etag(self, key: NonEmptyPersiDictKey) -> str|None:
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue | None:
         """Return cached ETag if available, otherwise fetch from main dict.
 
         This method returns the ETag from the local cache when available,
@@ -135,7 +135,7 @@ class MutableDictCached(PersiDict[ValueType]):
             key: Non-empty key to query.
 
         Returns:
-            str: The ETag string for the key.
+            ETagValue | None: The ETag string for the key.
 
         Raises:
             KeyError: If the key does not exist in the main dict.
@@ -150,7 +150,7 @@ class MutableDictCached(PersiDict[ValueType]):
         return etag
 
 
-    def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: Optional[str]) -> None:
+    def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: Optional[ETagValue]) -> None:
         """Update the cached ETag for a key, or clear it if None.
 
         Args:
@@ -246,7 +246,7 @@ class MutableDictCached(PersiDict[ValueType]):
         self.set_item_get_etag(key, value)
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[str]:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[ETagValue]:
         """Set item and return its ETag, updating caches.
 
         This method delegates the actual write to the main dict.
@@ -258,7 +258,7 @@ class MutableDictCached(PersiDict[ValueType]):
             value: The value to store.
 
         Returns:
-            Optional[str]: The new ETag string from the main dict, or None if
+            Optional[ETagValue]: The new ETag string from the main dict, or None if
             execution was handled entirely by base-class joker processing.
         """
         key = NonEmptySafeStrTuple(key)
@@ -276,7 +276,7 @@ class MutableDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> Optional[str] | ETagChangeFlag:
+    ) -> Optional[ETagValue] | ETagChangeFlag:
         """Set item only if ETag satisfies a condition; update caches on success."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.set_item_if_etag(key, value, etag, condition)

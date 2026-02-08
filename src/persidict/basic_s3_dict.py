@@ -25,7 +25,7 @@ from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE, ETagChangeFlag,
                                       KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput, ETAG_UNKNOWN,
+                                      Joker, ETagInput, ETagValue, ETAG_UNKNOWN,
                                       ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
 
 
@@ -175,7 +175,7 @@ class BasicS3Dict(PersiDict[ValueType]):
 
 
 
-    def etag(self, key:NonEmptyPersiDictKey) -> str|None:
+    def etag(self, key:NonEmptyPersiDictKey) -> ETagValue | None:
         """Get an ETag for a key.
 
         Args:
@@ -183,7 +183,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 or NonEmptySafeStrTuple).
 
         Returns:
-            str|None: The ETag value for the S3 object, or None if not available.
+            ETagValue | None: The ETag value for the S3 object, or None if not available.
 
         Raises:
             KeyError: If the key does not exist in S3.
@@ -192,7 +192,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         obj_name = self._build_full_objectname(key)
         try:
             response = self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
-            return response["ETag"]
+            return ETagValue(response["ETag"])
         except ClientError as e:
             if not_found_error(e):
                 raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
@@ -257,7 +257,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: NonEmptyPersiDictKey,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> tuple[ValueType, str | None] | ETagChangeFlag:
+    ) -> tuple[ValueType, ETagValue | None] | ETagChangeFlag:
         """Retrieve the value for a key only if its ETag satisfies a condition.
 
         This method is absent in the original dict API.
@@ -270,7 +270,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 require a mismatch.
 
         Returns:
-            tuple[Any, str|None] | ETagChangeFlag:
+            tuple[Any, ETagValue | None] | ETagChangeFlag:
                 The deserialized value if the condition succeeds, along with
                 the current ETag, or a sentinel flag if the condition fails.
 
@@ -301,7 +301,8 @@ class BasicS3Dict(PersiDict[ValueType]):
 
             # 200 OK: object was downloaded, either because it's new or matches.
             body = response['Body']
-            s3_etag = response.get("ETag")
+            s3_etag_raw = response.get("ETag")
+            s3_etag = ETagValue(s3_etag_raw) if s3_etag_raw is not None else None
 
             try:
                 if self.serialization_format == 'json':
@@ -425,7 +426,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         return serialized_data, content_type
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> str|None:
+    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: Any) -> ETagValue | None:
         """Store a value for a key directly in S3 and return the new ETag.
 
         Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
@@ -441,7 +442,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 DELETE_CURRENT).
 
         Returns:
-            str|None: The ETag of the newly stored object, or None if a joker
+            ETagValue | None: The ETag of the newly stored object, or None if a joker
             command was processed without uploading a new object.
 
         Raises:
@@ -465,7 +466,8 @@ class BasicS3Dict(PersiDict[ValueType]):
             Body=serialized_data,
             ContentType=content_type
         )
-        return response.get("ETag")
+        etag_raw = response.get("ETag")
+        return ETagValue(etag_raw) if etag_raw is not None else None
 
 
     def set_item_if_etag(
@@ -474,7 +476,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: Any,
             etag: ETagInput,
             condition: ETagConditionFlag
-    ) -> str | None | ETagChangeFlag:
+    ) -> ETagValue | None | ETagChangeFlag:
         """Store a value only if the ETag satisfies a condition.
 
         For EQUAL_ETAG, uses conditional S3 writes (If-Match) to avoid
@@ -493,7 +495,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 require a mismatch.
 
         Returns:
-            str | None | ETagChangeFlag: The ETag
+            ETagValue | None | ETagChangeFlag: The ETag
                 of the newly stored object if the condition succeeds, or a
                 sentinel flag if the condition fails.
 
@@ -529,7 +531,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                     ContentType=content_type,
                     IfMatch=etag
                 )
-                return response.get("ETag")
+                etag_raw = response.get("ETag")
+                return ETagValue(etag_raw) if etag_raw is not None else None
             except ClientError as e:
                 status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
                 code = e.response.get('Error', {}).get('Code')
@@ -556,7 +559,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                     Body=serialized_data,
                     ContentType=content_type
                 )
-                return response.get("ETag")
+                etag_raw = response.get("ETag")
+                return ETagValue(etag_raw) if etag_raw is not None else None
             except ClientError as e:
                 if not_found_error(e):
                     raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
