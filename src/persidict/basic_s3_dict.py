@@ -27,7 +27,8 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagValue,
                                       ETagConditionFlag,
-                                      ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
+                                      ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
                                       VALUE_NOT_RETRIEVED,
                                       ETagIfExists, ConditionalOperationResult)
 
@@ -325,6 +326,27 @@ class BasicS3Dict(PersiDict[ValueType]):
             ConditionalOperationResult with the outcome.
         """
         key = NonEmptySafeStrTuple(key)
+        if always_retrieve_value:
+            try:
+                value, actual_etag = self._get_object_with_etag(key)
+            except KeyError:
+                actual_etag = ITEM_NOT_AVAILABLE
+                satisfied = self._check_condition(condition, expected_etag, actual_etag)
+                return ConditionalOperationResult(
+                    condition_was_satisfied=satisfied,
+                    requested_condition=condition,
+                    actual_etag=ITEM_NOT_AVAILABLE,
+                    resulting_etag=ITEM_NOT_AVAILABLE,
+                    new_value=ITEM_NOT_AVAILABLE)
+
+            satisfied = self._check_condition(condition, expected_etag, actual_etag)
+            return ConditionalOperationResult(
+                condition_was_satisfied=satisfied,
+                requested_condition=condition,
+                actual_etag=actual_etag,
+                resulting_etag=actual_etag,
+                new_value=value)
+
         actual_etag = self._actual_etag(key)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
@@ -336,11 +358,27 @@ class BasicS3Dict(PersiDict[ValueType]):
                 resulting_etag=ITEM_NOT_AVAILABLE,
                 new_value=ITEM_NOT_AVAILABLE)
 
-        if always_retrieve_value or expected_etag != actual_etag:
-            value = self[key]
-        else:
-            value = VALUE_NOT_RETRIEVED
+        if expected_etag == actual_etag:
+            return ConditionalOperationResult(
+                condition_was_satisfied=satisfied,
+                requested_condition=condition,
+                actual_etag=actual_etag,
+                resulting_etag=actual_etag,
+                new_value=VALUE_NOT_RETRIEVED)
 
+        try:
+            value, actual_etag = self._get_object_with_etag(key)
+        except KeyError:
+            actual_etag = ITEM_NOT_AVAILABLE
+            satisfied = self._check_condition(condition, expected_etag, actual_etag)
+            return ConditionalOperationResult(
+                condition_was_satisfied=satisfied,
+                requested_condition=condition,
+                actual_etag=ITEM_NOT_AVAILABLE,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
         return ConditionalOperationResult(
             condition_was_satisfied=satisfied,
             requested_condition=condition,
@@ -501,6 +539,16 @@ class BasicS3Dict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         actual_etag = self._actual_etag(key)
+        if self.append_only and value is not KEEP_CURRENT:
+            if value is DELETE_CURRENT or actual_etag is not ITEM_NOT_AVAILABLE:
+                raise KeyError("Can't modify an immutable key-value pair")
+        if isinstance(value, PersiDict):
+            raise TypeError("Cannot store a PersiDict instance directly")
+        if value is not KEEP_CURRENT and value is not DELETE_CURRENT:
+            if self.base_class_for_values is not None:
+                if not isinstance(value, self.base_class_for_values):
+                    raise TypeError(f"Value must be an instance of"
+                                    f" {self.base_class_for_values.__name__}")
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if not satisfied:
@@ -536,8 +584,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 resulting_etag=ITEM_NOT_AVAILABLE,
                 new_value=ITEM_NOT_AVAILABLE)
 
-        # Condition satisfied — attempt conditional write using IfMatch
-        # when expected_etag is a real ETag value and condition is ETAG_IS_THE_SAME.
+        # Condition satisfied — attempt conditional write when possible.
         if (condition is ETAG_IS_THE_SAME
                 and not isinstance(expected_etag, ItemNotAvailableFlag)):
             obj_name = self._build_full_objectname(key)
@@ -563,6 +610,126 @@ class BasicS3Dict(PersiDict[ValueType]):
                 if status in (409, 412) or code in (
                         "ConditionalRequestConflict", "PreconditionFailed"):
                     # Race: etag changed between our check and the write
+                    new_actual = self._actual_etag(key)
+                    if new_actual is ITEM_NOT_AVAILABLE:
+                        return ConditionalOperationResult(
+                            condition_was_satisfied=False,
+                            requested_condition=condition,
+                            actual_etag=new_actual,
+                            resulting_etag=ITEM_NOT_AVAILABLE,
+                            new_value=ITEM_NOT_AVAILABLE)
+                    existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+                    return ConditionalOperationResult(
+                        condition_was_satisfied=False,
+                        requested_condition=condition,
+                        actual_etag=new_actual,
+                        resulting_etag=new_actual,
+                        new_value=existing_value)
+                raise
+        if (condition is ETAG_IS_THE_SAME
+                and isinstance(expected_etag, ItemNotAvailableFlag)):
+            obj_name = self._build_full_objectname(key)
+            serialized_data, content_type = self._serialize_value_for_s3(value)
+            try:
+                response = self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=obj_name,
+                    Body=serialized_data,
+                    ContentType=content_type,
+                    IfNoneMatch="*"
+                )
+                resulting_etag = ETagValue(response["ETag"])
+                return ConditionalOperationResult(
+                    condition_was_satisfied=True,
+                    requested_condition=condition,
+                    actual_etag=actual_etag,
+                    resulting_etag=resulting_etag,
+                    new_value=value)
+            except ClientError as e:
+                status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                code = e.response.get('Error', {}).get('Code')
+                if status in (409, 412) or code in (
+                        "ConditionalRequestConflict", "PreconditionFailed"):
+                    new_actual = self._actual_etag(key)
+                    if new_actual is ITEM_NOT_AVAILABLE:
+                        return ConditionalOperationResult(
+                            condition_was_satisfied=False,
+                            requested_condition=condition,
+                            actual_etag=new_actual,
+                            resulting_etag=ITEM_NOT_AVAILABLE,
+                            new_value=ITEM_NOT_AVAILABLE)
+                    existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+                    return ConditionalOperationResult(
+                        condition_was_satisfied=False,
+                        requested_condition=condition,
+                        actual_etag=new_actual,
+                        resulting_etag=new_actual,
+                        new_value=existing_value)
+                raise
+        if (condition is ETAG_HAS_CHANGED
+                and isinstance(expected_etag, ItemNotAvailableFlag)):
+            obj_name = self._build_full_objectname(key)
+            serialized_data, content_type = self._serialize_value_for_s3(value)
+            try:
+                response = self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=obj_name,
+                    Body=serialized_data,
+                    ContentType=content_type,
+                    IfMatch=actual_etag
+                )
+                resulting_etag = ETagValue(response["ETag"])
+                return ConditionalOperationResult(
+                    condition_was_satisfied=True,
+                    requested_condition=condition,
+                    actual_etag=actual_etag,
+                    resulting_etag=resulting_etag,
+                    new_value=value)
+            except ClientError as e:
+                status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                code = e.response.get('Error', {}).get('Code')
+                if status in (409, 412) or code in (
+                        "ConditionalRequestConflict", "PreconditionFailed"):
+                    new_actual = self._actual_etag(key)
+                    if new_actual is ITEM_NOT_AVAILABLE:
+                        return ConditionalOperationResult(
+                            condition_was_satisfied=False,
+                            requested_condition=condition,
+                            actual_etag=new_actual,
+                            resulting_etag=ITEM_NOT_AVAILABLE,
+                            new_value=ITEM_NOT_AVAILABLE)
+                    existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+                    return ConditionalOperationResult(
+                        condition_was_satisfied=False,
+                        requested_condition=condition,
+                        actual_etag=new_actual,
+                        resulting_etag=new_actual,
+                        new_value=existing_value)
+                raise
+        if (condition is ETAG_HAS_CHANGED
+                and not isinstance(expected_etag, ItemNotAvailableFlag)):
+            obj_name = self._build_full_objectname(key)
+            serialized_data, content_type = self._serialize_value_for_s3(value)
+            try:
+                response = self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=obj_name,
+                    Body=serialized_data,
+                    ContentType=content_type,
+                    IfNoneMatch=expected_etag
+                )
+                resulting_etag = ETagValue(response["ETag"])
+                return ConditionalOperationResult(
+                    condition_was_satisfied=True,
+                    requested_condition=condition,
+                    actual_etag=actual_etag,
+                    resulting_etag=resulting_etag,
+                    new_value=value)
+            except ClientError as e:
+                status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                code = e.response.get('Error', {}).get('Code')
+                if status in (409, 412) or code in (
+                        "ConditionalRequestConflict", "PreconditionFailed"):
                     new_actual = self._actual_etag(key)
                     if new_actual is ITEM_NOT_AVAILABLE:
                         return ConditionalOperationResult(
@@ -628,6 +795,45 @@ class BasicS3Dict(PersiDict[ValueType]):
                 actual_etag=actual_etag,
                 resulting_etag=actual_etag,
                 new_value=ITEM_NOT_AVAILABLE)
+
+        if self.append_only:
+            raise KeyError("Can't delete an immutable key-value pair")
+
+        if (condition is ETAG_IS_THE_SAME
+                and not isinstance(expected_etag, ItemNotAvailableFlag)):
+            obj_name = self._build_full_objectname(key)
+            try:
+                self.s3_client.delete_object(
+                    Bucket=self.bucket_name,
+                    Key=obj_name,
+                    IfMatch=expected_etag
+                )
+                return ConditionalOperationResult(
+                    condition_was_satisfied=True,
+                    requested_condition=condition,
+                    actual_etag=actual_etag,
+                    resulting_etag=ITEM_NOT_AVAILABLE,
+                    new_value=ITEM_NOT_AVAILABLE)
+            except ClientError as e:
+                status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                code = e.response.get('Error', {}).get('Code')
+                if status in (409, 412) or code in (
+                        "ConditionalRequestConflict", "PreconditionFailed"):
+                    new_actual = self._actual_etag(key)
+                    if new_actual is ITEM_NOT_AVAILABLE:
+                        return ConditionalOperationResult(
+                            condition_was_satisfied=False,
+                            requested_condition=condition,
+                            actual_etag=new_actual,
+                            resulting_etag=ITEM_NOT_AVAILABLE,
+                            new_value=ITEM_NOT_AVAILABLE)
+                    return ConditionalOperationResult(
+                        condition_was_satisfied=False,
+                        requested_condition=condition,
+                        actual_etag=new_actual,
+                        resulting_etag=new_actual,
+                        new_value=ITEM_NOT_AVAILABLE)
+                raise
 
         self.discard(key)
         return ConditionalOperationResult(

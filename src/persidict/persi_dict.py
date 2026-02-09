@@ -376,6 +376,23 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 resulting_etag=actual_etag,
                 new_value=existing_value)
 
+        if value is KEEP_CURRENT:
+            return ConditionalOperationResult(
+                condition_was_satisfied=True,
+                requested_condition=condition,
+                actual_etag=actual_etag,
+                resulting_etag=actual_etag,
+                new_value=VALUE_NOT_RETRIEVED)
+
+        if value is DELETE_CURRENT:
+            self.discard(key)
+            return ConditionalOperationResult(
+                condition_was_satisfied=True,
+                requested_condition=condition,
+                actual_etag=actual_etag,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+
         self[key] = value
         resulting_etag = self._actual_etag(key)
         return ConditionalOperationResult(
