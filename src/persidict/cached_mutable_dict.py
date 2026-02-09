@@ -4,11 +4,17 @@ from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
-from .jokers_and_status_flags import (ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED,
-                                      EXECUTION_IS_COMPLETE, ETagChangeFlag,
+from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput, ETagValue, ETAG_UNKNOWN,
-                                      ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
+                                      Joker, ETagValue,
+                                      ETagConditionFlag,
+                                      ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
+                                      VALUE_NOT_RETRIEVED,
+                                      ETagIfExists,
+                                      ConditionalOperationResult,
+                                      OperationResult,
+                                      TransformingFunction)
 
 
 class MutableDictCached(PersiDict[ValueType]):
@@ -120,7 +126,7 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main_dict.timestamp(key)
 
-    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue | None:
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
         """Return cached ETag if available, otherwise fetch from main dict.
 
         This method returns the ETag from the local cache when available,
@@ -135,32 +141,31 @@ class MutableDictCached(PersiDict[ValueType]):
             key: Non-empty key to query.
 
         Returns:
-            ETagValue | None: The ETag string for the key.
+            ETagValue: The ETag string for the key.
 
         Raises:
             KeyError: If the key does not exist in the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        cached_etag = self._etag_cache.get(key, ETAG_UNKNOWN)
-        if cached_etag is not ETAG_UNKNOWN:
+        try:
+            cached_etag = self._etag_cache[key]
             return cached_etag
+        except KeyError:
+            pass
         # Not in cache - fetch from main_dict and cache it
         etag = self._main_dict.etag(key)
         self._set_cached_etag(key, etag)
         return etag
 
 
-    def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: Optional[ETagValue]) -> None:
-        """Update the cached ETag for a key, or clear it if None.
+    def _set_cached_etag(self, key: NonEmptySafeStrTuple, etag: ETagValue) -> None:
+        """Update the cached ETag for a key.
 
         Args:
             key: Normalized non-empty key.
-            etag: The ETag string to store, or None to remove any cached ETag.
+            etag: The ETag string to store.
         """
-        if etag is None:
-            self._etag_cache.discard(key)
-        else:
-            self._etag_cache[key] = etag
+        self._etag_cache[key] = etag
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Return the value for key using ETag-aware read-through caching.
@@ -180,147 +185,133 @@ class MutableDictCached(PersiDict[ValueType]):
             KeyError: If the key does not exist in the main dict.
         """
         key = NonEmptySafeStrTuple(key)
-        old_etag = self._etag_cache.get(key, ETAG_UNKNOWN)
-        res = self.get_item_if_etag(key, old_etag, DIFFERENT_ETAG)
-        if res is ETAG_HAS_NOT_CHANGED:
+
+        # Check if we have a cached etag
+        try:
+            cached_etag = self._etag_cache[key]
+        except KeyError:
+            cached_etag = ITEM_NOT_AVAILABLE
+
+        res = self.get_item_if(
+            key, cached_etag, ETAG_HAS_CHANGED,
+            always_retrieve_value=False)
+
+        if res.new_value is ITEM_NOT_AVAILABLE:
+            raise KeyError(f"Key {key} not found")
+
+        if res.new_value is VALUE_NOT_RETRIEVED:
+            # Etag hasn't changed, try the data cache
             try:
                 return self._data_cache[key]
             except KeyError:
-                value, _ =  self.get_item_if_etag(key, ETAG_UNKNOWN, DIFFERENT_ETAG)
-                return value
-        else:
-            value, _ = res
-            return value
+                # Cache miss — fetch fresh
+                res2 = self.get_item_if(
+                    key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+                if res2.new_value is ITEM_NOT_AVAILABLE:
+                    raise KeyError(f"Key {key} not found")
+                return res2.new_value
 
+        return res.new_value
 
-    def get_item_if_etag(
+    def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ):
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
         """Return value only if the ETag satisfies a condition.
 
-        For DIFFERENT_ETAG, delegates to the main dict and refreshes caches
-        when a change is detected. For EQUAL_ETAG, validates against the main
-        dict to avoid stale cached ETags and refreshes caches on success.
+        Delegates to the main dict and refreshes caches when data is fetched.
         """
         key = NonEmptySafeStrTuple(key)
-        if condition is DIFFERENT_ETAG:
-            res = self._main_dict.get_item_if_etag(key, etag, condition)
-            if res is ETAG_HAS_NOT_CHANGED:
-                return res
-            value, new_etag = res
-            self._data_cache[key] = value
-            self._set_cached_etag(key, new_etag)
-            return res
-        if condition is EQUAL_ETAG:
-            current_etag = self._main_dict.etag(key)
-            if etag != current_etag:
-                return ETAG_HAS_CHANGED
+        res = self._main_dict.get_item_if(
+            key, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
 
-            try:
-                value = self._data_cache[key]
-            except KeyError:
-                value = self._main_dict[key]
-                self._data_cache[key] = value
+        # If value was retrieved, update caches
+        if (res.new_value is not ITEM_NOT_AVAILABLE
+                and res.new_value is not VALUE_NOT_RETRIEVED):
+            self._data_cache[key] = res.new_value
+            if not isinstance(res.resulting_etag, ItemNotAvailableFlag):
+                self._set_cached_etag(key, res.resulting_etag)
 
-            self._set_cached_etag(key, current_etag)
-            return value, current_etag
-        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
+        return res
 
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set value for key via main dict and keep caches in sync.
 
-        This method writes to the main dict and mirrors the value
-        and ETag into caches.
-
         Args:
             key: Non-empty key to set.
             value: The value to store for the key.
         """
-        # Reuse the base processing for jokers and type checks, but route actual
-        # writes/deletes to the main dict and keep caches in sync via the
-        # set_item_get_etag helper below.
-        self.set_item_get_etag(key, value)
-
-
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[ETagValue]:
-        """Set item and return its ETag, updating caches.
-
-        This method delegates the actual write to the main dict.
-        After a successful write, it mirrors the value to data_cache
-        and stores the returned ETag in etag_cache.
-
-        Args:
-            key: Non-empty key to set.
-            value: The value to store.
-
-        Returns:
-            Optional[ETagValue]: The new ETag string from the main dict, or None if
-            execution was handled entirely by base-class joker processing.
-        """
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
-            return None
-        etag = self._main_dict.set_item_get_etag(key, value)
+            return
+        self._main_dict[key] = value
         self._data_cache[key] = value
+        etag = self._main_dict.etag(key)
         self._set_cached_etag(key, etag)
-        return etag
 
 
-    def set_item_if_etag(
+    def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> Optional[ETagValue] | ETagChangeFlag:
+            value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; update caches on success."""
         key = NonEmptySafeStrTuple(key)
-        res = self._main_dict.set_item_if_etag(key, value, etag, condition)
-        if res is ETAG_HAS_CHANGED or res is ETAG_HAS_NOT_CHANGED:
-            return res
-        if value is KEEP_CURRENT:
-            return res
-        if value is DELETE_CURRENT:
-            self._data_cache.discard(key)
-            self._etag_cache.discard(key)
-            return res
-        self._data_cache[key] = value
-        self._set_cached_etag(key, res)
+        res = self._main_dict.set_item_if(
+            key, value, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
+        if res.condition_was_satisfied:
+            if value is KEEP_CURRENT:
+                pass  # No cache update needed
+            elif value is DELETE_CURRENT:
+                self._data_cache.discard(key)
+                self._etag_cache.discard(key)
+            else:
+                self._data_cache[key] = value
+                if not isinstance(res.resulting_etag, ItemNotAvailableFlag):
+                    self._set_cached_etag(key, res.resulting_etag)
         return res
 
 
-    def delete_item_if_etag(
+    def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
+            expected_etag: ETagIfExists,
             condition: ETagConditionFlag
-    ) -> None | ETagChangeFlag:
-        """Delete item only if ETag satisfies a condition; update caches on success."""
-        key = NonEmptySafeStrTuple(key)
-        res = self._main_dict.delete_item_if_etag(key, etag, condition)
-        if res is ETAG_HAS_CHANGED or res is ETAG_HAS_NOT_CHANGED:
-            return res
-        self._data_cache.discard(key)
-        self._etag_cache.discard(key)
-        return None
-
-
-    def discard_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> bool:
+    ) -> ConditionalOperationResult:
         """Discard item only if ETag satisfies a condition; update caches on success."""
         key = NonEmptySafeStrTuple(key)
-        res = self._main_dict.discard_item_if_etag(key, etag, condition)
-        if res:
+        res = self._main_dict.discard_item_if(key, expected_etag, condition)
+        if res.condition_was_satisfied:
             self._data_cache.discard(key)
             self._etag_cache.discard(key)
+        return res
+
+    def transform_item(
+            self,
+            key: NonEmptyPersiDictKey,
+            transformer: TransformingFunction
+    ) -> OperationResult:
+        """Apply a transformation; delegate to main dict and update caches."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.transform_item(key, transformer)
+        if isinstance(res.resulting_etag, ItemNotAvailableFlag):
+            self._data_cache.discard(key)
+            self._etag_cache.discard(key)
+        else:
+            if res.new_value is not ITEM_NOT_AVAILABLE:
+                self._data_cache[key] = res.new_value
+            self._set_cached_etag(key, res.resulting_etag)
         return res
 
 

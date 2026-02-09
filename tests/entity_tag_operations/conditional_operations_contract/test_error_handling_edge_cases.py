@@ -9,7 +9,8 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, EQUAL_ETAG, DIFFERENT_ETAG
+    ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+    ConditionalOperationResult
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -89,9 +90,9 @@ def test_conditional_ops_with_empty_string_value(tmpdir, DictToTest, kwargs):
     d["key1"] = ""
     etag = d.etag("key1")
 
-    result = d.set_item_if_etag("key1", "updated", etag, EQUAL_ETAG)
+    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
 
-    assert result is not ETAG_HAS_CHANGED
+    assert result.condition_was_satisfied
     assert d["key1"] == "updated"
 
 
@@ -105,9 +106,9 @@ def test_conditional_ops_with_none_value(tmpdir, DictToTest, kwargs):
 
     assert d["key1"] is None
 
-    result = d.set_item_if_etag("key1", "updated", etag, EQUAL_ETAG)
+    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
 
-    assert result is not ETAG_HAS_CHANGED
+    assert result.condition_was_satisfied
     assert d["key1"] == "updated"
 
 
@@ -130,8 +131,8 @@ def test_etag_equality_comparison_not_identity(tmpdir, DictToTest, kwargs):
     assert etag1 == etag2
 
     # The conditional operation should work with either
-    result = d.set_item_if_etag("key1", "updated", etag2, EQUAL_ETAG)
-    assert result is not ETAG_HAS_CHANGED
+    result = d.set_item_if("key1", "updated", etag2, ETAG_IS_THE_SAME)
+    assert result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -151,35 +152,37 @@ def test_concurrent_modification_detection_simulation(tmpdir, DictToTest, kwargs
     d["key1"] = "modified_by_other"
 
     # Our conditional operation should detect the change
-    result = d.set_item_if_etag("key1", "our_value", stale_etag, EQUAL_ETAG)
+    result = d.set_item_if("key1", "our_value", stale_etag, ETAG_IS_THE_SAME)
 
-    assert result is ETAG_HAS_CHANGED
+    assert not result.condition_was_satisfied
     assert d["key1"] == "modified_by_other"
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_return_type_set_item_if_etag_equal_success(tmpdir, DictToTest, kwargs):
-    """Verify return type is str on successful set_item_if_etag with EQUAL_ETAG."""
+    """Verify return type is str on successful set_item_if_etag with ETAG_IS_THE_SAME."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.set_item_if_etag("key1", "updated", etag, EQUAL_ETAG)
+    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
 
-    assert isinstance(result, str)
+    assert result.condition_was_satisfied
+    assert isinstance(result.resulting_etag, str)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_return_type_set_item_if_etag_equal_failure(tmpdir, DictToTest, kwargs):
-    """Verify return type is ETAG_HAS_CHANGED flag on failure."""
+    """Verify set_item_if returns ConditionalOperationResult on failure."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if_etag("key1", "updated", "wrong_etag", EQUAL_ETAG)
+    result = d.set_item_if("key1", "updated", "wrong_etag", ETAG_IS_THE_SAME)
 
-    assert result is ETAG_HAS_CHANGED
+    assert not result.condition_was_satisfied
+    assert isinstance(result, ConditionalOperationResult)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -190,9 +193,9 @@ def test_return_type_delete_item_if_etag_equal_success(tmpdir, DictToTest, kwarg
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.delete_item_if_etag("key1", etag, EQUAL_ETAG)
+    result = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
 
-    assert result is None
+    assert result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -202,26 +205,26 @@ def test_return_type_delete_item_if_etag_equal_failure(tmpdir, DictToTest, kwarg
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.delete_item_if_etag("key1", "wrong_etag", EQUAL_ETAG)
+    result = d.discard_item_if("key1", "wrong_etag", ETAG_IS_THE_SAME)
 
-    assert result is ETAG_HAS_CHANGED
+    assert not result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_return_type_discard_is_bool(tmpdir, DictToTest, kwargs):
-    """Verify discard methods always return bool."""
+    """Verify discard methods always return ConditionalOperationResult."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result_success = d.discard_item_if_etag("key1", etag, EQUAL_ETAG)
-    result_missing = d.discard_item_if_etag("key1", etag, EQUAL_ETAG)  # Now missing
+    result_success = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
+    result_missing = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)  # Now missing
 
-    assert isinstance(result_success, bool)
-    assert isinstance(result_missing, bool)
-    assert result_success is True
-    assert result_missing is False
+    assert isinstance(result_success, ConditionalOperationResult)
+    assert isinstance(result_missing, ConditionalOperationResult)
+    assert result_success.condition_was_satisfied
+    assert not result_missing.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -241,9 +244,9 @@ def test_conditional_ops_with_complex_nested_value(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Verify we can do conditional get
-    result = d.get_item_if_etag("key1", etag, EQUAL_ETAG)
-    assert result is not ETAG_HAS_CHANGED
-    value, _ = result
+    result = d.get_item_if("key1", etag, ETAG_IS_THE_SAME)
+    assert result.condition_was_satisfied
+    value = result.new_value
     assert value == complex_value
 
 
@@ -275,13 +278,14 @@ def test_conditional_set_then_delete_in_sequence(tmpdir, DictToTest, kwargs):
     etag1 = d.etag("key1")
 
     # Conditional set
-    etag2 = d.set_item_if_etag("key1", "updated", etag1, EQUAL_ETAG)
-    assert etag2 is not ETAG_HAS_CHANGED
+    result_set = d.set_item_if("key1", "updated", etag1, ETAG_IS_THE_SAME)
+    assert result_set.condition_was_satisfied
     assert d["key1"] == "updated"
+    etag2 = result_set.resulting_etag
 
     # Conditional delete with new etag
-    result = d.delete_item_if_etag("key1", etag2, EQUAL_ETAG)
-    assert result is None
+    result = d.discard_item_if("key1", etag2, ETAG_IS_THE_SAME)
+    assert result.condition_was_satisfied
     assert "key1" not in d
 
 
@@ -294,11 +298,12 @@ def test_conditional_delete_then_recreate(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Delete
-    d.delete_item_if_etag("key1", etag, EQUAL_ETAG)
+    d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
     assert "key1" not in d
 
     # Recreate
-    new_etag = d.set_item_get_etag("key1", "recreated")
+    d["key1"] = "recreated"
+    new_etag = d.etag("key1")
     assert "key1" in d
     assert d["key1"] == "recreated"
     assert isinstance(new_etag, str)
@@ -307,17 +312,17 @@ def test_conditional_delete_then_recreate(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_status_flags_are_singleton_instances(tmpdir, DictToTest, kwargs):
-    """Verify status flags can be compared using 'is' (singleton check)."""
+    """Verify condition_was_satisfied correctly reflects failed conditions."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result1 = d.set_item_if_etag("key1", "new", "wrong_etag", EQUAL_ETAG)
-    result2 = d.set_item_if_etag("key1", "new", current_etag, DIFFERENT_ETAG)
+    result1 = d.set_item_if("key1", "new", "wrong_etag", ETAG_IS_THE_SAME)
+    result2 = d.set_item_if("key1", "new", current_etag, ETAG_HAS_CHANGED)
 
-    # Status flags should be the exact same singleton objects
-    assert result1 is ETAG_HAS_CHANGED
-    assert result2 is ETAG_HAS_NOT_CHANGED
+    # Both results should indicate condition not satisfied
+    assert not result1.condition_was_satisfied
+    assert not result2.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -343,9 +348,9 @@ def test_get_item_if_etag_preserves_value_type(tmpdir, DictToTest, kwargs):
         d[key] = test_value
         etag = d.etag(key)
 
-        result = d.get_item_if_etag(key, etag, EQUAL_ETAG)
-        assert result is not ETAG_HAS_CHANGED
-        retrieved_value, _ = result
+        result = d.get_item_if(key, etag, ETAG_IS_THE_SAME)
+        assert result.condition_was_satisfied
+        retrieved_value = result.new_value
         assert retrieved_value == test_value
         assert type(retrieved_value) is type(test_value)
 
@@ -359,7 +364,7 @@ def test_long_key_tuples(tmpdir, DictToTest, kwargs):
     d[key] = "deep_value"
     etag = d.etag(key)
 
-    result = d.set_item_if_etag(key, "updated_deep", etag, EQUAL_ETAG)
+    result = d.set_item_if(key, "updated_deep", etag, ETAG_IS_THE_SAME)
 
-    assert result is not ETAG_HAS_CHANGED
+    assert result.condition_was_satisfied
     assert d[key] == "updated_deep"

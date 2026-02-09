@@ -6,12 +6,12 @@ from persidict.persi_dict import PersiDict
 from persidict.local_dict import LocalDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED,
-    ETAG_HAS_CHANGED,
+    ITEM_NOT_AVAILABLE,
     KEEP_CURRENT,
     DELETE_CURRENT,
-    EQUAL_ETAG,
-    DIFFERENT_ETAG,
+    ETAG_IS_THE_SAME,
+    ETAG_HAS_CHANGED,
+    ConditionalOperationResult,
 )
 
 
@@ -74,38 +74,14 @@ class FakeETagMain(PersiDict):
             raise KeyError(key)
         return self._store[key][0]
 
-    def get_item_if_etag(self, key, etag, condition):
-        key = NonEmptySafeStrTuple(key)
-        if key not in self._store:
-            raise KeyError(key)
-        current_etag = self._store[key][1]
-        if condition == DIFFERENT_ETAG:
-            if etag == current_etag:
-                return ETAG_HAS_NOT_CHANGED
-            return self._store[key][0], current_etag
-        if condition == EQUAL_ETAG:
-            if etag != current_etag:
-                return ETAG_HAS_CHANGED
-            return self._store[key][0], current_etag
-        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
-
-    def set_item_get_etag(self, key, value):
-        key = NonEmptySafeStrTuple(key)
+    def __setitem__(self, key, value):
         if self._process_setitem_args(key, value) is not None:
-            # PersiDict._process_setitem_args returns a StatusFlag; only when
-            # EXECUTION_IS_COMPLETE do we short-circuit. For simplicity, delegate
-            # to PersiDict __setitem__ semantics by handling DELETE_CURRENT/KEEP_CURRENT
-            # via _process_setitem_args and fall through when normal execution.
             pass
+        key = NonEmptySafeStrTuple(key)
         self._counter += 1
         etag = f"E{self._counter}"
         ts = time.time()
         self._store[key] = (value, etag, ts)
-        return etag
-
-    def __setitem__(self, key, value):
-        # Use set_item_get_etag for behavior symmetry
-        self.set_item_get_etag(key, value)
 
     def __delitem__(self, key):
         key = NonEmptySafeStrTuple(key)
@@ -139,7 +115,8 @@ def test_constructor_validations():
 
 def test_setitem_and_caches_updated(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
-    etag = wrapper.set_item_get_etag(("a",), 123)
+    wrapper[("a",)] = 123
+    etag = wrapper.etag(("a",))
     assert ("a",) in wrapper
     assert wrapper[("a",)] == 123
     assert data_cache[("a",)] == 123
@@ -149,7 +126,8 @@ def test_setitem_and_caches_updated(cached_env):
 def test_getitem_read_through_and_cache_population(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
     # Populate main directly (simulating out-of-band write)
-    etag = main.set_item_get_etag(("k1",), "v1")
+    main[("k1",)] = "v1"
+    etag = main.etag(("k1",))
     # First access should fetch from main and populate caches
     assert wrapper[("k1",)] == "v1"
     assert data_cache[("k1",)] == "v1"
@@ -166,24 +144,27 @@ def test_getitem_read_through_and_cache_population(cached_env):
 
 def test_get_item_if_etag_different_semantics(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
-    etag1 = wrapper.set_item_get_etag("key", {"a": 1})
+    wrapper["key"] = {"a": 1}
+    etag1 = wrapper.etag("key")
     # Ask with current etag: must return sentinel and not modify caches
-    res = wrapper.get_item_if_etag("key", etag1, DIFFERENT_ETAG)
-    assert res is ETAG_HAS_NOT_CHANGED
+    res = wrapper.get_item_if("key", etag1, ETAG_HAS_CHANGED)
+    assert not res.condition_was_satisfied
     # Update value -> new etag; call with old etag should return new value and update caches
-    etag2 = wrapper.set_item_get_etag("key", {"a": 2})
+    wrapper["key"] = {"a": 2}
+    etag2 = wrapper.etag("key")
     assert etag2 != etag1
-    val, new_etag = wrapper.get_item_if_etag("key", etag1, DIFFERENT_ETAG)
-    assert val == {"a": 2}
-    assert new_etag == etag2
+    res2 = wrapper.get_item_if("key", etag1, ETAG_HAS_CHANGED)
+    assert res2.condition_was_satisfied
+    assert res2.new_value == {"a": 2}
+    assert res2.resulting_etag == etag2
     assert data_cache["key"] == {"a": 2}
     assert etag_cache["key"] == etag2
 
 
 def test_contains_len_iter_delegate_to_main(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
-    main.set_item_get_etag(("x",), 1)
-    main.set_item_get_etag(("y",), 2)
+    main[("x",)] = 1
+    main[("y",)] = 2
     assert ("x",) in wrapper and ("y",) in wrapper
     assert len(wrapper) == 2
     assert set(wrapper.keys()) == {NonEmptySafeStrTuple(("x",)), NonEmptySafeStrTuple(("y",))}
@@ -206,12 +187,14 @@ def test_wrapper_write_update_and_jokers(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     # initial write via wrapper
-    e1 = wrapper.set_item_get_etag(("w",), {"v": 1})
+    wrapper[("w",)] = {"v": 1}
+    e1 = wrapper.etag(("w",))
     assert etag_cache[("w",)] == e1
     assert data_cache[("w",)] == {"v": 1}
 
     # overwrite via wrapper -> new etag and caches updated
-    e2 = wrapper.set_item_get_etag(("w",), {"v": 2})
+    wrapper[("w",)] = {"v": 2}
+    e2 = wrapper.etag(("w",))
     assert e2 != e1
     assert etag_cache[("w",)] == e2
     assert data_cache[("w",)] == {"v": 2}
@@ -220,15 +203,13 @@ def test_wrapper_write_update_and_jokers(cached_env):
     # KEEP_CURRENT should not change anything and return None
     prev_val = wrapper[("w",)]
     prev_etag = etag_cache[("w",)]
-    res = wrapper.set_item_get_etag(("w",), KEEP_CURRENT)
-    assert res is None
+    wrapper[("w",)] = KEEP_CURRENT
     assert wrapper[("w",)] == prev_val
     assert etag_cache[("w",)] == prev_etag
     assert data_cache[("w",)] == prev_val
 
     # DELETE_CURRENT via set_item_get_etag should remove from main and caches
-    res2 = wrapper.set_item_get_etag(("w",), DELETE_CURRENT)
-    assert res2 is None
+    wrapper[("w",)] = DELETE_CURRENT
     assert ("w",) not in main
     assert ("w",) not in etag_cache
     assert ("w",) not in data_cache
@@ -246,14 +227,16 @@ def test_external_modifications_etag_refresh_and_delete(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     # Set externally in main
-    e1 = main.set_item_get_etag(("ext",), "v1")
+    main[("ext",)] = "v1"
+    e1 = main.etag(("ext",))
     # Read through wrapper populates caches
     assert wrapper[("ext",)] == "v1"
     assert etag_cache[("ext",)] == e1
     assert data_cache[("ext",)] == "v1"
 
     # External update in main should cause refresh on next read
-    e2 = main.set_item_get_etag(("ext",), "v2")
+    main[("ext",)] = "v2"
+    e2 = main.etag(("ext",))
     assert e2 != e1
     assert wrapper[("ext",)] == "v2"  # triggers refresh
     assert etag_cache[("ext",)] == e2
@@ -270,19 +253,21 @@ def test_cache_edge_cases_missing_etag_or_value(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     # Seed via wrapper
-    e1 = wrapper.set_item_get_etag(("c",), 111)
+    wrapper[("c",)] = 111
+    e1 = wrapper.etag(("c",))
     assert etag_cache[("c",)] == e1
     assert data_cache[("c",)] == 111
 
     # Case A: etag missing but data present -> force fetch from main and re-store etag
     del etag_cache[("c",)]
     assert ("c",) in data_cache and ("c",) not in etag_cache
-    # Access triggers fetch with ETAG_UNKNOWN; value same, etag restored
+    # Access triggers fetch with ITEM_NOT_AVAILABLE; value same, etag restored
     assert wrapper[("c",)] == 111
     assert ("c",) in etag_cache
 
     # Case B: data missing but stale etag present and main changed -> refresh both
-    e2 = main.set_item_get_etag(("c",), 222)  # external update
+    main[("c",)] = 222
+    e2 = main.etag(("c",))  # external update
     del data_cache[("c",)]
     assert ("c",) not in data_cache and etag_cache[("c",)] != e2
     assert wrapper[("c",)] == 222
@@ -291,7 +276,8 @@ def test_cache_edge_cases_missing_etag_or_value(cached_env):
 
     # Case C: corrupted etag type in cache should be treated as mismatch and refresh
     etag_cache[("c",)] = 123456  # wrong type instead of str
-    e3 = main.set_item_get_etag(("c",), 333)
+    main[("c",)] = 333
+    e3 = main.etag(("c",))
     val = wrapper[("c",)]
     assert val == 333
     assert etag_cache[("c",)] == e3  # corrected to proper etag from main
@@ -332,10 +318,11 @@ def test_base_class_for_values_enforced_via_wrapper():
 
     # Storing wrong type via wrapper must raise TypeError
     with pytest.raises(TypeError):
-        wrapper.set_item_get_etag(("bcv",), 123)
+        wrapper[("bcv",)] = 123
 
     # Correct type succeeds and updates caches
-    etag = wrapper.set_item_get_etag(("bcv",), {"a": 1})
+    wrapper[("bcv",)] = {"a": 1}
+    etag = wrapper.etag(("bcv",))
     assert etag_cache[("bcv",)] == etag
     assert data_cache[("bcv",)] == {"a": 1}
 
@@ -345,7 +332,7 @@ def test_timestamp_delegation_to_main(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     # Set via main to simulate out-of-band write
-    main.set_item_get_etag(("ts",), "v1")
+    main[("ts",)] = "v1"
 
     # Timestamps should match between wrapper and main
     ts_main = main.timestamp(("ts",))
@@ -354,7 +341,7 @@ def test_timestamp_delegation_to_main(cached_env):
 
     # After external update, timestamp should increase and still match
     time.sleep(0.001)
-    main.set_item_get_etag(("ts",), "v2")
+    main[("ts",)] = "v2"
     ts_main2 = main.timestamp(("ts",))
     ts_wrap2 = wrapper.timestamp(("ts",))
     assert ts_wrap2 == ts_main2

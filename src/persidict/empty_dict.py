@@ -10,7 +10,11 @@ from typing import Any, Iterator
 
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
-from .jokers_and_status_flags import ETagInput, ETagConditionFlag, ETagValue
+from .jokers_and_status_flags import (ETagConditionFlag, ETagValue,
+                                      ETagIfExists,
+                                      ITEM_NOT_AVAILABLE,
+                                      ConditionalOperationResult,
+                                      OperationResult)
 
 
 class EmptyDict(PersiDict[ValueType]):
@@ -43,14 +47,22 @@ class EmptyDict(PersiDict[ValueType]):
         raise KeyError(key)
 
 
-    def get_item_if_etag(
+    def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> tuple[ValueType, ETagValue | None]:
-        """Always raises KeyError as EmptyDict contains nothing."""
-        raise KeyError(key)
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
+        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
+        return ConditionalOperationResult(
+            condition_was_satisfied=satisfied,
+            requested_condition=condition,
+            actual_etag=ITEM_NOT_AVAILABLE,
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
 
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -61,25 +73,78 @@ class EmptyDict(PersiDict[ValueType]):
         # Do nothing - discard the write like /dev/null
 
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> ETagValue | None:
-        """Accepts any write operation, discards the data, returns None as etag.
+    def set_item_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Key is always absent; condition evaluated, write discarded on success."""
+        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
+        if satisfied:
+            # Accept the write but discard it (like /dev/null)
+            return ConditionalOperationResult(
+                condition_was_satisfied=True,
+                requested_condition=condition,
+                actual_etag=ITEM_NOT_AVAILABLE,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+        return ConditionalOperationResult(
+            condition_was_satisfied=False,
+            requested_condition=condition,
+            actual_etag=ITEM_NOT_AVAILABLE,
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
 
-        Args:
-            key: Dictionary key (processed for validation but discarded).
-            value: Value to store (processed for validation but discarded).
+    def setdefault_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            default_value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Key is always absent; condition evaluated, write discarded on success."""
+        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
+        if satisfied:
+            return ConditionalOperationResult(
+                condition_was_satisfied=True,
+                requested_condition=condition,
+                actual_etag=ITEM_NOT_AVAILABLE,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+        return ConditionalOperationResult(
+            condition_was_satisfied=False,
+            requested_condition=condition,
+            actual_etag=ITEM_NOT_AVAILABLE,
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
 
-        Returns:
-            ETagValue | None: Always returns None as no actual storage occurs.
+    def discard_item_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag
+    ) -> ConditionalOperationResult:
+        """Key is always absent; condition evaluated normally."""
+        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
+        return ConditionalOperationResult(
+            condition_was_satisfied=satisfied,
+            requested_condition=condition,
+            actual_etag=ITEM_NOT_AVAILABLE,
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
 
-        Raises:
-            KeyError: If attempting to modify when append_only is True.
-            TypeError: If value doesn't match base_class_for_values when specified.
-        """
-        # Run base validations (immutable checks, key normalization,
-        # type checks, jokers) to ensure API consistency, then discard.
-        self._process_setitem_args(key, value)
-        # Do nothing - discard the write like /dev/null
-        return None
+    def transform_item(self, key, transformer) -> OperationResult:
+        """Transform always receives ITEM_NOT_AVAILABLE, result is discarded."""
+        new_value = transformer(ITEM_NOT_AVAILABLE)
+        return OperationResult(
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
 
     
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
@@ -135,15 +200,6 @@ class EmptyDict(PersiDict[ValueType]):
 
 
     def discard(self, key: NonEmptyPersiDictKey) -> bool:
-        """Always returns False as the key never exists."""
-        return False
-
-    def discard_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> bool:
         """Always returns False as the key never exists."""
         return False
 

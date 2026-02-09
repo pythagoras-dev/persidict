@@ -28,10 +28,13 @@ from mixinforge import ParameterizableMixin, sort_dict_by_keys
 from . import NonEmptySafeStrTuple
 from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
-                                      ETagChangeFlag, ETAG_HAS_NOT_CHANGED,
-                                      ETAG_HAS_CHANGED,
-                                      ETagInput, ETagValue, ETAG_UNKNOWN,
-                                      ETagConditionFlag, EQUAL_ETAG, DIFFERENT_ETAG)
+                                      ETagValue, ETagConditionFlag,
+                                      ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
+                                      VALUE_NOT_RETRIEVED,
+                                      ETagIfExists, ValueIfExists, ValueInResult,
+                                      TransformingFunction,
+                                      OperationResult, ConditionalOperationResult)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -224,184 +227,326 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                                     " and cannot check items directly")
 
 
-    def _etag_condition_holds(
+    def _check_condition(
             self,
             condition: ETagConditionFlag,
-            etag: ETagInput,
-            current_etag: ETagValue | None
+            expected_etag: ETagIfExists,
+            actual_etag: ETagIfExists
     ) -> bool:
-        if condition is EQUAL_ETAG:
-            return etag == current_etag
-        if condition is DIFFERENT_ETAG:
-            return etag != current_etag
-        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
-
-
-    def _etag_condition_failure_flag(
-            self,
-            condition: ETagConditionFlag
-    ) -> ETagChangeFlag:
-        if condition is EQUAL_ETAG:
-            return ETAG_HAS_CHANGED
-        if condition is DIFFERENT_ETAG:
-            return ETAG_HAS_NOT_CHANGED
-        raise ValueError("condition must be EQUAL_ETAG or DIFFERENT_ETAG")
-
-
-    def get_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> tuple[ValueType, ETagValue | None] | ETagChangeFlag:
-        """Retrieve the value for a key only if its ETag satisfies a condition.
-
-        This method is absent in the original dict API.
-        By default, the timestamp is used in lieu of ETag.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the read. Subclasses that
-            require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
+        """Evaluate an ETag condition.
 
         Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
-                require a mismatch.
+            condition: The condition to check (ANY_ETAG, ETAG_IS_THE_SAME,
+                or ETAG_HAS_CHANGED).
+            expected_etag: The caller's expected ETag value, or
+                ITEM_NOT_AVAILABLE if the caller believes the key is absent.
+            actual_etag: The actual ETag value, or ITEM_NOT_AVAILABLE if
+                the key is absent.
 
         Returns:
-            tuple[Any, ETagValue | None] | ETagChangeFlag:
-                The deserialized value if the condition succeeds, along with
-                the current ETag; otherwise a sentinel flag describing why the
-                condition failed.
+            bool: True if the condition is satisfied.
 
         Raises:
-            KeyError: If the key does not exist.
-            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
+            ValueError: If condition is not a recognized ETagConditionFlag.
         """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if not self._etag_condition_holds(condition, etag, current_etag):
-            return self._etag_condition_failure_flag(condition)
-        return self[key], current_etag
+        if condition is ANY_ETAG:
+            return True
+        if condition is ETAG_IS_THE_SAME:
+            return expected_etag == actual_etag
+        if condition is ETAG_HAS_CHANGED:
+            return expected_etag != actual_etag
+        raise ValueError(
+            f"condition must be ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED, got {condition!r}")
 
-
-    def set_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> ETagValue | None | ETagChangeFlag:
-        """Store a value only if the ETag satisfies a condition.
-
-        This method is absent in the original dict API.
-        By default, the timestamp-based ETag is used for comparison.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the write operation. Subclasses
-            that require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
+    def _actual_etag(self, key: NonEmptySafeStrTuple) -> ETagIfExists:
+        """Return the actual ETag for a key, or ITEM_NOT_AVAILABLE if absent.
 
         Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            value: Value to store, or a joker command (KEEP_CURRENT or
-                DELETE_CURRENT).
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
-                require a mismatch.
+            key: Normalized dictionary key.
 
         Returns:
-            ETagValue | None | ETagChangeFlag: The ETag of
-                the newly stored object if the condition succeeds, or a sentinel
-                flag if the condition fails.
-
-        Raises:
-            KeyError: If the key does not exist.
-            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
+            ETagIfExists: The ETag value, or ITEM_NOT_AVAILABLE if the key
+                does not exist.
         """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if not self._etag_condition_holds(condition, etag, current_etag):
-            return self._etag_condition_failure_flag(condition)
-        return self.set_item_get_etag(key, value)
-
-
-    def delete_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> None | ETagChangeFlag:
-        """Delete a key only if its ETag satisfies a condition.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the delete operation. Subclasses
-            that require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            etag: The ETag value to compare against, or ETAG_UNKNOWN if unset.
-            condition: EQUAL_ETAG to require a match, or DIFFERENT_ETAG to
-                require a mismatch.
-
-        Returns:
-            None | ETagChangeFlag: None if deletion
-            succeeded, or a sentinel flag if the condition fails.
-
-        Raises:
-            KeyError: If the key does not exist.
-            ValueError: If condition is not EQUAL_ETAG or DIFFERENT_ETAG.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if not self._etag_condition_holds(condition, etag, current_etag):
-            return self._etag_condition_failure_flag(condition)
-        del self[key]
-        return None
-
-
-    def discard_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> bool:
-        """Discard a key only if its ETag satisfies a condition.
-
-        Warning:
-            This base class implementation is not atomic: there is a TOCTOU race
-            condition between the ETag check and the discard operation. Subclasses
-            that require concurrency safety should override this method with an
-            atomic implementation (e.g., using file locks or conditional HTTP
-            headers).
-
-        Returns:
-            bool: True if the item existed and was deleted; False otherwise.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
         try:
-            current_etag = self.etag(key)
+            return self.etag(key)
         except (KeyError, FileNotFoundError):
-            return False
-        if not self._etag_condition_holds(condition, etag, current_etag):
-            return False
-        return self.discard(key)
+            return ITEM_NOT_AVAILABLE
+
+    def get_item_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Retrieve the value for a key only if an ETag condition is satisfied.
+
+        If the key is absent, actual_etag is ITEM_NOT_AVAILABLE and the
+        condition is evaluated normally. No KeyError is raised.
+
+        Warning:
+            This base class implementation is not atomic. Subclasses that
+            offer concurrency safety should override this method.
+
+        Args:
+            key: Dictionary key.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
+                if the caller believes the key is absent.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            always_retrieve_value: If True (default), new_value always
+                reflects the actual state. If False, VALUE_NOT_RETRIEVED is
+                returned when the key exists and the value is already known
+                to the caller (expected_etag == actual_etag).
+
+        Returns:
+            ConditionalOperationResult with the outcome of the operation.
+        """
+        key = NonEmptySafeStrTuple(key)
+        actual_etag = self._actual_etag(key)
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
+
+        if actual_etag is ITEM_NOT_AVAILABLE:
+            return ConditionalOperationResult(
+                condition_was_satisfied=satisfied,
+                requested_condition=condition,
+                actual_etag=ITEM_NOT_AVAILABLE,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+
+        if always_retrieve_value or expected_etag != actual_etag:
+            value = self[key]
+        else:
+            value = VALUE_NOT_RETRIEVED
+
+        return ConditionalOperationResult(
+            condition_was_satisfied=satisfied,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=actual_etag,
+            new_value=value)
+
+    def set_item_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Store a value only if an ETag condition is satisfied.
+
+        If the key is absent, actual_etag is ITEM_NOT_AVAILABLE and the
+        condition is evaluated normally. No KeyError is raised.
+
+        Warning:
+            This base class implementation is not atomic. Subclasses that
+            require concurrency safety should override this method.
+
+        Args:
+            key: Dictionary key.
+            value: Value to store.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
+                if the caller believes the key is absent.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            always_retrieve_value: If True (default), the existing value is
+                returned when the condition fails and the key exists. If False,
+                VALUE_NOT_RETRIEVED is returned instead.
+
+        Returns:
+            ConditionalOperationResult with the outcome of the operation.
+        """
+        key = NonEmptySafeStrTuple(key)
+        actual_etag = self._actual_etag(key)
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
+
+        if not satisfied:
+            if actual_etag is ITEM_NOT_AVAILABLE:
+                return ConditionalOperationResult(
+                    condition_was_satisfied=False,
+                    requested_condition=condition,
+                    actual_etag=ITEM_NOT_AVAILABLE,
+                    resulting_etag=ITEM_NOT_AVAILABLE,
+                    new_value=ITEM_NOT_AVAILABLE)
+            existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+            return ConditionalOperationResult(
+                condition_was_satisfied=False,
+                requested_condition=condition,
+                actual_etag=actual_etag,
+                resulting_etag=actual_etag,
+                new_value=existing_value)
+
+        self[key] = value
+        resulting_etag = self._actual_etag(key)
+        return ConditionalOperationResult(
+            condition_was_satisfied=True,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=resulting_etag,
+            new_value=value)
+
+    def setdefault_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            default_value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Insert default_value if key is absent; conditioned on ETag check.
+
+        If the key is absent and the condition is satisfied, default_value
+        is inserted. If the key is present, no mutation occurs regardless
+        of whether the condition is satisfied.
+
+        Warning:
+            This base class implementation is not atomic. Subclasses that
+            require concurrency safety should override this method.
+
+        Args:
+            key: Dictionary key.
+            default_value: Value to insert if the key is absent and the
+                condition is satisfied.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
+                if the caller believes the key is absent.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            always_retrieve_value: If True (default), the existing value is
+                returned when the key exists. If False, VALUE_NOT_RETRIEVED
+                is returned instead.
+
+        Returns:
+            ConditionalOperationResult with the outcome of the operation.
+        """
+        key = NonEmptySafeStrTuple(key)
+        actual_etag = self._actual_etag(key)
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
+
+        if actual_etag is ITEM_NOT_AVAILABLE:
+            if satisfied:
+                self[key] = default_value
+                resulting_etag = self._actual_etag(key)
+                return ConditionalOperationResult(
+                    condition_was_satisfied=True,
+                    requested_condition=condition,
+                    actual_etag=ITEM_NOT_AVAILABLE,
+                    resulting_etag=resulting_etag,
+                    new_value=default_value)
+            else:
+                return ConditionalOperationResult(
+                    condition_was_satisfied=False,
+                    requested_condition=condition,
+                    actual_etag=ITEM_NOT_AVAILABLE,
+                    resulting_etag=ITEM_NOT_AVAILABLE,
+                    new_value=ITEM_NOT_AVAILABLE)
+
+        existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+        return ConditionalOperationResult(
+            condition_was_satisfied=satisfied,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=actual_etag,
+            new_value=existing_value)
+
+    def discard_item_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag
+    ) -> ConditionalOperationResult:
+        """Discard a key only if an ETag condition is satisfied.
+
+        No always_retrieve_value parameter — new_value is always
+        ITEM_NOT_AVAILABLE (item is gone after deletion or was already absent).
+
+        Warning:
+            This base class implementation is not atomic. Subclasses that
+            require concurrency safety should override this method.
+
+        Args:
+            key: Dictionary key.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
+                if the caller believes the key is absent.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+
+        Returns:
+            ConditionalOperationResult with the outcome of the operation.
+        """
+        key = NonEmptySafeStrTuple(key)
+        actual_etag = self._actual_etag(key)
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
+
+        if actual_etag is ITEM_NOT_AVAILABLE:
+            return ConditionalOperationResult(
+                condition_was_satisfied=satisfied,
+                requested_condition=condition,
+                actual_etag=ITEM_NOT_AVAILABLE,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+
+        if satisfied:
+            self.discard(key)
+            return ConditionalOperationResult(
+                condition_was_satisfied=True,
+                requested_condition=condition,
+                actual_etag=actual_etag,
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+
+        return ConditionalOperationResult(
+            condition_was_satisfied=False,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=actual_etag,
+            new_value=ITEM_NOT_AVAILABLE)
+
+    def transform_item(
+            self,
+            key: NonEmptyPersiDictKey,
+            transformer: TransformingFunction
+    ) -> OperationResult:
+        """Apply a transformation function to a key's value atomically.
+
+        Reads the current value (or ITEM_NOT_AVAILABLE if absent), calls
+        transformer(current_value), and writes the result back.
+
+        If the transformer returns DELETE_CURRENT, the key is deleted
+        (or no-op if already absent).
+
+        Warning:
+            This base class implementation is not atomic. Subclasses that
+            require concurrency safety should override this method.
+
+        Args:
+            key: Dictionary key.
+            transformer: A callable that receives the current value (or
+                ITEM_NOT_AVAILABLE) and returns a new value or DELETE_CURRENT.
+
+        Returns:
+            OperationResult with resulting_etag and new_value.
+        """
+        key = NonEmptySafeStrTuple(key)
+
+        if key in self:
+            current_value = self[key]
+        else:
+            current_value = ITEM_NOT_AVAILABLE
+
+        new_value = transformer(current_value)
+
+        if new_value is DELETE_CURRENT:
+            self.discard(key)
+            return OperationResult(
+                resulting_etag=ITEM_NOT_AVAILABLE,
+                new_value=ITEM_NOT_AVAILABLE)
+
+        self[key] = new_value
+        resulting_etag = self._actual_etag(key)
+        return OperationResult(
+            resulting_etag=resulting_etag,
+            new_value=new_value)
 
 
     @abstractmethod
@@ -456,13 +601,6 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         return key
 
-    @staticmethod
-    def _normalize_etag_input(etag: ETagInput | None) -> ETagInput:
-        """Normalize legacy None to ETAG_UNKNOWN for conditional ETag APIs."""
-        if etag is None or etag is ETAG_UNKNOWN:
-            return ETAG_UNKNOWN
-        return ETagValue(etag)
-
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                               ) -> StatusFlag:
         """Perform the first steps for setting an item.
@@ -495,39 +633,6 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         return CONTINUE_NORMAL_EXECUTION
 
-
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> ETagValue | None:
-        """Store a value for a key directly in the dict and return the new ETag.
-
-        Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for
-        conditional operations. Validates value types against base_class_for_values
-        if specified, then serializes and uploads directly to S3.
-
-        This method is absent in the original dict API.
-        By default, the timestamp is used in lieu of ETag.
-
-        Args:
-            key: Dictionary key (string or sequence of strings)
-                or NonEmptySafeStrTuple.
-            value: Value to store, or a joker command (KEEP_CURRENT or
-                DELETE_CURRENT).
-
-        Returns:
-            ETagValue | None: The ETag of the newly stored object,
-            or None if the ETag was not provided as a result of the operation.
-
-        Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
-            TypeError: If the value is a PersiDict instance or does not match
-                the required base_class_for_values when specified.
-        """
-
-        key = NonEmptySafeStrTuple(key)
-        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
-            return None
-        self[key] = value
-        return self.etag(key)
 
     @abstractmethod
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
@@ -951,7 +1056,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             raise NotImplementedError("PersiDict is an abstract base class"
                                       " and cannot provide timestamps directly")
 
-    def etag(self, key:NonEmptyPersiDictKey) -> ETagValue | None:
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
         """Return the ETag of a key.
 
         By default, this returns a stringified timestamp of the last
@@ -959,6 +1064,15 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         backend-specific ETags (e.g., S3).
 
         This method is absent in the original Python dict API.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+
+        Returns:
+            ETagValue: The ETag for the key.
+
+        Raises:
+            KeyError: If the key does not exist.
         """
         return ETagValue(f"{self.timestamp(key):.6f}")
 

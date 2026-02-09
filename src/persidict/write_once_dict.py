@@ -18,10 +18,10 @@ from mixinforge import sort_dict_by_keys
 from .jokers_and_status_flags import (
     KEEP_CURRENT,
     KeepCurrentFlag,
-    ETagChangeFlag,
-    ETagInput,
     ETagValue,
     ETagConditionFlag,
+    ETagIfExists,
+    ConditionalOperationResult,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .file_dir_dict import FileDirDict
@@ -189,16 +189,15 @@ class WriteOnceDict(PersiDict[ValueType]):
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> ETagValue | None:
-        raise NotImplementedError("Operation not supported on WriteOnceDict.")
-
-    def set_item_if_etag(
+    def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ):
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -276,14 +275,18 @@ class WriteOnceDict(PersiDict[ValueType]):
         return self._wrapped_dict[key]
 
 
-    def get_item_if_etag(
+    def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> tuple[Any, ETagValue | None] | ETagChangeFlag:
-        """Retrieve a value and its etag if the condition is satisfied."""
-        return self._wrapped_dict.get_item_if_etag(key, etag, condition)
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Retrieve a value if the condition is satisfied; delegates to wrapped dict."""
+        return self._wrapped_dict.get_item_if(
+            key, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
 
     def __len__(self):
         """Return the number of items stored.

@@ -2,7 +2,7 @@ import pytest
 
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
-from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, ETAG_UNKNOWN, DIFFERENT_ETAG
+from persidict.jokers_and_status_flags import ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED
 from persidict.jokers_and_status_flags import KEEP_CURRENT
 
 
@@ -54,24 +54,26 @@ def test_get_item_if_etag_different_populates_cache(append_only_env):
     # Put directly to main (simulate data appearing outside of cache)
     main[("x",)] = "v1"
 
-    # First call with ETAG_UNKNOWN returns value and etag, and must cache it
-    res = wrapper.get_item_if_etag(("x",), ETAG_UNKNOWN, DIFFERENT_ETAG)
-    assert res is not ETAG_HAS_NOT_CHANGED
-    v, etag = res
+    # First call with ITEM_NOT_AVAILABLE returns value and etag, and must cache it
+    res = wrapper.get_item_if(("x",), ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+    assert res.condition_was_satisfied
+    v = res.new_value
+    etag = res.resulting_etag
     assert v == "v1"
     assert isinstance(etag, (str, type(None)))
     assert ("x",) in cache and cache[("x",)] == "v1"
 
     # Second call with the same etag should report not changed and keep cache
-    res2 = wrapper.get_item_if_etag(("x",), etag, DIFFERENT_ETAG)
-    assert res2 is ETAG_HAS_NOT_CHANGED
+    res2 = wrapper.get_item_if(("x",), etag, ETAG_HAS_CHANGED)
+    assert not res2.condition_was_satisfied
     assert cache[("x",)] == "v1"
 
 
 def test_set_item_get_etag_mirrors_to_cache(append_only_env):
     main, cache, wrapper = append_only_env
 
-    etag = wrapper.set_item_get_etag(("p",), [1, 2, 3])
+    wrapper[("p",)] = [1, 2, 3]
+    etag = wrapper.etag(("p",))
     assert ("p",) in main and ("p",) in cache
     assert main[("p",)] == cache[("p",)] == [1, 2, 3]
     # For FileDirDict, etag is derived from timestamp (string)
@@ -165,8 +167,7 @@ def test_set_item_get_etag_keep_current_noop(append_only_env):
     main, cache, wrapper = append_only_env
 
     # No prior value; KEEP_CURRENT should be a no-op and return None
-    etag = wrapper.set_item_get_etag(("z",), KEEP_CURRENT)
-    assert etag is None
+    wrapper[("z",)] = KEEP_CURRENT
     assert ("z",) not in main
     assert ("z",) not in cache
 
@@ -202,8 +203,8 @@ def test_get_item_if_etag_different_absent_key_does_not_cache(append_only_env):
     key = ("nope",)
     assert key not in main and key not in cache
 
-    with pytest.raises((KeyError, FileNotFoundError)):
-        wrapper.get_item_if_etag(key, ETAG_UNKNOWN, DIFFERENT_ETAG)
+    result = wrapper.get_item_if(key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
 
     # Cache should remain untouched
     assert key not in cache

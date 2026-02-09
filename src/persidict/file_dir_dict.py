@@ -800,11 +800,14 @@ class FileDirDict(PersiDict[ValueType]):
             float: POSIX timestamp of the underlying file.
 
         Raises:
-            FileNotFoundError: If the key does not exist.
+            KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
-        return os.path.getmtime(filename)
+        try:
+            return os.path.getmtime(filename)
+        except FileNotFoundError as exc:
+            raise KeyError(f"File {filename} does not exist") from exc
 
     def etag(self, key:NonEmptyPersiDictKey) -> ETagValue:
         """Return a stable ETag derived from mtime and file size.
@@ -812,10 +815,16 @@ class FileDirDict(PersiDict[ValueType]):
         Uses a single stat call and combines st_mtime_ns with st_size. Falls
         back to a float-based mtime representation if nanosecond precision
         is not available.
+
+        Raises:
+            KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
-        stat_result = os.stat(filename)
+        try:
+            stat_result = os.stat(filename)
+        except FileNotFoundError as exc:
+            raise KeyError(f"File {filename} does not exist") from exc
         mtime_ns = getattr(stat_result, "st_mtime_ns", None)
         if mtime_ns is None:
             mtime_part = f"{stat_result.st_mtime:.6f}"

@@ -24,11 +24,14 @@ from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
-from .jokers_and_status_flags import (ETAG_HAS_CHANGED, ETAG_HAS_NOT_CHANGED,
-                                      EXECUTION_IS_COMPLETE, ETagChangeFlag,
+from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagInput, ETagValue,
-                                      ETagConditionFlag)
+                                      Joker, ETagValue,
+                                      ETagConditionFlag,
+                                      ETagIfExists,
+                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
+                                      VALUE_NOT_RETRIEVED,
+                                      ConditionalOperationResult)
 
 
 class AppendOnlyDictCached(PersiDict[ValueType]):
@@ -47,8 +50,8 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
       cache; otherwise it checks the main dict.
     - Writes: `__setitem__` writes to the main dict and then mirrors the value
       into the cache (after base validation performed by `PersiDict`).
-    - `set_item_get_etag`: delegates the write to the main dict, mirrors the
-      value into the cache, and returns the ETag from the main dict.
+    - `set_item_if`: delegates the write to the main dict, mirrors the
+      value into the cache on success.
     - Deletion: not supported (append-only), will raise `TypeError`.
     - Iteration/length/timestamps: delegated to the main dict.
 
@@ -161,7 +164,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         return self._main.timestamp(key)
 
-    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue | None:
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
         """Return the ETag from the main dict.
 
         Delegating to the main dict preserves backend-specific ETag semantics
@@ -200,19 +203,24 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             return value
 
 
-    def get_item_if_etag(
+    def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ):
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
         """Return value only if its ETag satisfies a condition; cache on success."""
         key = NonEmptySafeStrTuple(key)
-        res = self._main.get_item_if_etag(key, etag, condition)
-        if res is ETAG_HAS_CHANGED or res is ETAG_HAS_NOT_CHANGED:
-            return res
-        value, _ = res
-        self._data_cache[key] = value
+        res = self._main.get_item_if(
+            key, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
+        # Cache the value if it was retrieved and not already cached
+        if (res.new_value is not ITEM_NOT_AVAILABLE
+                and res.new_value is not VALUE_NOT_RETRIEVED
+                and key not in self._data_cache):
+            self._data_cache[key] = res.new_value
         return res
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -238,73 +246,36 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         self._main[key] = value
         self._data_cache[key] = value
 
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[ETagValue]:
-        """Store a value and return the ETag from the main dict.
-
-        After validation via _process_setitem_args, the value is written to the
-        main dict using its ETag-aware API, then mirrored into the cache.
-
-        Args:
-            key: Dictionary key (string or sequence of strings) or
-                NonEmptySafeStrTuple.
-            value: The value to store, or a joker (KEEP_CURRENT/DELETE_CURRENT).
-
-        Returns:
-            ETagValue | None: The ETag produced by the main dict, or None if a joker
-            short-circuited the operation or the backend doesn't support ETags.
-
-        Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
-            TypeError: If the value fails base_class_for_values validation.
-        """
-        key = NonEmptySafeStrTuple(key)
-        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
-            return None
-        etag = self._main.set_item_get_etag(key, value)
-        self._data_cache[key] = value
-        return etag
-
-
-    def set_item_if_etag(
+    def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> Optional[ETagValue] | ETagChangeFlag:
-        """Append-only dicts do not support modifying existing items."""
-        if value is DELETE_CURRENT:
-            raise TypeError("append-only dicts do not support deletion")
-        etag = self._normalize_etag_input(etag)
+            value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Append-only: delegates to main dict; caches value on success."""
         key = NonEmptySafeStrTuple(key)
-        current_etag = self.etag(key)
-        if not self._etag_condition_holds(condition, etag, current_etag):
-            return self._etag_condition_failure_flag(condition)
-        if value is KEEP_CURRENT:
-            return None
-        raise ValueError("append-only dicts do not support modifying existing items")
+        res = self._main.set_item_if(
+            key, value, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
+        if res.condition_was_satisfied:
+            self._data_cache[key] = value
+        return res
 
-
-
-    def delete_item_if_etag(
+    def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
+            expected_etag: ETagIfExists,
             condition: ETagConditionFlag
-    ) -> None | ETagChangeFlag:
+    ) -> ConditionalOperationResult:
         """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 
-
-    def discard_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> bool:
-        """Deletion is not supported for append-only dictionaries."""
-        raise TypeError("append-only dicts do not support deletion")
+    def transform_item(self, key, transformer):
+        """Not supported for append-only dictionaries."""
+        raise NotImplementedError("append-only dicts do not support transform_item")
 
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Deletion is not supported for append-only dictionaries.

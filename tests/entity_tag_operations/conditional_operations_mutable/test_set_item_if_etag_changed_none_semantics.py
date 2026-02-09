@@ -3,16 +3,16 @@ from __future__ import annotations
 from moto import mock_aws
 
 from persidict import BasicS3Dict, FileDirDict, LocalDict, S3Dict_FileDirCached
-from persidict.jokers_and_status_flags import ETAG_HAS_NOT_CHANGED, ETAG_UNKNOWN, DIFFERENT_ETAG
+from persidict.jokers_and_status_flags import ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED
 
 
 def test_set_item_if_etag_different_unknown_local():
     d = LocalDict(serialization_format="json")
     d["k"] = "v1"
 
-    res = d.set_item_if_etag("k", "v2", ETAG_UNKNOWN, DIFFERENT_ETAG)
+    res = d.set_item_if("k", "v2", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
 
-    assert res is not ETAG_HAS_NOT_CHANGED
+    assert res.condition_was_satisfied
     assert d["k"] == "v2"
 
 
@@ -20,9 +20,9 @@ def test_set_item_if_etag_different_unknown_file(tmp_path):
     d = FileDirDict(base_dir=str(tmp_path / "file"), serialization_format="json")
     d["k"] = "v1"
 
-    res = d.set_item_if_etag("k", "v2", ETAG_UNKNOWN, DIFFERENT_ETAG)
+    res = d.set_item_if("k", "v2", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
 
-    assert res is not ETAG_HAS_NOT_CHANGED
+    assert res.condition_was_satisfied
     assert d["k"] == "v2"
 
 
@@ -31,9 +31,9 @@ def test_set_item_if_etag_different_unknown_basic_s3():
     d = BasicS3Dict(bucket_name="etag-none-basic", serialization_format="json")
     d["k"] = "v1"
 
-    res = d.set_item_if_etag("k", "v2", ETAG_UNKNOWN, DIFFERENT_ETAG)
+    res = d.set_item_if("k", "v2", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
 
-    assert res is not ETAG_HAS_NOT_CHANGED
+    assert res.condition_was_satisfied
     assert d["k"] == "v2"
 
 
@@ -46,7 +46,7 @@ def test_set_item_if_etag_different_unknown_s3_cached(tmp_path):
     )
     d["k"] = "v1"
 
-    res = d.set_item_if_etag("k", "v2", ETAG_UNKNOWN, DIFFERENT_ETAG)
+    res = d.set_item_if("k", "v2", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
 
-    assert res is not ETAG_HAS_NOT_CHANGED
+    assert res.condition_was_satisfied
     assert d["k"] == "v2"

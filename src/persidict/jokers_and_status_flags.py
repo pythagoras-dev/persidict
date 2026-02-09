@@ -1,21 +1,28 @@
-"""Special singleton markers used to modify values in PersiDict without data payload.
+"""Special singleton markers and result types for PersiDict operations.
 
-This module defines two singleton flags used as "joker" values when writing to
-persistent dictionaries:
+This module defines singleton flags used as "joker" values when writing to
+persistent dictionaries, ETag condition flags for conditional operations,
+and structured result dataclasses.
 
-- KEEP_CURRENT: keep the current value unchanged.
-- DELETE_CURRENT: delete the current value if it exists.
+Joker flags:
+    - KEEP_CURRENT: keep the current value unchanged.
+    - DELETE_CURRENT: delete the current value if it exists.
 
-These flags are intended to be passed as the value part in dict-style
-assignments (e.g., d[key] = KEEP_CURRENT) and are interpreted by PersiDict
-implementations.
+Sentinel flags:
+    - ITEM_NOT_AVAILABLE: the item is not present in the dict.
+    - VALUE_NOT_RETRIEVED: the value exists but was not retrieved.
 
-Examples:
-    >>> from persidict.singletons import KEEP_CURRENT, DELETE_CURRENT
-    >>> d[key] = KEEP_CURRENT  # Do not alter existing value
-    >>> d[key] = DELETE_CURRENT  # Remove key if present
+ETag condition flags:
+    - ANY_ETAG: condition always satisfied.
+    - ETAG_IS_THE_SAME: condition requires etags to match.
+    - ETAG_HAS_CHANGED: condition requires etags to differ.
+
+Result dataclasses:
+    - OperationResult: result of transform_item.
+    - ConditionalOperationResult: result of conditional _if methods.
 """
-from typing import Final, NewType, TypeAlias
+from dataclasses import dataclass
+from typing import Any, Callable, Final, NewType, TypeAlias
 
 from mixinforge import SingletonMixin
 
@@ -71,50 +78,38 @@ class StatusFlag(SingletonMixin):
     pass
 
 
-class ETagUnknownFlag(SingletonMixin):
-    """Flag indicating an unknown (unset) ETag input.
+class ItemNotAvailableFlag(SingletonMixin):
+    """Sentinel indicating that the item is not present in the dict.
 
-    Use this singleton as the explicit placeholder when a conditional ETag
-    method is called without a prior ETag value. This keeps the API explicit
-    while avoiding extra calls to fetch an ETag.
+    Used uniformly for absent keys across all contexts:
+    - As ``expected_etag``: "I believe the key is absent."
+    - As ``actual_etag``: "the key was absent at check time."
+    - As ``resulting_etag``: "the key is absent after the operation."
+    - As ``new_value``: "no value to return."
+    - As transformer input: "transforming from absence (creating new)."
+
+    Note:
+        This is a singleton class; constructing it repeatedly returns the same
+        instance.
     """
     pass
 
-class ETagChangeFlag(StatusFlag):
-    """Base class for ETag change status flags."""
+
+class ValueNotRetrievedFlag(SingletonMixin):
+    """Sentinel indicating the value exists but was not retrieved.
+
+    Returned in ``new_value`` when ``always_retrieve_value=False`` and
+    the value was already known to the caller or retrieval was skipped.
+
+    Note:
+        This is a singleton class; constructing it repeatedly returns the same
+        instance.
+    """
     pass
+
 
 ETagValue = NewType("ETagValue", str)
 """Type for ETag string values."""
-
-class ETagHasNotChangedFlag(ETagChangeFlag):
-    """Flag indicating that an ETag has not changed.
-
-    Usage:
-        This flag can be used in contexts where a notification is needed
-        to indicate that an ETag (entity tag) has not changed, typically in
-        web or caching scenarios.
-
-    Note:
-        This is a singleton class; constructing it repeatedly returns the same
-        instance.
-    """
-
-    pass
-
-class ETagHasChangedFlag(ETagChangeFlag):
-    """Flag indicating that an ETag has changed.
-
-    Usage:
-        This flag can be used in contexts where a notification is needed
-        to indicate that an ETag (entity tag) comparison detected a change,
-        typically in conditional write scenarios.
-
-    Note:
-        This is a singleton class; constructing it repeatedly returns the same
-        instance.
-    """
-    pass
 
 
 class ETagConditionFlag(SingletonMixin):
@@ -122,13 +117,18 @@ class ETagConditionFlag(SingletonMixin):
     pass
 
 
-class ETagEqualFlag(ETagConditionFlag):
-    """Condition requiring ETag equality."""
+class AnyETagFlag(ETagConditionFlag):
+    """Condition that is always satisfied regardless of etag values."""
     pass
 
 
-class ETagDifferentFlag(ETagConditionFlag):
-    """Condition requiring ETag inequality."""
+class ETagIsTheSameFlag(ETagConditionFlag):
+    """Condition requiring expected and actual etags to match."""
+    pass
+
+
+class ETagHasChangedFlag(ETagConditionFlag):
+    """Condition requiring expected and actual etags to differ."""
     pass
 
 
@@ -137,7 +137,7 @@ class ContinueNormalExecutionFlag(StatusFlag):
 
     Usage:
         This flag can be used in contexts where a notification is needed
-        to indicate that normal processing should proceed without alteration.
+        to indicate that normal processing should continue without alteration.
 
     Note:
         This is a singleton class; constructing it repeatedly returns the same
@@ -158,6 +158,8 @@ class ExecutionIsCompleteFlag(StatusFlag):
         instance.
     """
     pass
+
+# --- Singleton constant instances ---
 
 _KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT: Final[KeepCurrentFlag] = KeepCurrentFlag()
@@ -195,75 +197,73 @@ Example:
 
 _ContinueNormalExecution = ContinueNormalExecutionFlag()
 CONTINUE_NORMAL_EXECUTION: Final[ContinueNormalExecutionFlag] = ContinueNormalExecutionFlag()
-"""Flag indicating that normal execution should continue.
-
-This flag can be used in process flow control contexts to signal that normal
-execution should proceed without any special handling or alterations.
-
-When this flag is returned from a processing step, it indicates that the
-operation completed successfully and the next step in the normal execution
-flow should be performed.
-
-Example:
-    >>> if pre_process_input(data) is CONTINUE_NORMAL_EXECUTION:
-    ...     # Continue with next step
-    ...     perform_next_step()
-"""
+"""Flag indicating that normal execution should continue."""
 
 _ExecutionIsComplete = ExecutionIsCompleteFlag()
 EXECUTION_IS_COMPLETE: Final[ExecutionIsCompleteFlag] = ExecutionIsCompleteFlag()
-"""Flag indicating that execution is complete, no further processing is needed.
+"""Flag indicating that execution is complete, no further processing is needed."""
 
-This flag can be used in process flow control contexts to signal that all necessary
-processing has been completed successfully and no additional steps are required.
+_ItemNotAvailable = ItemNotAvailableFlag()
+ITEM_NOT_AVAILABLE: Final[ItemNotAvailableFlag] = ItemNotAvailableFlag()
+"""Sentinel: the item is not present in the dict.
 
-When this flag is returned from a processing step, it indicates that the
-operation completed successfully and no further processing should be performed.
-
-Example:
-    >>> if pre_process_input(data) is EXECUTION_IS_COMPLETE:
-    ...     # Skip remaining steps
-    ...     return result
+Used uniformly for absent keys in all contexts: etag parameters/fields,
+value fields, and transformer input.
 """
 
-_ETagHasNotChanged = ETagHasNotChangedFlag()
-ETAG_HAS_NOT_CHANGED: Final[ETagHasNotChangedFlag] = ETagHasNotChangedFlag()
-"""Flag indicating that an ETag value has not changed.
+_ValueNotRetrieved = ValueNotRetrievedFlag()
+VALUE_NOT_RETRIEVED: Final[ValueNotRetrievedFlag] = ValueNotRetrievedFlag()
+"""Sentinel: the value exists but was not retrieved.
 
-This flag can be used in contexts where a notification is needed to indicate
-that an ETag (entity tag) comparison shows no changes.
-
-When this flag is returned from a processing step, it indicates that the
-resource's ETag matches and no content updates are necessary.
+Returned when ``always_retrieve_value=False`` and the value was already
+known to the caller or retrieval was skipped.
 """
+
+_AnyETag = AnyETagFlag()
+ANY_ETAG: Final[AnyETagFlag] = AnyETagFlag()
+"""Condition: always satisfied regardless of etag values."""
+
+_ETagIsTheSame = ETagIsTheSameFlag()
+ETAG_IS_THE_SAME: Final[ETagIsTheSameFlag] = ETagIsTheSameFlag()
+"""Condition: expected and actual etags must match."""
 
 _ETagHasChanged = ETagHasChangedFlag()
 ETAG_HAS_CHANGED: Final[ETagHasChangedFlag] = ETagHasChangedFlag()
-"""Flag indicating that an ETag value has changed.
+"""Condition: expected and actual etags must differ."""
 
-This flag can be used in contexts where a notification is needed to indicate
-that an ETag comparison detected a change and a conditional operation was
-not performed.
+# --- Type aliases ---
 
-Example:
-    >>> if compare_etag(old, new) is ETAG_HAS_CHANGED:
-    ...     # Resource changed; retry or fetch new content
-    ...     return None
-"""
+ValueType = Any
+"""Type alias for values stored in a PersiDict."""
 
-_ETagUnknown = ETagUnknownFlag()
-ETAG_UNKNOWN: Final[ETagUnknownFlag] = ETagUnknownFlag()
-"""Flag indicating an unknown (unset) ETag input.
+ETagIfExists: TypeAlias = ETagValue | ItemNotAvailableFlag
+"""ETag value or ITEM_NOT_AVAILABLE if the key is absent."""
 
-Pass this sentinel to conditional ETag operations when you do not have a
-previous ETag value. It is treated as "no prior ETag" and keeps the intent
-explicit in call sites.
-"""
+ValueIfExists: TypeAlias = ValueType | ItemNotAvailableFlag
+"""Value or ITEM_NOT_AVAILABLE if the key is absent."""
 
-ETagInput: TypeAlias = ETagValue | ETagUnknownFlag
+ValueInResult: TypeAlias = ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag
+"""Value, ITEM_NOT_AVAILABLE, or VALUE_NOT_RETRIEVED in operation results."""
 
-_EtagEqual = ETagEqualFlag()
-EQUAL_ETAG: Final[ETagEqualFlag] = ETagEqualFlag()
+TransformingFunction = Callable[[ValueIfExists], Any]
+"""Callable that takes the current value (or ITEM_NOT_AVAILABLE) and returns
+a new value or DELETE_CURRENT."""
 
-_EtagDifferent = ETagDifferentFlag()
-DIFFERENT_ETAG: Final[ETagDifferentFlag] = ETagDifferentFlag()
+
+# --- Result dataclasses ---
+
+@dataclass(frozen=True)
+class OperationResult:
+    """Result of an unconditional mutating operation (transform_item)."""
+    resulting_etag: ETagIfExists
+    new_value: ValueIfExists
+
+
+@dataclass(frozen=True)
+class ConditionalOperationResult:
+    """Result of a conditional operation guarded by an ETag check."""
+    condition_was_satisfied: bool
+    requested_condition: ETagConditionFlag
+    actual_etag: ETagIfExists
+    resulting_etag: ETagIfExists
+    new_value: ValueInResult

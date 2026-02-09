@@ -5,7 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, KEEP_CURRENT, DELETE_CURRENT, DIFFERENT_ETAG
+    ITEM_NOT_AVAILABLE, KEEP_CURRENT, DELETE_CURRENT, ETAG_HAS_CHANGED
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -77,10 +77,11 @@ def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs)
     time.sleep(MIN_SLEEP)
     d["key1"] = "value2"
 
-    result = d.get_item_if_etag("key1", old_etag, DIFFERENT_ETAG)
+    result = d.get_item_if("key1", old_etag, ETAG_HAS_CHANGED)
 
-    assert result != ETAG_HAS_NOT_CHANGED
-    value, new_etag = result
+    assert result.condition_was_satisfied
+    value = result.new_value
+    new_etag = result.resulting_etag
     assert value == "value2"
     assert new_etag != old_etag
 
@@ -88,25 +89,24 @@ def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs)
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_item_if_etag_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag returns ETAG_HAS_NOT_CHANGED when etag matches."""
+    """Verify get_item_if_etag returns COND_NOT_MET_PH when etag matches."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value1"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if_etag("key1", current_etag, DIFFERENT_ETAG)
+    result = d.get_item_if("key1", current_etag, ETAG_HAS_CHANGED)
 
-    assert result is ETAG_HAS_NOT_CHANGED
+    assert not result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_item_if_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag raises an error for nonexistent keys."""
+    """Verify get_item_if returns result with ITEM_NOT_AVAILABLE for nonexistent keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    # Different backends may raise different errors (KeyError, FileNotFoundError)
-    with pytest.raises((KeyError, FileNotFoundError)):
-        d.get_item_if_etag("nonexistent", "some_etag", DIFFERENT_ETAG)
+    result = d.get_item_if("nonexistent", "some_etag", ETAG_HAS_CHANGED)
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -115,7 +115,8 @@ def test_set_item_get_etag_returns_new_etag(tmpdir, DictToTest, kwargs):
     """Verify set_item_get_etag stores value and returns an etag string."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    etag = d.set_item_get_etag("key1", "value1")
+    d["key1"] = "value1"
+    etag = d.etag("key1")
 
     assert etag is not None
     assert isinstance(etag, str)
@@ -130,9 +131,8 @@ def test_set_item_get_etag_with_keep_current(tmpdir, DictToTest, kwargs):
     d["key1"] = "original"
     original_etag = d.etag("key1")
 
-    result = d.set_item_get_etag("key1", KEEP_CURRENT)
+    d["key1"] = KEEP_CURRENT
 
-    assert result is None
     assert d["key1"] == "original"
     assert d.etag("key1") == original_etag
 
@@ -144,9 +144,8 @@ def test_set_item_get_etag_with_delete_current(tmpdir, DictToTest, kwargs):
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value1"
 
-    result = d.set_item_get_etag("key1", DELETE_CURRENT)
+    d["key1"] = DELETE_CURRENT
 
-    assert result is None
     assert "key1" not in d
 
 

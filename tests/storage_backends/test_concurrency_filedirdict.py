@@ -5,7 +5,7 @@ import time
 import pytest
 
 from persidict import FileDirDict
-from persidict.jokers_and_status_flags import ETagInput, EQUAL_ETAG
+from persidict.jokers_and_status_flags import ETagIfExists, ETAG_IS_THE_SAME
 
 # Protect multiprocessing code on Windows from infinite recursion
 multiprocessing.freeze_support()
@@ -29,7 +29,7 @@ def many_operations(base_dir:str, process_n:int):
 def _conditional_write_with_pause(
     base_dir: str,
     key: str,
-    etag: ETagInput,
+    etag: ETagIfExists,
     ready_event: multiprocessing.Event,
     proceed_event: multiprocessing.Event,
     result_queue: multiprocessing.Queue,
@@ -43,7 +43,7 @@ def _conditional_write_with_pause(
         return original_save(file_name, value)
 
     d._save_to_file = slow_save
-    result_queue.put(d.set_item_if_etag(key, "conditional", etag, EQUAL_ETAG))
+    result_queue.put(d.set_item_if(key, "conditional", etag, ETAG_IS_THE_SAME))
 
 def _unconditional_write(
     base_dir: str,

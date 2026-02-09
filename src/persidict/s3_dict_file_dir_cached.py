@@ -11,7 +11,11 @@ from .file_dir_dict import FileDirDict
 from .cached_appendonly_dict import AppendOnlyDictCached
 from .cached_mutable_dict import MutableDictCached
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
-from .jokers_and_status_flags import ETagInput, ETagConditionFlag, ETagValue
+from .jokers_and_status_flags import (ETagConditionFlag, ETagValue,
+                                      ETagIfExists,
+                                      ConditionalOperationResult,
+                                      OperationResult,
+                                      TransformingFunction)
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .overlapping_multi_dict import OverlappingMultiDict
 
@@ -236,60 +240,50 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         """
         return self._cached_dict.etag(key)
 
-    def get_item_if_etag(
+    def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ):
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
         """Get item only if ETag satisfies a condition; delegate to cached dict."""
-        if hasattr(self._cached_dict, 'get_item_if_etag'):
-            return self._cached_dict.get_item_if_etag(key, etag, condition)
-        return PersiDict.get_item_if_etag(self, key, etag, condition)
+        return self._cached_dict.get_item_if(
+            key, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
 
-    def set_item_if_etag(
+    def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ):
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; delegate to cached dict."""
-        if hasattr(self._cached_dict, 'set_item_if_etag'):
-            return self._cached_dict.set_item_if_etag(key, value, etag, condition)
-        return PersiDict.set_item_if_etag(self, key, value, etag, condition)
+        return self._cached_dict.set_item_if(
+            key, value, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
 
-    def delete_item_if_etag(
+    def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            etag: ETagInput,
+            expected_etag: ETagIfExists,
             condition: ETagConditionFlag
-    ):
-        """Delete item only if ETag satisfies a condition; delegate to cached dict."""
-        if hasattr(self._cached_dict, 'delete_item_if_etag'):
-            return self._cached_dict.delete_item_if_etag(key, etag, condition)
-        return PersiDict.delete_item_if_etag(self, key, etag, condition)
-
-    def discard_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> bool:
+    ) -> ConditionalOperationResult:
         """Discard item only if ETag satisfies a condition; delegate to cached dict."""
-        if hasattr(self._cached_dict, 'discard_item_if_etag'):
-            return self._cached_dict.discard_item_if_etag(key, etag, condition)
-        return PersiDict.discard_item_if_etag(self, key, etag, condition)
-    
-    def set_item_get_etag(self, key: NonEmptyPersiDictKey, value: ValueType) -> Optional[ETagValue]:
-        """Set item and return ETag (for mutable dicts)."""
-        if hasattr(self._cached_dict, 'set_item_get_etag'):
-            return self._cached_dict.set_item_get_etag(key, value)
-        else:
-            # For append-only dicts, just set the item
-            self._cached_dict.__setitem__(key, value)
-            return None
-    
+        return self._cached_dict.discard_item_if(key, expected_etag, condition)
+
+    def transform_item(
+            self,
+            key: NonEmptyPersiDictKey,
+            transformer: TransformingFunction
+    ) -> OperationResult:
+        """Transform item; delegate to cached dict."""
+        return self._cached_dict.transform_item(key, transformer)
+
     def discard(self, key: NonEmptyPersiDictKey) -> bool:
         """Delete an item without raising an exception if it doesn't exist.
         

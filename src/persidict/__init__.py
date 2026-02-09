@@ -33,8 +33,10 @@ Functions:
 Constants:
 
     KEEP_CURRENT, DELETE_CURRENT: Special joker values for conditional operations.
-    ETAG_UNKNOWN: Sentinel value for unknown ETag inputs.
-    EQUAL_ETAG, DIFFERENT_ETAG: Condition selectors for ETag-based operations.
+    ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED: Condition flags for
+        ETag-based conditional operations.
+    ITEM_NOT_AVAILABLE: Sentinel for absent keys.
+    VALUE_NOT_RETRIEVED: Sentinel for skipped value retrieval.
 
 Note:
 
@@ -52,15 +54,15 @@ from .s3_dict_file_dir_cached import S3Dict_FileDirCached, S3Dict
 from .basic_s3_dict import BasicS3Dict
 from .write_once_dict import WriteOnceDict
 from .empty_dict import EmptyDict
-from .jokers_and_status_flags import Joker, KeepCurrentFlag, DeleteCurrentFlag, ETagUnknownFlag, ETagValue
 from .jokers_and_status_flags import (
-    KEEP_CURRENT,
-    DELETE_CURRENT,
-    ETAG_HAS_NOT_CHANGED,
-    ETAG_HAS_CHANGED,
-    ETAG_UNKNOWN,
-    EQUAL_ETAG,
-    DIFFERENT_ETAG,
+    Joker, KeepCurrentFlag, DeleteCurrentFlag, ETagValue,
+    ETagConditionFlag, AnyETagFlag, ETagIsTheSameFlag, ETagHasChangedFlag,
+    ItemNotAvailableFlag, ValueNotRetrievedFlag,
+    KEEP_CURRENT, DELETE_CURRENT,
+    ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+    ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
+    ETagIfExists, ValueIfExists, ValueInResult, TransformingFunction,
+    OperationResult, ConditionalOperationResult,
 )
 from .overlapping_multi_dict import OverlappingMultiDict
 from .cached_appendonly_dict import AppendOnlyDictCached
@@ -93,14 +95,29 @@ __all__ = [
     # Constants/Jokers
     'KEEP_CURRENT',
     'DELETE_CURRENT',
-    'ETAG_HAS_NOT_CHANGED',
-    'ETAG_HAS_CHANGED',
-    'ETAG_UNKNOWN',
-    'EQUAL_ETAG',
-    'DIFFERENT_ETAG',
     'Joker',
     'KeepCurrentFlag',
     'DeleteCurrentFlag',
-    'ETagUnknownFlag',
     'ETagValue',
+    # ETag condition flags
+    'ETagConditionFlag',
+    'AnyETagFlag',
+    'ETagIsTheSameFlag',
+    'ETagHasChangedFlag',
+    'ANY_ETAG',
+    'ETAG_IS_THE_SAME',
+    'ETAG_HAS_CHANGED',
+    # Sentinel flags
+    'ItemNotAvailableFlag',
+    'ValueNotRetrievedFlag',
+    'ITEM_NOT_AVAILABLE',
+    'VALUE_NOT_RETRIEVED',
+    # Type aliases
+    'ETagIfExists',
+    'ValueIfExists',
+    'ValueInResult',
+    'TransformingFunction',
+    # Result dataclasses
+    'OperationResult',
+    'ConditionalOperationResult',
 ]

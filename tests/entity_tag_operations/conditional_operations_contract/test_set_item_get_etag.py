@@ -14,10 +14,11 @@ MIN_SLEEP = 0.02
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_returns_etag_string(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag returns a non-empty etag string."""
+    """Verify d[key] = value; d.etag(key) returns a non-empty etag string."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    etag = d.set_item_get_etag("key1", "value")
+    d["key1"] = "value"
+    etag = d.etag("key1")
 
     assert etag is not None
     assert isinstance(etag, str)
@@ -30,7 +31,7 @@ def test_set_item_get_etag_updates_value(tmpdir, DictToTest, kwargs):
     """Verify set_item_get_etag correctly stores the value."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    d.set_item_get_etag("key1", "value")
+    d["key1"] = "value"
 
     assert d["key1"] == "value"
 
@@ -38,12 +39,14 @@ def test_set_item_get_etag_updates_value(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_returns_different_etag_on_update(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag returns different etag when value changes."""
+    """Verify d[key] = value; d.etag(key) returns different etag when value changes."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
-    etag1 = d.set_item_get_etag("key1", "value1")
+    d["key1"] = "value1"
+    etag1 = d.etag("key1")
 
     time.sleep(1.1)  # Ensure timestamp changes
-    etag2 = d.set_item_get_etag("key1", "value2")
+    d["key1"] = "value2"
+    etag2 = d.etag("key1")
 
     assert etag1 != etag2
 
@@ -54,7 +57,8 @@ def test_set_item_get_etag_returned_etag_matches_etag_method(tmpdir, DictToTest,
     """Verify returned etag matches subsequent call to etag() method."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    returned_etag = d.set_item_get_etag("key1", "value")
+    d["key1"] = "value"
+    returned_etag = d.etag("key1")
     current_etag = d.etag("key1")
 
     assert returned_etag == current_etag
@@ -63,14 +67,13 @@ def test_set_item_get_etag_returned_etag_matches_etag_method(tmpdir, DictToTest,
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_keep_current_returns_none(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag with KEEP_CURRENT returns None and keeps value unchanged."""
+    """Verify KEEP_CURRENT keeps value unchanged."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
     original_etag = d.etag("key1")
 
-    result = d.set_item_get_etag("key1", KEEP_CURRENT)
+    d["key1"] = KEEP_CURRENT
 
-    assert result is None
     assert d["key1"] == "original"
     assert d.etag("key1") == original_etag
 
@@ -78,48 +81,46 @@ def test_set_item_get_etag_with_keep_current_returns_none(tmpdir, DictToTest, kw
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_keep_current_on_missing_key(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag with KEEP_CURRENT on missing key returns None."""
+    """Verify KEEP_CURRENT on missing key is a no-op."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.set_item_get_etag("nonexistent", KEEP_CURRENT)
+    d["nonexistent"] = KEEP_CURRENT
 
-    assert result is None
     assert "nonexistent" not in d
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_delete_current_returns_none(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag with DELETE_CURRENT returns None and deletes key."""
+    """Verify DELETE_CURRENT deletes key."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_get_etag("key1", DELETE_CURRENT)
+    d["key1"] = DELETE_CURRENT
 
-    assert result is None
     assert "key1" not in d
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_delete_current_on_missing_key(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag with DELETE_CURRENT on missing key returns None (no error)."""
+    """Verify DELETE_CURRENT on missing key is a no-op."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.set_item_get_etag("nonexistent", DELETE_CURRENT)
+    d["nonexistent"] = DELETE_CURRENT
 
-    assert result is None
     assert "nonexistent" not in d
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_tuple_keys(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag works with hierarchical tuple keys."""
+    """Verify d[key] = value works with hierarchical tuple keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     key = ("prefix", "subkey", "leaf")
 
-    etag = d.set_item_get_etag(key, "value")
+    d[key] = "value"
+    etag = d.etag(key)
 
     assert etag is not None
     assert isinstance(etag, str)
@@ -129,11 +130,12 @@ def test_set_item_get_etag_with_tuple_keys(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_complex_value(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag works with complex nested values."""
+    """Verify d[key] = value works with complex nested values."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     complex_value = {"nested": {"list": [1, 2, 3], "bool": True}, "tuple": (1, 2)}
 
-    etag = d.set_item_get_etag("key1", complex_value)
+    d["key1"] = complex_value
+    etag = d.etag("key1")
 
     assert etag is not None
     assert d["key1"] == complex_value
@@ -142,10 +144,11 @@ def test_set_item_get_etag_with_complex_value(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_none_value(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag works when storing None as value."""
+    """Verify d[key] = value works when storing None as value."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    etag = d.set_item_get_etag("key1", None)
+    d["key1"] = None
+    etag = d.etag("key1")
 
     assert etag is not None
     assert isinstance(etag, str)
@@ -155,10 +158,11 @@ def test_set_item_get_etag_with_none_value(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_with_empty_string_value(tmpdir, DictToTest, kwargs):
-    """Verify set_item_get_etag works when storing empty string."""
+    """Verify d[key] = value works when storing empty string."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    etag = d.set_item_get_etag("key1", "")
+    d["key1"] = ""
+    etag = d.etag("key1")
 
     assert etag is not None
     assert isinstance(etag, str)
@@ -168,12 +172,15 @@ def test_set_item_get_etag_with_empty_string_value(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_set_item_get_etag_multiple_operations(tmpdir, DictToTest, kwargs):
-    """Verify multiple set_item_get_etag calls work correctly."""
+    """Verify multiple d[key] = value calls work correctly."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    etag1 = d.set_item_get_etag("key1", "value1")
-    etag2 = d.set_item_get_etag("key2", "value2")
-    etag3 = d.set_item_get_etag("key3", "value3")
+    d["key1"] = "value1"
+    etag1 = d.etag("key1")
+    d["key2"] = "value2"
+    etag2 = d.etag("key2")
+    d["key3"] = "value3"
+    etag3 = d.etag("key3")
 
     assert all(isinstance(e, str) for e in [etag1, etag2, etag3])
     assert d["key1"] == "value1"

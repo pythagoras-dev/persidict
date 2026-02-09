@@ -5,8 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_NOT_CHANGED, ETAG_HAS_CHANGED, ETAG_UNKNOWN,
-    EQUAL_ETAG, DIFFERENT_ETAG
+    ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -25,10 +24,11 @@ def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs)
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.get_item_if_etag("key1", old_etag, DIFFERENT_ETAG)
+    result = d.get_item_if("key1", old_etag, ETAG_HAS_CHANGED)
 
-    assert result is not ETAG_HAS_NOT_CHANGED
-    value, new_etag = result
+    assert result.condition_was_satisfied
+    value = result.new_value
+    new_etag = result.resulting_etag
     assert value == "modified"
     assert isinstance(new_etag, str)
     assert new_etag != old_etag
@@ -42,19 +42,19 @@ def test_get_item_if_etag_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if_etag("key1", current_etag, DIFFERENT_ETAG)
+    result = d.get_item_if("key1", current_etag, ETAG_HAS_CHANGED)
 
-    assert result is ETAG_HAS_NOT_CHANGED
+    assert not result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_item_if_etag_missing_key_raises_keyerror(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag raises error for missing keys."""
+    """Verify get_item_if returns ITEM_NOT_AVAILABLE for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    with pytest.raises((KeyError, FileNotFoundError)):
-        d.get_item_if_etag("nonexistent", "some_etag", DIFFERENT_ETAG)
+    result = d.get_item_if("nonexistent", "some_etag", ETAG_HAS_CHANGED)
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -65,10 +65,11 @@ def test_get_item_if_etag_returns_value_when_matches(tmpdir, DictToTest, kwargs)
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if_etag("key1", current_etag, EQUAL_ETAG)
+    result = d.get_item_if("key1", current_etag, ETAG_IS_THE_SAME)
 
-    assert result is not ETAG_HAS_CHANGED
-    value, returned_etag = result
+    assert result.condition_was_satisfied
+    value = result.new_value
+    returned_etag = result.resulting_etag
     assert value == "value"
     assert returned_etag == current_etag
 
@@ -84,19 +85,19 @@ def test_get_item_if_etag_returns_flag_when_differs(tmpdir, DictToTest, kwargs):
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.get_item_if_etag("key1", old_etag, EQUAL_ETAG)
+    result = d.get_item_if("key1", old_etag, ETAG_IS_THE_SAME)
 
-    assert result is ETAG_HAS_CHANGED
+    assert not result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_item_if_etag_equal_missing_key_raises_keyerror(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag raises error for missing keys."""
+    """Verify get_item_if returns ITEM_NOT_AVAILABLE for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    with pytest.raises((KeyError, FileNotFoundError)):
-        d.get_item_if_etag("nonexistent", "some_etag", EQUAL_ETAG)
+    result = d.get_item_if("nonexistent", "some_etag", ETAG_IS_THE_SAME)
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -111,10 +112,10 @@ def test_get_item_if_etag_with_tuple_keys_changed(tmpdir, DictToTest, kwargs):
     time.sleep(1.1)
     d[key] = "modified"
 
-    result = d.get_item_if_etag(key, old_etag, DIFFERENT_ETAG)
+    result = d.get_item_if(key, old_etag, ETAG_HAS_CHANGED)
 
-    assert result is not ETAG_HAS_NOT_CHANGED
-    value, _ = result
+    assert result.condition_was_satisfied
+    value = result.new_value
     assert value == "modified"
 
 
@@ -127,10 +128,10 @@ def test_get_item_if_etag_with_tuple_keys_not_changed(tmpdir, DictToTest, kwargs
     d[key] = "value"
     current_etag = d.etag(key)
 
-    result = d.get_item_if_etag(key, current_etag, EQUAL_ETAG)
+    result = d.get_item_if(key, current_etag, ETAG_IS_THE_SAME)
 
-    assert result is not ETAG_HAS_CHANGED
-    value, _ = result
+    assert result.condition_was_satisfied
+    value = result.new_value
     assert value == "value"
 
 
@@ -143,25 +144,26 @@ def test_get_item_if_etag_returns_correct_complex_values(tmpdir, DictToTest, kwa
     d["key1"] = complex_value
     current_etag = d.etag("key1")
 
-    result = d.get_item_if_etag("key1", current_etag, EQUAL_ETAG)
+    result = d.get_item_if("key1", current_etag, ETAG_IS_THE_SAME)
 
-    assert result is not ETAG_HAS_CHANGED
-    value, _ = result
+    assert result.condition_was_satisfied
+    value = result.new_value
     assert value == complex_value
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_item_if_etag_different_with_unknown_etag(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag DIFFERENT_ETAG behavior with ETAG_UNKNOWN."""
+    """Verify get_item_if_etag ETAG_HAS_CHANGED behavior with ITEM_NOT_AVAILABLE."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    # ETAG_UNKNOWN differs from actual etag, so should return value
-    result = d.get_item_if_etag("key1", ETAG_UNKNOWN, DIFFERENT_ETAG)
+    # ITEM_NOT_AVAILABLE differs from actual etag, so should return value
+    result = d.get_item_if("key1", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
 
-    assert result is not ETAG_HAS_NOT_CHANGED
-    value, etag = result
+    assert result.condition_was_satisfied
+    value = result.new_value
+    etag = result.resulting_etag
     assert value == "value"
     assert isinstance(etag, str)
 
@@ -169,14 +171,14 @@ def test_get_item_if_etag_different_with_unknown_etag(tmpdir, DictToTest, kwargs
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_item_if_etag_equal_with_unknown_etag(tmpdir, DictToTest, kwargs):
-    """Verify get_item_if_etag EQUAL_ETAG behavior with ETAG_UNKNOWN."""
+    """Verify get_item_if_etag ETAG_IS_THE_SAME behavior with ITEM_NOT_AVAILABLE."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    # ETAG_UNKNOWN differs from actual etag, so should return ETAG_HAS_CHANGED
-    result = d.get_item_if_etag("key1", ETAG_UNKNOWN, EQUAL_ETAG)
+    # ITEM_NOT_AVAILABLE differs from actual etag, so should return ETAG_HAS_CHANGED
+    result = d.get_item_if("key1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 
-    assert result is ETAG_HAS_CHANGED
+    assert not result.condition_was_satisfied
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -191,8 +193,8 @@ def test_get_item_if_etag_returned_etag_matches_current(tmpdir, DictToTest, kwar
     d["key1"] = "modified"
     expected_etag = d.etag("key1")
 
-    result = d.get_item_if_etag("key1", old_etag, DIFFERENT_ETAG)
+    result = d.get_item_if("key1", old_etag, ETAG_HAS_CHANGED)
 
-    assert result is not ETAG_HAS_NOT_CHANGED
-    _, returned_etag = result
+    assert result.condition_was_satisfied
+    returned_etag = result.resulting_etag
     assert returned_etag == expected_etag
