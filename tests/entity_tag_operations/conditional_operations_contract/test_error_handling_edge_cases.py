@@ -255,7 +255,6 @@ def test_different_keys_have_independent_etags(tmpdir, DictToTest, kwargs):
     d["key1"] = "value1"
     d["key2"] = "value1"  # Same value, different key
 
-    etag1 = d.etag("key1")
     etag2 = d.etag("key2")
 
     # Etags may or may not be equal (depends on timestamp), but operations
@@ -348,7 +347,7 @@ def test_get_item_if_etag_preserves_value_type(tmpdir, DictToTest, kwargs):
         assert result is not ETAG_HAS_CHANGED
         retrieved_value, _ = result
         assert retrieved_value == test_value
-        assert type(retrieved_value) == type(test_value)
+        assert type(retrieved_value) is type(test_value)
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

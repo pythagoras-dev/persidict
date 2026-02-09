@@ -28,7 +28,6 @@ def test_set_item_if_etag_equal_with_keep_current_verifies_etag(tmpdir, DictToTe
     """
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
-    correct_etag = d.etag("key1")
     wrong_etag = "definitely_wrong_etag"
 
     result = d.set_item_if_etag("key1", KEEP_CURRENT, wrong_etag, EQUAL_ETAG)

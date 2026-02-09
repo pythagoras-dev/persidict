@@ -10,11 +10,11 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR / "src"))
 
-from persidict.file_dir_dict import add_long_path_prefix, drop_long_path_prefix
-
 
 def test_unc_path_functions():
     """Test UNC path handling functions on all platforms."""
+    from persidict.file_dir_dict import add_long_path_prefix, drop_long_path_prefix
+
     print("Testing UNC path handling functions...")
     
     # Test regular paths
