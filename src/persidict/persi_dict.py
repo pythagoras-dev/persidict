@@ -30,10 +30,8 @@ from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
                                       ETagValue, ETagConditionFlag,
                                       ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
-                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
-                                      VALUE_NOT_RETRIEVED,
-                                      ETagIfExists, ValueIfExists, ValueInResult,
-                                      TransformingFunction,
+                                      ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
+                                      ETagIfExists, TransformingFunction,
                                       OperationResult, ConditionalOperationResult)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple

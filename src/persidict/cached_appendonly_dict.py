@@ -20,17 +20,14 @@ main dict to keep semantics consistent with the authoritative store.
 
 from __future__ import annotations
 
-from typing import Optional
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
-                                      KEEP_CURRENT, DELETE_CURRENT,
-                                      Joker, ETagValue,
+                                      ETagValue,
                                       ETagConditionFlag,
                                       ETagIfExists,
-                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
-                                      VALUE_NOT_RETRIEVED,
+                                      ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
                                       ConditionalOperationResult)
 
 

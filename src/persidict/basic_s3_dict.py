@@ -27,12 +27,9 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagValue,
                                       ETagConditionFlag,
-                                      ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
-                                      ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
+                                      ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
                                       VALUE_NOT_RETRIEVED,
-                                      ETagIfExists, ValueInResult,
-                                      ConditionalOperationResult,
-                                      OperationResult)
+                                      ETagIfExists, ConditionalOperationResult)
 
 
 def not_found_error(e:ClientError) -> bool:

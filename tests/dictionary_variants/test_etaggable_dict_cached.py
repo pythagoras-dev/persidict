@@ -6,12 +6,9 @@ from persidict.persi_dict import PersiDict
 from persidict.local_dict import LocalDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple
 from persidict.jokers_and_status_flags import (
-    ITEM_NOT_AVAILABLE,
     KEEP_CURRENT,
     DELETE_CURRENT,
-    ETAG_IS_THE_SAME,
     ETAG_HAS_CHANGED,
-    ConditionalOperationResult,
 )
 
 

@@ -10,8 +10,7 @@ from typing import Any, Iterator
 
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
-from .jokers_and_status_flags import (ETagConditionFlag, ETagValue,
-                                      ETagIfExists,
+from .jokers_and_status_flags import (ETagConditionFlag, ETagIfExists,
                                       ITEM_NOT_AVAILABLE,
                                       ConditionalOperationResult,
                                       OperationResult)
@@ -141,7 +140,6 @@ class EmptyDict(PersiDict[ValueType]):
 
     def transform_item(self, key, transformer) -> OperationResult:
         """Transform always receives ITEM_NOT_AVAILABLE, result is discarded."""
-        new_value = transformer(ITEM_NOT_AVAILABLE)
         return OperationResult(
             resulting_etag=ITEM_NOT_AVAILABLE,
             new_value=ITEM_NOT_AVAILABLE)

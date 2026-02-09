@@ -9,7 +9,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+    ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
     ConditionalOperationResult
 )
 

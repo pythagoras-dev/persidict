@@ -18,7 +18,6 @@ from mixinforge import sort_dict_by_keys
 from .jokers_and_status_flags import (
     KEEP_CURRENT,
     KeepCurrentFlag,
-    ETagValue,
     ETagConditionFlag,
     ETagIfExists,
     ConditionalOperationResult,
