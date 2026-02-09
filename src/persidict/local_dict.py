@@ -347,7 +347,7 @@ class LocalDict(PersiDict[ValueType]):
         bucket = parent_node.values.get(self.serialization_format, {})
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
-        value = bucket[leaf][0]
+        value = deepcopy(bucket[leaf][0])
         if self.base_class_for_values is not None:
             if not isinstance(value, self.base_class_for_values):
                 raise TypeError(
@@ -433,7 +433,7 @@ class LocalDict(PersiDict[ValueType]):
                 if "keys" in result_type:
                     to_return.append(full_key)
                 if "values" in result_type:
-                    to_return.append(val)
+                    to_return.append(deepcopy(val))
                 if len(result_type) == 1:
                     yield to_return[0]
                 else:
