@@ -13,7 +13,6 @@ import os
 import random
 import tempfile
 import time
-from contextlib import contextmanager
 from typing import Any, Final, Optional
 
 import joblib
@@ -22,9 +21,12 @@ import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
 from mixinforge import sort_dict_by_keys
 
-from .jokers_and_status_flags import (Joker, ETagChangeFlag,
-                                      KEEP_CURRENT, DELETE_CURRENT, ETagInput,
-                                      ETagConditionFlag, ETagValue)
+from .jokers_and_status_flags import (
+    Joker,
+    KEEP_CURRENT,
+    DELETE_CURRENT,
+    ETagValue,
+)
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
@@ -92,8 +94,6 @@ if os.name == 'nt':
             return path
 
 else:
-    import fcntl
-
     def add_long_path_prefix(path: str) -> str:
         return path
 
@@ -347,32 +347,6 @@ class FileDirDict(PersiDict[ValueType]):
             key = unsign_safe_str_tuple(key, self.digest_len)
 
             return key
-
-
-    def _lock_path_for_key(self, key: SafeStrTuple) -> str:
-        """Return the filesystem path of the lock file for a key."""
-        file_path = self._build_full_path(key, create_subdirs=True)
-        return file_path + ".lock"
-
-    @contextmanager
-    def _acquire_key_lock(self, key: SafeStrTuple):
-        """Acquire an exclusive per-key lock to guard compare-and-write sequences."""
-        lock_path = self._lock_path_for_key(key)
-        # Use a lock file co-located with the data file to avoid cross-device issues.
-        with open(lock_path, "a+b") as lock_file:
-            if os.name == 'nt':
-                lock_file.seek(0)
-                msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
-            else:
-                fcntl.flock(lock_file, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                if os.name == 'nt':
-                    lock_file.seek(0)
-                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
-                else:
-                    fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
     def get_subdict(self, prefix_key:PersiDictKey) -> 'FileDirDict[ValueType]':
@@ -646,8 +620,8 @@ class FileDirDict(PersiDict[ValueType]):
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
 
-        Uses a per-key lock to make the check-and-write sequence safe
-        across concurrent writers on the same filesystem.
+        Best-effort: concurrent writers may still race between the check
+        and write steps.
 
         Args:
             key: Key (string, sequence of strings, or SafeStrTuple).
@@ -664,15 +638,14 @@ class FileDirDict(PersiDict[ValueType]):
         if isinstance(default, Joker):
             raise TypeError("default must be a regular value, not a Joker command")
 
-        with self._acquire_key_lock(key):
-            filename = self._build_full_path(key)
-            if os.path.isfile(filename):
-                return self[key]
+        filename = self._build_full_path(key)
+        if os.path.isfile(filename):
+            return self[key]
 
-            key = self._validate_setitem_args(key, default)
-            filename = self._build_full_path(key, create_subdirs=True)
-            self._save_to_file(filename, default)
-            return default
+        key = self._validate_setitem_args(key, default)
+        filename = self._build_full_path(key, create_subdirs=True)
+        self._save_to_file(filename, default)
+        return default
 
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
@@ -681,8 +654,8 @@ class FileDirDict(PersiDict[ValueType]):
         Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
         Validates value type if base_class_for_values is set, then serializes
         and writes to a file determined by the key and serialization_format.
-        Uses a per-key lock to serialize unconditional writes with conditional
-        operations on the same key.
+        Best-effort: no file locking is performed, so concurrent writers
+        may race on the same key.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string or sequence of strings
@@ -704,91 +677,9 @@ class FileDirDict(PersiDict[ValueType]):
             self.discard(key)
             return None
 
-        with self._acquire_key_lock(key):
-            key = self._validate_setitem_args(key, value)
-            filename = self._build_full_path(key, create_subdirs=True)
-            self._save_to_file(filename, value)
-
-
-    def set_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            value: ValueType | Joker,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> ETagValue | None | ETagChangeFlag:
-        """Store a value only if the ETag satisfies a condition.
-
-        Uses a per-key file lock to make the compare-and-write sequence
-        safe across concurrent writers on the same filesystem.
-        """
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        with self._acquire_key_lock(key):
-            current_etag = self.etag(key)
-            if not self._etag_condition_holds(condition, etag, current_etag):
-                return self._etag_condition_failure_flag(condition)
-            key = self._validate_setitem_args(key, value)
-            if value is KEEP_CURRENT:
-                return None
-            if value is DELETE_CURRENT:
-                self._delitem_locked(key)
-                return None
-            filename = self._build_full_path(key, create_subdirs=True)
-            self._save_to_file(filename, value)
-            return self.etag(key)
-
-
-    def _delitem_locked(self, key: SafeStrTuple) -> None:
-        """Internal delete method assuming lock is already held.
-
-        Raises:
-            KeyError: If the file does not exist.
-        """
-        filename = self._build_full_path(key)
-        if not os.path.isfile(filename):
-            raise KeyError(f"File {filename} does not exist")
-        os.remove(filename)
-
-
-    def delete_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> None | ETagChangeFlag:
-        """Delete a key only if its ETag satisfies a condition (with per-key lock)."""
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        with self._acquire_key_lock(key):
-            current_etag = self.etag(key)
-            if not self._etag_condition_holds(condition, etag, current_etag):
-                return self._etag_condition_failure_flag(condition)
-            self._delitem_locked(key)
-            return None
-
-
-    def discard_item_if_etag(
-            self,
-            key: NonEmptyPersiDictKey,
-            etag: ETagInput,
-            condition: ETagConditionFlag
-    ) -> bool:
-        """Discard a key only if its ETag satisfies a condition (with per-key lock)."""
-        etag = self._normalize_etag_input(etag)
-        key = NonEmptySafeStrTuple(key)
-        with self._acquire_key_lock(key):
-            try:
-                current_etag = self.etag(key)
-            except (KeyError, FileNotFoundError):
-                return False
-            if not self._etag_condition_holds(condition, etag, current_etag):
-                return False
-            try:
-                self._delitem_locked(key)
-                return True
-            except KeyError:
-                return False
+        key = self._validate_setitem_args(key, value)
+        filename = self._build_full_path(key, create_subdirs=True)
+        self._save_to_file(filename, value)
 
 
     def __delitem__(self, key:NonEmptyPersiDictKey) -> None:
@@ -803,8 +694,13 @@ class FileDirDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
-        with self._acquire_key_lock(key):
-            self._delitem_locked(key)
+        filename = self._build_full_path(key)
+        if not os.path.isfile(filename):
+            raise KeyError(f"File {filename} does not exist")
+        try:
+            os.remove(filename)
+        except FileNotFoundError as exc:
+            raise KeyError(f"File {filename} does not exist") from exc
 
 
     def _generic_iter(self, result_type: set[str]):
