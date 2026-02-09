@@ -245,9 +245,10 @@ ValueIfExists: TypeAlias = ValueType | ItemNotAvailableFlag
 ValueInResult: TypeAlias = ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag
 """Value, ITEM_NOT_AVAILABLE, or VALUE_NOT_RETRIEVED in operation results."""
 
-TransformingFunction = Callable[[ValueIfExists], Any]
+TransformingFunction = Callable[
+    [ValueIfExists], ValueType | KeepCurrentFlag | DeleteCurrentFlag]
 """Callable that takes the current value (or ITEM_NOT_AVAILABLE) and returns
-a new value or DELETE_CURRENT."""
+a new value, DELETE_CURRENT, or KEEP_CURRENT."""
 
 
 # --- Result dataclasses ---

@@ -505,13 +505,14 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: NonEmptyPersiDictKey,
             transformer: TransformingFunction
     ) -> OperationResult:
-        """Apply a transformation function to a key's value atomically.
+        """Apply a transformation function to a key's value.
 
         Reads the current value (or ITEM_NOT_AVAILABLE if absent), calls
         transformer(current_value), and writes the result back.
 
         If the transformer returns DELETE_CURRENT, the key is deleted
-        (or no-op if already absent).
+        (or no-op if already absent). If the transformer returns
+        KEEP_CURRENT, the value is left unchanged.
 
         Warning:
             This base class implementation is not atomic. Subclasses that
@@ -520,7 +521,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Args:
             key: Dictionary key.
             transformer: A callable that receives the current value (or
-                ITEM_NOT_AVAILABLE) and returns a new value or DELETE_CURRENT.
+                ITEM_NOT_AVAILABLE) and returns a new value,
+                DELETE_CURRENT, or KEEP_CURRENT.
 
         Returns:
             OperationResult with resulting_etag and new_value.
@@ -539,6 +541,15 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return OperationResult(
                 resulting_etag=ITEM_NOT_AVAILABLE,
                 new_value=ITEM_NOT_AVAILABLE)
+
+        if new_value is KEEP_CURRENT:
+            if current_value is ITEM_NOT_AVAILABLE:
+                return OperationResult(
+                    resulting_etag=ITEM_NOT_AVAILABLE,
+                    new_value=ITEM_NOT_AVAILABLE)
+            return OperationResult(
+                resulting_etag=self._actual_etag(key),
+                new_value=current_value)
 
         self[key] = new_value
         resulting_etag = self._actual_etag(key)
