@@ -716,8 +716,8 @@ class BasicS3Dict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Discard a key only if an ETag condition is satisfied.
 
-        Uses S3 conditional headers (IfMatch) for ETAG_IS_THE_SAME when
-        possible. For other conditions, falls back to check-then-delete.
+        Uses S3 conditional delete with IfMatch to guard against
+        concurrent changes for all condition types.
 
         Args:
             key: Dictionary key.
@@ -757,8 +757,21 @@ class BasicS3Dict(PersiDict[ValueType]):
                         return_existing_value=False)
                 raise
 
-        self.discard(key)
-        return self._result_delete_success(condition, actual_etag)
+        # Atomic delete: guard against concurrent changes since the HEAD
+        obj_name = self._build_full_objectname(key)
+        try:
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=obj_name,
+                IfMatch=actual_etag)
+            return self._result_delete_success(condition, actual_etag)
+        except ClientError as e:
+            if not_found_error(e) or conditional_request_failed(e):
+                return self._conditional_failure_result(
+                    key, condition,
+                    always_retrieve_value=False,
+                    return_existing_value=False)
+            raise
 
     def setdefault_if(
             self,
