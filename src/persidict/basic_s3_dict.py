@@ -760,6 +760,69 @@ class BasicS3Dict(PersiDict[ValueType]):
         self.discard(key)
         return self._result_delete_success(condition, actual_etag)
 
+    def setdefault_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            default_value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Insert default_value if key is absent; conditioned on ETag check.
+
+        Uses S3 conditional put (IfNoneMatch: ``*``) for atomic
+        insert-if-absent when the key is absent and the condition is
+        satisfied, avoiding the TOCTOU race in the base class.
+
+        Args:
+            key: Dictionary key.
+            default_value: Value to insert if the key is absent and the
+                condition is satisfied.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
+                if the caller believes the key is absent.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            always_retrieve_value: If True (default), the existing value is
+                returned when the key exists. If False, VALUE_NOT_RETRIEVED
+                is returned instead.
+
+        Returns:
+            ConditionalOperationResult with the outcome of the operation.
+        """
+        key = NonEmptySafeStrTuple(key)
+        self._validate_value(default_value)
+
+        actual_etag = self._actual_etag(key)
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
+
+        if actual_etag is not ITEM_NOT_AVAILABLE:
+            existing_value = (self[key] if always_retrieve_value
+                              else VALUE_NOT_RETRIEVED)
+            return self._result_unchanged(
+                condition, satisfied, actual_etag, existing_value)
+
+        if not satisfied:
+            return self._result_item_not_available(condition, False)
+
+        # Key is absent and condition is satisfied — atomic insert
+        try:
+            resulting_etag = self._put_object_with_conditions(
+                key, default_value, if_none_match="*")
+            return self._result_write_success(
+                condition, ITEM_NOT_AVAILABLE, resulting_etag, default_value)
+        except ClientError as e:
+            if conditional_request_failed(e):
+                # Concurrent writer inserted the key between our check
+                # and our put — treat as "key already exists"
+                actual_etag = self._actual_etag(key)
+                if actual_etag is ITEM_NOT_AVAILABLE:
+                    return self._result_item_not_available(condition, satisfied)
+                existing_value = (self[key] if always_retrieve_value
+                                  else VALUE_NOT_RETRIEVED)
+                return self._result_unchanged(
+                    condition, satisfied, actual_etag, existing_value)
+            raise
+
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value for a key directly in S3.
 
