@@ -723,25 +723,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6055
-     - 9242
-     - 15297
+     - 6257
+     - 9379
+     - 15636
    * - Source Lines Of Code (SLOC)
-     - 2643
-     - 5921
-     - 8564
+     - 2817
+     - 6005
+     - 8822
    * - Classes
      - 27
      - 8
      - 35
    * - Functions / Methods
-     - 241
-     - 515
-     - 756
+     - 247
+     - 524
+     - 771
    * - Files
      - 16
-     - 97
-     - 113
+     - 98
+     - 114
 
 .. MIXINFORGE_STATS_END
 
