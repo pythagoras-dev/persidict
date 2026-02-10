@@ -103,7 +103,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         Raises:
             ValueError: If serialization_format is an empty string,
-            or contains unsafe characters, or not 'jason' or 'pkl'
+            or contains unsafe characters, or not 'json' or 'pkl'
             for non-string values.
 
             TypeError: If base_class_for_values is not a type or None.
