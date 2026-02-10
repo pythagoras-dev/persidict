@@ -24,6 +24,7 @@ from __future__ import annotations
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
+                                      Joker,
                                       ETagValue,
                                       ETagConditionFlag,
                                       ETagIfExists,
@@ -257,7 +258,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         res = self._main.set_item_if(
             key, value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
-        if res.condition_was_satisfied:
+        if res.condition_was_satisfied and not isinstance(value, Joker):
             self._data_cache[key] = value
         return res
 
