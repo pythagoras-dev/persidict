@@ -326,12 +326,7 @@ class BasicS3Dict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Build a ConditionalOperationResult for a missing key."""
         satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return ConditionalOperationResult(
-            condition_was_satisfied=satisfied,
-            requested_condition=condition,
-            actual_etag=ITEM_NOT_AVAILABLE,
-            resulting_etag=ITEM_NOT_AVAILABLE,
-            new_value=ITEM_NOT_AVAILABLE)
+        return self._result_item_not_available(condition, satisfied)
 
     def _conditional_failure_result(
             self,
@@ -344,22 +339,12 @@ class BasicS3Dict(PersiDict[ValueType]):
         """Build result for a failed conditional write/delete."""
         new_actual = self._actual_etag(key)
         if new_actual is ITEM_NOT_AVAILABLE:
-            return ConditionalOperationResult(
-                condition_was_satisfied=False,
-                requested_condition=condition,
-                actual_etag=ITEM_NOT_AVAILABLE,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
+            return self._result_item_not_available(condition, False)
         if return_existing_value:
             new_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
         else:
             new_value = ITEM_NOT_AVAILABLE
-        return ConditionalOperationResult(
-            condition_was_satisfied=False,
-            requested_condition=condition,
-            actual_etag=new_actual,
-            resulting_etag=new_actual,
-            new_value=new_value)
+        return self._result_unchanged(condition, False, new_actual, new_value)
 
     def get_item_if(
             self,
@@ -393,12 +378,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 return self._result_for_missing_key(condition, expected_etag)
 
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
-            return ConditionalOperationResult(
-                condition_was_satisfied=satisfied,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=actual_etag,
-                new_value=value)
+            return self._result_unchanged(condition, satisfied, actual_etag, value)
 
         obj_name = self._build_full_objectname(key)
         use_if_none_match = not isinstance(expected_etag, ItemNotAvailableFlag)
@@ -417,23 +397,14 @@ class BasicS3Dict(PersiDict[ValueType]):
             if not_found_error(e):
                 return self._result_for_missing_key(condition, expected_etag)
             if use_if_none_match and not_modified_error(e):
-                actual_etag = expected_etag
-                satisfied = self._check_condition(condition, expected_etag, actual_etag)
-                return ConditionalOperationResult(
-                    condition_was_satisfied=satisfied,
-                    requested_condition=condition,
-                    actual_etag=actual_etag,
-                    resulting_etag=actual_etag,
-                    new_value=VALUE_NOT_RETRIEVED)
+                satisfied = self._check_condition(
+                    condition, expected_etag, expected_etag)
+                return self._result_unchanged(
+                    condition, satisfied, expected_etag, VALUE_NOT_RETRIEVED)
             raise
 
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
-        return ConditionalOperationResult(
-            condition_was_satisfied=satisfied,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=actual_etag,
-            new_value=value)
+        return self._result_unchanged(condition, satisfied, actual_etag, value)
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Retrieve the value stored for a key directly from S3.
@@ -514,9 +485,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             )
             return default
         except ClientError as e:
-            status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
-            code = e.response.get('Error', {}).get('Code')
-            if status in (409, 412) or code in ("ConditionalRequestConflict", "PreconditionFailed"):
+            if conditional_request_failed(e):
                 return self[key]
             raise
 
@@ -538,6 +507,33 @@ class BasicS3Dict(PersiDict[ValueType]):
                 serialized_data = str(value).encode('utf-8')
             content_type = 'text/plain'
         return serialized_data, content_type
+
+    @staticmethod
+    def _compute_conditional_headers(
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
+            actual_etag: ETagIfExists = ITEM_NOT_AVAILABLE
+    ) -> tuple[str | None, str | None]:
+        """Map a condition and expected ETag to S3 conditional headers.
+
+        Args:
+            condition: The ETag condition to enforce.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
+            actual_etag: The actual ETag (needed for ETAG_HAS_CHANGED with
+                ITEM_NOT_AVAILABLE expected_etag).
+
+        Returns:
+            (if_match, if_none_match) for use in S3 put/delete calls.
+        """
+        if condition is ETAG_IS_THE_SAME:
+            if isinstance(expected_etag, ItemNotAvailableFlag):
+                return None, "*"
+            return expected_etag, None
+        if condition is ETAG_HAS_CHANGED:
+            if isinstance(expected_etag, ItemNotAvailableFlag):
+                return actual_etag, None
+            return None, expected_etag
+        return None, None
 
     def _put_object_with_conditions(
             self,
@@ -605,138 +601,112 @@ class BasicS3Dict(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         if self.append_only and value is DELETE_CURRENT:
             raise KeyError("Can't modify an immutable key-value pair")
+        self._validate_value(value)
 
-        validated_value = False
+        # Fast path: use S3 conditional put directly for ETAG_IS_THE_SAME
+        # with a real value (not a joker) and non-append-only mode.
         if (not self.append_only
                 and condition is ETAG_IS_THE_SAME
                 and value is not KEEP_CURRENT
                 and value is not DELETE_CURRENT):
-            if isinstance(value, PersiDict):
-                raise TypeError("Cannot store a PersiDict instance directly")
-            if self.base_class_for_values is not None:
-                if not isinstance(value, self.base_class_for_values):
-                    raise TypeError(f"Value must be an instance of"
-                                    f" {self.base_class_for_values.__name__}")
-            validated_value = True
+            return self._set_item_if_fast_path(
+                key, value, expected_etag, condition, always_retrieve_value)
 
-            try:
-                if isinstance(expected_etag, ItemNotAvailableFlag):
-                    resulting_etag = self._put_object_with_conditions(
-                        key, value, if_none_match="*")
-                    actual_etag = ITEM_NOT_AVAILABLE
-                else:
-                    resulting_etag = self._put_object_with_conditions(
-                        key, value, if_match=expected_etag)
-                    actual_etag = expected_etag
-                return ConditionalOperationResult(
-                    condition_was_satisfied=True,
-                    requested_condition=condition,
-                    actual_etag=actual_etag,
-                    resulting_etag=resulting_etag,
-                    new_value=value)
-            except ClientError as e:
-                if not_found_error(e):
-                    return self._result_for_missing_key(condition, expected_etag)
-                if not conditional_request_failed(e):
-                    raise
-                return self._conditional_failure_result(
-                    key,
-                    condition,
-                    always_retrieve_value=always_retrieve_value,
-                    return_existing_value=True,
-                )
+        return self._set_item_if_fallback(
+            key, value, expected_etag, condition, always_retrieve_value)
 
+    def _set_item_if_fast_path(
+            self,
+            key: NonEmptySafeStrTuple,
+            value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            always_retrieve_value: bool
+    ) -> ConditionalOperationResult:
+        """Optimistic S3 conditional write for ETAG_IS_THE_SAME.
+
+        Attempts a single S3 put with IfMatch/IfNoneMatch headers,
+        avoiding a separate ETag check round-trip.
+        """
+        if_match, if_none_match = self._compute_conditional_headers(
+            condition, expected_etag)
+        actual_etag = (ITEM_NOT_AVAILABLE
+                       if isinstance(expected_etag, ItemNotAvailableFlag)
+                       else expected_etag)
+        try:
+            resulting_etag = self._put_object_with_conditions(
+                key, value,
+                if_match=if_match, if_none_match=if_none_match)
+            return self._result_write_success(
+                condition, actual_etag, resulting_etag, value)
+        except ClientError as e:
+            if not_found_error(e):
+                return self._result_for_missing_key(condition, expected_etag)
+            if not conditional_request_failed(e):
+                raise
+            return self._conditional_failure_result(
+                key, condition,
+                always_retrieve_value=always_retrieve_value,
+                return_existing_value=True)
+
+    def _set_item_if_fallback(
+            self,
+            key: NonEmptySafeStrTuple,
+            value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            always_retrieve_value: bool
+    ) -> ConditionalOperationResult:
+        """Check-then-act path for conditions other than the fast path.
+
+        Handles jokers (KEEP_CURRENT, DELETE_CURRENT), append_only checks,
+        ETAG_HAS_CHANGED, and ANY_ETAG conditions.
+        """
         actual_etag = self._actual_etag(key)
         if self.append_only and value is not KEEP_CURRENT:
             if actual_etag is not ITEM_NOT_AVAILABLE:
                 raise KeyError("Can't modify an immutable key-value pair")
-        if not validated_value:
-            if isinstance(value, PersiDict):
-                raise TypeError("Cannot store a PersiDict instance directly")
-            if value is not KEEP_CURRENT and value is not DELETE_CURRENT:
-                if self.base_class_for_values is not None:
-                    if not isinstance(value, self.base_class_for_values):
-                        raise TypeError(f"Value must be an instance of"
-                                        f" {self.base_class_for_values.__name__}")
+
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
-                return ConditionalOperationResult(
-                    condition_was_satisfied=False,
-                    requested_condition=condition,
-                    actual_etag=ITEM_NOT_AVAILABLE,
-                    resulting_etag=ITEM_NOT_AVAILABLE,
-                    new_value=ITEM_NOT_AVAILABLE)
-            existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
-            return ConditionalOperationResult(
-                condition_was_satisfied=False,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=actual_etag,
-                new_value=existing_value)
+                return self._result_item_not_available(condition, False)
+            existing_value = (self[key] if always_retrieve_value
+                              else VALUE_NOT_RETRIEVED)
+            return self._result_unchanged(
+                condition, False, actual_etag, existing_value)
 
         # Handle joker values before attempting S3 write
         if value is KEEP_CURRENT:
-            return ConditionalOperationResult(
-                condition_was_satisfied=True,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=actual_etag,
-                new_value=VALUE_NOT_RETRIEVED)
+            return self._result_unchanged(
+                condition, True, actual_etag, VALUE_NOT_RETRIEVED)
         if value is DELETE_CURRENT:
             self.discard(key)
-            return ConditionalOperationResult(
-                condition_was_satisfied=True,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
+            return self._result_delete_success(condition, actual_etag)
 
-        # Condition satisfied — attempt conditional write when possible.
+        # Attempt conditional write when possible
         if condition in (ETAG_IS_THE_SAME, ETAG_HAS_CHANGED):
-            if condition is ETAG_IS_THE_SAME:
-                if isinstance(expected_etag, ItemNotAvailableFlag):
-                    if_match = None
-                    if_none_match = "*"
-                else:
-                    if_match = expected_etag
-                    if_none_match = None
-            else:
-                if isinstance(expected_etag, ItemNotAvailableFlag):
-                    if_match = actual_etag
-                    if_none_match = None
-                else:
-                    if_match = None
-                    if_none_match = expected_etag
-
+            if_match, if_none_match = self._compute_conditional_headers(
+                condition, expected_etag, actual_etag)
             try:
                 resulting_etag = self._put_object_with_conditions(
-                    key, value, if_match=if_match, if_none_match=if_none_match)
-                return ConditionalOperationResult(
-                    condition_was_satisfied=True,
-                    requested_condition=condition,
-                    actual_etag=actual_etag,
-                    resulting_etag=resulting_etag,
-                    new_value=value)
+                    key, value,
+                    if_match=if_match, if_none_match=if_none_match)
+                return self._result_write_success(
+                    condition, actual_etag, resulting_etag, value)
             except ClientError as e:
                 if conditional_request_failed(e):
                     return self._conditional_failure_result(
-                        key,
-                        condition,
+                        key, condition,
                         always_retrieve_value=always_retrieve_value,
-                        return_existing_value=True,
-                    )
+                        return_existing_value=True)
                 raise
 
-        # For ANY_ETAG or other conditions, do a simple write
+        # For ANY_ETAG: unconditional write
         resulting_etag = self._put_object_get_etag(key, value)
-        return ConditionalOperationResult(
-            condition_was_satisfied=True,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=resulting_etag,
-            new_value=value)
+        return self._result_write_success(
+            condition, actual_etag, resulting_etag, value)
 
     def discard_item_if(
             self,
@@ -762,24 +732,14 @@ class BasicS3Dict(PersiDict[ValueType]):
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if actual_etag is ITEM_NOT_AVAILABLE:
-            return ConditionalOperationResult(
-                condition_was_satisfied=satisfied,
-                requested_condition=condition,
-                actual_etag=ITEM_NOT_AVAILABLE,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
-
+            return self._result_item_not_available(condition, satisfied)
         if not satisfied:
-            return ConditionalOperationResult(
-                condition_was_satisfied=False,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=actual_etag,
-                new_value=ITEM_NOT_AVAILABLE)
-
+            return self._result_unchanged(
+                condition, False, actual_etag, ITEM_NOT_AVAILABLE)
         if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
 
+        # Use S3 conditional delete when possible
         if (condition is ETAG_IS_THE_SAME
                 and not isinstance(expected_etag, ItemNotAvailableFlag)):
             obj_name = self._build_full_objectname(key)
@@ -787,31 +747,18 @@ class BasicS3Dict(PersiDict[ValueType]):
                 self.s3_client.delete_object(
                     Bucket=self.bucket_name,
                     Key=obj_name,
-                    IfMatch=expected_etag
-                )
-                return ConditionalOperationResult(
-                    condition_was_satisfied=True,
-                    requested_condition=condition,
-                    actual_etag=actual_etag,
-                    resulting_etag=ITEM_NOT_AVAILABLE,
-                    new_value=ITEM_NOT_AVAILABLE)
+                    IfMatch=expected_etag)
+                return self._result_delete_success(condition, actual_etag)
             except ClientError as e:
                 if not_found_error(e) or conditional_request_failed(e):
                     return self._conditional_failure_result(
-                        key,
-                        condition,
+                        key, condition,
                         always_retrieve_value=False,
-                        return_existing_value=False,
-                    )
+                        return_existing_value=False)
                 raise
 
         self.discard(key)
-        return ConditionalOperationResult(
-            condition_was_satisfied=True,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=ITEM_NOT_AVAILABLE,
-            new_value=ITEM_NOT_AVAILABLE)
+        return self._result_delete_success(condition, actual_etag)
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value for a key directly in S3.

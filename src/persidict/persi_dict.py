@@ -271,6 +271,64 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         except (KeyError, FileNotFoundError):
             return ITEM_NOT_AVAILABLE
 
+    # --- ConditionalOperationResult factory methods ---
+
+    @staticmethod
+    def _result_item_not_available(
+            condition: ETagConditionFlag,
+            satisfied: bool
+    ) -> ConditionalOperationResult:
+        """Build result when the key is absent."""
+        return ConditionalOperationResult(
+            condition_was_satisfied=satisfied,
+            requested_condition=condition,
+            actual_etag=ITEM_NOT_AVAILABLE,
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
+
+    @staticmethod
+    def _result_unchanged(
+            condition: ETagConditionFlag,
+            satisfied: bool,
+            actual_etag: ETagIfExists,
+            new_value: Any
+    ) -> ConditionalOperationResult:
+        """Build result when no mutation occurred (resulting_etag == actual_etag)."""
+        return ConditionalOperationResult(
+            condition_was_satisfied=satisfied,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=actual_etag,
+            new_value=new_value)
+
+    @staticmethod
+    def _result_write_success(
+            condition: ETagConditionFlag,
+            actual_etag: ETagIfExists,
+            resulting_etag: ETagValue,
+            new_value: Any
+    ) -> ConditionalOperationResult:
+        """Build result for a successful write."""
+        return ConditionalOperationResult(
+            condition_was_satisfied=True,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=resulting_etag,
+            new_value=new_value)
+
+    @staticmethod
+    def _result_delete_success(
+            condition: ETagConditionFlag,
+            actual_etag: ETagIfExists
+    ) -> ConditionalOperationResult:
+        """Build result for a successful delete."""
+        return ConditionalOperationResult(
+            condition_was_satisfied=True,
+            requested_condition=condition,
+            actual_etag=actual_etag,
+            resulting_etag=ITEM_NOT_AVAILABLE,
+            new_value=ITEM_NOT_AVAILABLE)
+
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
@@ -306,24 +364,14 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if actual_etag is ITEM_NOT_AVAILABLE:
-            return ConditionalOperationResult(
-                condition_was_satisfied=satisfied,
-                requested_condition=condition,
-                actual_etag=ITEM_NOT_AVAILABLE,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
+            return self._result_item_not_available(condition, satisfied)
 
         if always_retrieve_value or expected_etag != actual_etag:
             value = self[key]
         else:
             value = VALUE_NOT_RETRIEVED
 
-        return ConditionalOperationResult(
-            condition_was_satisfied=satisfied,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=actual_etag,
-            new_value=value)
+        return self._result_unchanged(condition, satisfied, actual_etag, value)
 
     def set_item_if(
             self,
@@ -362,45 +410,22 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
-                return ConditionalOperationResult(
-                    condition_was_satisfied=False,
-                    requested_condition=condition,
-                    actual_etag=ITEM_NOT_AVAILABLE,
-                    resulting_etag=ITEM_NOT_AVAILABLE,
-                    new_value=ITEM_NOT_AVAILABLE)
+                return self._result_item_not_available(condition, False)
             existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
-            return ConditionalOperationResult(
-                condition_was_satisfied=False,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=actual_etag,
-                new_value=existing_value)
+            return self._result_unchanged(condition, False, actual_etag, existing_value)
 
         if value is KEEP_CURRENT:
-            return ConditionalOperationResult(
-                condition_was_satisfied=True,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=actual_etag,
-                new_value=VALUE_NOT_RETRIEVED)
+            return self._result_unchanged(
+                condition, True, actual_etag, VALUE_NOT_RETRIEVED)
 
         if value is DELETE_CURRENT:
             self.discard(key)
-            return ConditionalOperationResult(
-                condition_was_satisfied=True,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
+            return self._result_delete_success(condition, actual_etag)
 
         self[key] = value
         resulting_etag = self._actual_etag(key)
-        return ConditionalOperationResult(
-            condition_was_satisfied=True,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=resulting_etag,
-            new_value=value)
+        return self._result_write_success(
+            condition, actual_etag, resulting_etag, value)
 
     def setdefault_if(
             self,
@@ -443,27 +468,14 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             if satisfied:
                 self[key] = default_value
                 resulting_etag = self._actual_etag(key)
-                return ConditionalOperationResult(
-                    condition_was_satisfied=True,
-                    requested_condition=condition,
-                    actual_etag=ITEM_NOT_AVAILABLE,
-                    resulting_etag=resulting_etag,
-                    new_value=default_value)
+                return self._result_write_success(
+                    condition, ITEM_NOT_AVAILABLE, resulting_etag, default_value)
             else:
-                return ConditionalOperationResult(
-                    condition_was_satisfied=False,
-                    requested_condition=condition,
-                    actual_etag=ITEM_NOT_AVAILABLE,
-                    resulting_etag=ITEM_NOT_AVAILABLE,
-                    new_value=ITEM_NOT_AVAILABLE)
+                return self._result_item_not_available(condition, False)
 
         existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
-        return ConditionalOperationResult(
-            condition_was_satisfied=satisfied,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=actual_etag,
-            new_value=existing_value)
+        return self._result_unchanged(
+            condition, satisfied, actual_etag, existing_value)
 
     def discard_item_if(
             self,
@@ -494,28 +506,14 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if actual_etag is ITEM_NOT_AVAILABLE:
-            return ConditionalOperationResult(
-                condition_was_satisfied=satisfied,
-                requested_condition=condition,
-                actual_etag=ITEM_NOT_AVAILABLE,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
+            return self._result_item_not_available(condition, satisfied)
 
         if satisfied:
             self.discard(key)
-            return ConditionalOperationResult(
-                condition_was_satisfied=True,
-                requested_condition=condition,
-                actual_etag=actual_etag,
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
+            return self._result_delete_success(condition, actual_etag)
 
-        return ConditionalOperationResult(
-            condition_was_satisfied=False,
-            requested_condition=condition,
-            actual_etag=actual_etag,
-            resulting_etag=actual_etag,
-            new_value=ITEM_NOT_AVAILABLE)
+        return self._result_unchanged(
+            condition, False, actual_etag, ITEM_NOT_AVAILABLE)
 
     def transform_item(
             self,
@@ -590,6 +588,26 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
 
 
+    def _validate_value(self, value: ValueType) -> None:
+        """Validate that a value is acceptable for storage.
+
+        Joker commands (KEEP_CURRENT, DELETE_CURRENT) are silently accepted.
+
+        Args:
+            value: Value to store, or a joker command.
+
+        Raises:
+            TypeError: If the value is a PersiDict instance or does not match
+                the required base_class_for_values when specified.
+        """
+        if isinstance(value, PersiDict):
+            raise TypeError("Cannot store a PersiDict instance directly")
+        if value is not KEEP_CURRENT and value is not DELETE_CURRENT:
+            if self.base_class_for_values is not None:
+                if not isinstance(value, self.base_class_for_values):
+                    raise TypeError(f"Value must be an instance of"
+                                    f" {self.base_class_for_values.__name__}")
+
     def _validate_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                                ) -> NonEmptySafeStrTuple:
         """Validate setitem arguments without applying joker side effects.
@@ -614,17 +632,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             if value is DELETE_CURRENT or key in self:
                 raise KeyError("Can't modify an immutable key-value pair")
 
-        if isinstance(value, PersiDict):
-            raise TypeError("Cannot store a PersiDict instance directly")
-
+        self._validate_value(value)
         key = NonEmptySafeStrTuple(key)
-
-        if value is not KEEP_CURRENT and value is not DELETE_CURRENT:
-            if self.base_class_for_values is not None:
-                if not isinstance(value, self.base_class_for_values):
-                    raise TypeError(f"Value must be an instance of"
-                                    f" {self.base_class_for_values.__name__}")
-
         return key
 
     def _process_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
