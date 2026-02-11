@@ -297,12 +297,11 @@ class MutableDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag
     ) -> ConditionalOperationResult:
-        """Discard item only if ETag satisfies a condition; update caches on success."""
+        """Discard item only if ETag satisfies a condition; update caches."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.discard_item_if(key, expected_etag, condition)
-        if res.condition_was_satisfied:
-            self._data_cache.discard(key)
-            self._etag_cache.discard(key)
+        self._sync_caches_from_result(
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
         return res
 
     def transform_item(
@@ -334,8 +333,8 @@ class MutableDictCached(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         del self._main_dict[key]  # This will raise KeyError if key doesn't exist
-        self._etag_cache.discard(key)
-        self._data_cache.discard(key)
+        self._sync_caches_from_result(
+            key, new_value=ITEM_NOT_AVAILABLE, resulting_etag=ITEM_NOT_AVAILABLE)
 
     def get_subdict(self, prefix_key: PersiDictKey) -> 'MutableDictCached[ValueType]':
         """Get a sub-dictionary for the given key prefix.

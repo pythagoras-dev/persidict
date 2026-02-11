@@ -7,6 +7,7 @@ from persidict.file_dir_dict import FileDirDict
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME,
     ETAG_HAS_CHANGED,
+    ITEM_NOT_AVAILABLE,
     KEEP_CURRENT,
     VALUE_NOT_RETRIEVED,
 )
@@ -138,6 +139,42 @@ def test_discard_item_if_etag_different_clears_caches_on_mismatch(cached_env):
 
     assert wrapper.discard_item_if("k", "bogus", ETAG_HAS_CHANGED).condition_was_satisfied
     assert "k" not in main
+    assert "k" not in data_cache
+    assert "k" not in etag_cache
+
+
+def test_discard_item_if_missing_key_purges_stale_caches(cached_env):
+    """Verify discard_item_if on a missing key purges ghost cache entries."""
+    main, data_cache, etag_cache, wrapper = cached_env
+
+    # Seed stale entries in caches for a key that doesn't exist in main
+    data_cache["ghost"] = "stale_value"
+    etag_cache["ghost"] = "stale_etag"
+    assert "ghost" not in main
+
+    wrapper.discard_item_if("ghost", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+
+    assert "ghost" not in data_cache
+    assert "ghost" not in etag_cache
+
+
+def test_discard_item_if_failed_condition_purges_caches_for_gone_key(cached_env):
+    """Verify discard_item_if purges caches when the key was already deleted externally."""
+    main, data_cache, etag_cache, wrapper = cached_env
+    wrapper["k"] = "v1"
+    etag = wrapper.etag("k")
+
+    # Externally delete the key from main, leaving caches stale
+    del main["k"]
+    assert "k" not in main
+    assert "k" in data_cache
+    assert "k" in etag_cache
+
+    res = wrapper.discard_item_if("k", etag, ETAG_IS_THE_SAME)
+
+    # Key is gone, so actual_etag is ITEM_NOT_AVAILABLE != etag → not satisfied
+    assert not res.condition_was_satisfied
+    # But caches should be purged because the result says ITEM_NOT_AVAILABLE
     assert "k" not in data_cache
     assert "k" not in etag_cache
 
