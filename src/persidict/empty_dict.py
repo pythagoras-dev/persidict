@@ -83,6 +83,7 @@ class EmptyDict(PersiDict[ValueType]):
             always_retrieve_value: bool = True
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
+        key = self._validate_setitem_args(key, value)
         satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
         if satisfied:
             # Accept the write but discard it (like /dev/null)
