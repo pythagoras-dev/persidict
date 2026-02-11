@@ -6,7 +6,7 @@ from typing import Any, Optional, Iterable
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
-from .jokers_and_status_flags import EXECUTION_IS_COMPLETE
+from .jokers_and_status_flags import EXECUTION_IS_COMPLETE, ETagValue
 
 
 class _RAMBackend:
@@ -150,6 +150,7 @@ class LocalDict(PersiDict[ValueType]):
                 invalid type.
         """
         self._backend = backend or _RAMBackend()
+        self._write_counter: int = 0
         # Pruning throttling
         if prune_interval is None:
             self._prune_interval = None
@@ -377,7 +378,8 @@ class LocalDict(PersiDict[ValueType]):
             return None
         parent_node, leaf = self._navigate_to_parent(key)
         bucket = parent_node.get_values_bucket(self.serialization_format)
-        bucket[leaf] = (deepcopy(value), time.time())
+        self._write_counter += 1
+        bucket[leaf] = (deepcopy(value), time.time(), self._write_counter)
 
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
         """Delete a stored value for a key.
@@ -427,7 +429,7 @@ class LocalDict(PersiDict[ValueType]):
         def walk(prefix: tuple[str, ...], node: _RAMBackend):
             # yield values at this level
             bucket = node.values.get(self.serialization_format, {})
-            for leaf, (val, ts) in bucket.items():
+            for leaf, (val, ts, *_rest) in bucket.items():
                 full_key = SafeStrTuple((*prefix, leaf))
                 to_return: list[Any] = []
                 if "keys" in result_type:
@@ -467,6 +469,32 @@ class LocalDict(PersiDict[ValueType]):
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
         return bucket[leaf][1]
+
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
+        """Return a unique ETag for a key based on a monotonic write counter.
+
+        Unlike the base class (which formats the timestamp), LocalDict uses
+        an integer counter that increments on every write, guaranteeing
+        a distinct ETag even when two writes occur within the same
+        clock tick.
+
+        Args:
+            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
+
+        Returns:
+            ETagValue: A unique opaque string identifying the current version.
+
+        Raises:
+            KeyError: If the key does not exist.
+        """
+        key = NonEmptySafeStrTuple(key)
+        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
+        if parent_node is None:
+            raise KeyError(f"Key {key} not found")
+        bucket = parent_node.values.get(self.serialization_format, {})
+        if leaf not in bucket:
+            raise KeyError(f"Key {key} not found")
+        return ETagValue(str(bucket[leaf][2]))
 
     def get_subdict(self, prefix_key: Iterable[str] | SafeStrTuple) -> 'LocalDict[ValueType]':
         """Return a view rooted at the given key prefix.
