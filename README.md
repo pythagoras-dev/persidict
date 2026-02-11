@@ -11,7 +11,7 @@
 
 Simple persistent dictionaries for distributed applications in Python.
 
-## 1. What Is It?
+## What Is It?
 
 `persidict` is a lightweight persistent key-value store for Python. 
 It saves a dictionary to either a local directory or an AWS S3 bucket, 
@@ -23,11 +23,11 @@ In contrast to traditional persistent dictionaries (e.g., Python's `shelve`),
 for distributed environments where multiple processes 
 on different machines concurrently work with the same store.
 
-## 2. Why Use It?
+## Why Use It?
 
 A small API surface with scalable storage backends and explicit concurrency controls.
 
-## 2.1 Features
+### Features
 
 * **Persistent Storage**: Save dictionaries to the local filesystem 
 (`FileDirDict`) or AWS S3 (`S3Dict`).
@@ -49,7 +49,7 @@ conditional reads, writes, deletes, and transforms based on per-key ETags.
 * **Hierarchical Keys**: Keys can be sequences of strings, 
 creating a directory-like structure within the storage backend.
 
-## 2.2 Use Cases
+### Use Cases
 
 `persidict` is well-suited for a variety of applications, including:
 
@@ -64,9 +64,9 @@ in a shared location.
 * **Memoization**: Cache function call results 
 in a persistent and distributed manner.
 
-## 3. Usage
+## Usage
 
-### 3.1 Storing Data on a Local Disk
+### Storing Data on a Local Disk
 
 The `FileDirDict` class saves your dictionary to a local folder. 
 Each key-value pair is stored as a separate file.
@@ -101,7 +101,7 @@ print("username" in reloaded_settings)
 # >>> True
 ```
 
-### 3.2 Storing Data in the Cloud (AWS S3)
+### Storing Data in the Cloud (AWS S3)
 
 For distributed applications, you can use **`S3Dict`** to store data in 
 an AWS S3 bucket. The usage is identical, allowing you to switch 
@@ -122,7 +122,7 @@ print(f"API Key: {cloud_config['api_key']}")
 # >>> API Key: ABC-123-XYZ
 ```
 
-### 3.3 Using Type Hints
+### Using Type Hints
 
 `persidict` supports two complementary type safety mechanisms:
 
@@ -154,7 +154,7 @@ at runtime. For example, `Callable[[int], str]`, `Literal["a", "b"]`,
 `TypedDict`, and `NewType` have no `isinstance` equivalent. Use generics for
 development-time safety; use `base_class_for_values` when you need runtime validation.
 
-### 3.4 Conditional Operations
+### Conditional Operations
 
 Use conditional operations to avoid lost updates in concurrent scenarios. The
 insert-if-absent pattern uses `ITEM_NOT_AVAILABLE` with `ETAG_IS_THE_SAME`.
@@ -166,9 +166,9 @@ d = FileDirDict(base_dir="./data")
 r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 ```
 
-## 4. Comparison With Python Built-in Dictionaries
+## Comparison With Python Built-in Dictionaries
 
-### 4.1 Similarities
+### Similarities
 
 `PersiDict` subclasses can be used like regular Python dictionaries, supporting: 
 
@@ -178,7 +178,7 @@ r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 * Length checking with `len()`.
 * Standard methods like `keys()`, `values()`, `items()`, `get()`, `clear()`, `setdefault()`, and `update()`.
 
-### 4.2 Differences
+### Differences
 
 * **Persistence**: Data is saved between program executions.
 * **Keys**: Keys must be URL/filename-safe strings or their sequences.
@@ -186,13 +186,13 @@ r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 * **Order**: Insertion order is not preserved.
 * **Additional Methods**: `PersiDict` provides extra methods not in the standard dict API, such as `timestamp()`, `etag()`, `random_key()`, `newest_keys()`, `subdicts()`, `discard()`, `get_params()`, and more.
 * **Conditional Operations**: ETag-based compare-and-swap reads/writes with
-structured results (see Section 6.1).
+structured results (see [Conditional Operations](#conditional-operations-etag-based)).
 * **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
 and `DELETE_CURRENT` to delete a value during a write.
 
-## 5. Glossary
+## Glossary
 
-### 5.1 Core Concepts
+### Core Concepts
 
 * **`PersiDict`**: The abstract base class that defines the common interface 
 for all persistent dictionaries in the package. It's the foundation 
@@ -207,7 +207,7 @@ It's an immutable, flat tuple of non-empty, URL/filename-safe strings,
 ensuring that keys are consistent and safe for various storage backends. 
 When a `PersiDict` method returns a key, it will always be in this format.
 
-### 5.2 Main Implementations
+### Main Implementations
 
 * **`FileDirDict`**: A primary, concrete implementation of `PersiDict` 
 that stores each key-value pair as a separate file in a local directory.
@@ -215,7 +215,7 @@ that stores each key-value pair as a separate file in a local directory.
 which stores each key-value pair as an object in an AWS S3 bucket, 
 suitable for distributed environments.
 
-### 5.3 Key Parameters
+### Key Parameters
 
 * **`serialization_format`**: A key parameter for `FileDirDict` and `S3Dict` that 
 determines the serialization format used to store values. 
@@ -235,7 +235,7 @@ stores its files. For `S3Dict`, this directory is used to cache files locally.
 an `S3Dict` stores its objects.
 * **`region`**: An optional string specifying the AWS region for the S3 bucket.
 
-### 5.4 Advanced and Supporting Classes
+### Advanced and Supporting Classes
 
 * **`WriteOnceDict`**: A wrapper that enforces write-once behavior 
 on any `PersiDict`, ignoring subsequent writes to the same key. 
@@ -251,7 +251,7 @@ like a null device in the OS: accepts all writes, discards them,
 and returns nothing on reads. Always appears empty regardless of 
 operations performed on it.
 
-### 5.5 Special "Joker" Values
+### Special "Joker" Values
 
 * **`Joker`**: The base class for special command-like values that 
 can be assigned to a key to trigger an action instead of storing a value.
@@ -260,7 +260,7 @@ ensures the existing value is not changed.
 * **`DELETE_CURRENT`**: A "joker" value that deletes the key-value pair 
 from the dictionary when assigned to a key.
 
-### 5.6 ETags and Conditional Flags
+### ETags and Conditional Flags
 
 * **`ETagValue`**: Opaque per-key version string used for conditional operations.
 * **`ETag conditions`**: `ANY_ETAG` (unconditional), `ETAG_IS_THE_SAME` (expected == actual), 
@@ -268,7 +268,7 @@ from the dictionary when assigned to a key.
 * **`ITEM_NOT_AVAILABLE`**: Sentinel used when a key is missing (stands in for the ETag).
 * **`VALUE_NOT_RETRIEVED`**: Sentinel indicating a value exists but was not fetched.
 
-## 6. API Highlights
+## API Highlights
 
 `PersiDict` subclasses support the standard Python dictionary API, plus these additional methods:
 
@@ -285,7 +285,7 @@ from the dictionary when assigned to a key.
 | `discard(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
 | `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `mixinforge` API. |
 
-### 6.1 Conditional Operations (ETag-based)
+### Conditional Operations (ETag-based)
 
 PersiDict exposes explicit conditional operations for optimistic concurrency.
 Each key has an ETag; missing keys use `ITEM_NOT_AVAILABLE`. Conditions are
@@ -323,7 +323,7 @@ while True:
         break
 ```
 
-## 7. Installation
+## Installation
 
 The source code is hosted on GitHub at:
 [https://github.com/pythagoras-dev/persidict](https://github.com/pythagoras-dev/persidict) 
@@ -349,35 +349,6 @@ For development, including test dependencies:
 pip install persidict[dev]
 ```
 
-## 8. Dependencies
-
-`persidict` has the following core dependencies:
-
-* [mixinforge](https://pypi.org/project/mixinforge/)
-* [jsonpickle](https://jsonpickle.github.io)
-* [joblib](https://joblib.readthedocs.io)
-* [lz4](https://python-lz4.readthedocs.io)
-* [deepdiff](https://zepworks.com/deepdiff)
-
-For AWS S3 support (`S3Dict`), you will also need:
-* [boto3](https://boto3.readthedocs.io)
-
-For development and testing, the following packages are used:
-* [pandas](https://pandas.pydata.org)
-* [numpy](https://numpy.org)
-* [pytest](https://pytest.org)
-* [moto](http://getmoto.org)
-* [polars](https://pola.rs)
-* [scipy](https://scipy.org)
-* [pyarrow](https://arrow.apache.org/docs/python/)
-* [Pillow](https://pillow.readthedocs.io)
-* [networkx](https://networkx.org)
-* [sympy](https://www.sympy.org)
-* [shapely](https://shapely.readthedocs.io)
-* [astropy](https://www.astropy.org)
-* [torch](https://pytorch.org)
-
-
 ## Project Statistics
 
 <!-- MIXINFORGE_STATS_START -->
@@ -390,7 +361,7 @@ For development and testing, the following packages are used:
 | Files | 16 | 101 | 117 |
 <!-- MIXINFORGE_STATS_END -->
 
-## 9. Contributing
+## Contributing
 Contributions are welcome! Please see the contributing [guide](https://github.com/pythagoras-dev/persidict/blob/master/CONTRIBUTING.md) for more details
 on how to get started, run tests, and submit pull requests.
 
@@ -398,9 +369,9 @@ For guidance on code quality, refer to:
 * [Type hints guidelines](https://github.com/pythagoras-dev/persidict/blob/master/type_hints.md)
 * [Unit testing guide](https://github.com/pythagoras-dev/persidict/blob/master/unit_tests.md)
 
-## 10. License
+## License
 `persidict` is licensed under the MIT License. See the [LICENSE](https://github.com/pythagoras-dev/persidict/blob/master/LICENSE) file for more details.
 
-## 11. Key Contacts
+## Key Contacts
 
 * [Vlad (Volodymyr) Pavlov](https://www.linkedin.com/in/vlpavlov/)
