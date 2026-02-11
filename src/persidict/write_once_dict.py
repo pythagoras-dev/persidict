@@ -20,6 +20,7 @@ from .jokers_and_status_flags import (
     KeepCurrentFlag,
     ETagConditionFlag,
     ETagIfExists,
+    ETagValue,
     ConditionalOperationResult,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
@@ -317,6 +318,20 @@ class WriteOnceDict(PersiDict[ValueType]):
                 modification as tracked by the wrapped dict.
         """
         return self._wrapped_dict.timestamp(key)
+
+    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
+        """Return the ETag for a given key.
+
+        Delegates to the wrapped dict to ensure ETag consistency
+        with conditional operations (which also delegate to the wrapped dict).
+
+        Args:
+            key: Key for which to retrieve the ETag.
+
+        Returns:
+            ETagValue: The ETag from the wrapped dict.
+        """
+        return self._wrapped_dict.etag(key)
 
     def __getattr__(self, name):
         """Forward attribute access to the wrapped object.
