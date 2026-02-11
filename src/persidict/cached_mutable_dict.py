@@ -4,7 +4,7 @@ from __future__ import annotations
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
-                                      KEEP_CURRENT, DELETE_CURRENT,
+                                      DELETE_CURRENT,
                                       ETagValue,
                                       ETagConditionFlag,
                                       ETAG_HAS_CHANGED,
