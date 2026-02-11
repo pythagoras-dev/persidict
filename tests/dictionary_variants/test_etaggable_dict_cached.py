@@ -291,9 +291,9 @@ def test_keyerror_when_main_missing_even_if_cache_has_entries(cached_env):
     with pytest.raises(KeyError):
         _ = wrapper[("ghost",)]
 
-    # Caches may still contain stale data; ensure they are not relied upon
-    assert ("ghost",) in data_cache
-    assert ("ghost",) in etag_cache
+    # Missing key results should purge stale cache entries
+    assert ("ghost",) not in data_cache
+    assert ("ghost",) not in etag_cache
 
 
 def test_constructor_main_type_validation():

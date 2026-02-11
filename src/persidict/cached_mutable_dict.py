@@ -9,6 +9,7 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       ETagConditionFlag,
                                       ETAG_HAS_CHANGED,
                                       ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
+                                      ValueNotRetrievedFlag,
                                       VALUE_NOT_RETRIEVED,
                                       ETagIfExists,
                                       ConditionalOperationResult,
@@ -166,6 +167,28 @@ class MutableDictCached(PersiDict[ValueType]):
         """
         self._etag_cache[key] = etag
 
+    def _purge_caches(self, key: NonEmptySafeStrTuple) -> None:
+        """Remove any cached value/etag for a key."""
+        self._data_cache.discard(key)
+        self._etag_cache.discard(key)
+
+    def _sync_caches_from_result(
+            self,
+            key: NonEmptySafeStrTuple,
+            *,
+            new_value: ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag,
+            resulting_etag: ETagIfExists
+    ) -> None:
+        """Update or clear caches based on an operation result."""
+        if new_value is ITEM_NOT_AVAILABLE or isinstance(resulting_etag, ItemNotAvailableFlag):
+            self._purge_caches(key)
+            return
+        if new_value is VALUE_NOT_RETRIEVED:
+            return
+        self._data_cache[key] = new_value
+        if not isinstance(resulting_etag, ItemNotAvailableFlag):
+            self._set_cached_etag(key, resulting_etag)
+
     def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Return the value for key using ETag-aware read-through caching.
 
@@ -228,14 +251,8 @@ class MutableDictCached(PersiDict[ValueType]):
         res = self._main_dict.get_item_if(
             key, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
-
-        # If value was retrieved, update caches
-        if (res.new_value is not ITEM_NOT_AVAILABLE
-                and res.new_value is not VALUE_NOT_RETRIEVED):
-            self._data_cache[key] = res.new_value
-            if not isinstance(res.resulting_etag, ItemNotAvailableFlag):
-                self._set_cached_etag(key, res.resulting_etag)
-
+        self._sync_caches_from_result(
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
         return res
 
 
@@ -269,14 +286,8 @@ class MutableDictCached(PersiDict[ValueType]):
         res = self._main_dict.set_item_if(
             key, value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
-        if (res.new_value is not ITEM_NOT_AVAILABLE
-                and res.new_value is not VALUE_NOT_RETRIEVED):
-            self._data_cache[key] = res.new_value
-            if not isinstance(res.resulting_etag, ItemNotAvailableFlag):
-                self._set_cached_etag(key, res.resulting_etag)
-        elif res.condition_was_satisfied and value is DELETE_CURRENT:
-            self._data_cache.discard(key)
-            self._etag_cache.discard(key)
+        self._sync_caches_from_result(
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
         return res
 
 
@@ -304,13 +315,8 @@ class MutableDictCached(PersiDict[ValueType]):
         """Apply a transformation; delegate to main dict and update caches."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.transform_item(key, transformer, n_retries=n_retries)
-        if isinstance(res.resulting_etag, ItemNotAvailableFlag):
-            self._data_cache.discard(key)
-            self._etag_cache.discard(key)
-        else:
-            if res.new_value is not ITEM_NOT_AVAILABLE:
-                self._data_cache[key] = res.new_value
-            self._set_cached_etag(key, res.resulting_etag)
+        self._sync_caches_from_result(
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
         return res
 
 
