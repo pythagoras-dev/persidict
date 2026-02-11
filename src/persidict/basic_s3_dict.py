@@ -1083,13 +1083,10 @@ class BasicS3Dict(PersiDict[ValueType]):
                         continue
                     obj_key = splitter(obj_name)
 
-                    to_return = []
                     unsigned_key = unsign_safe_str_tuple(
                         obj_key, 0)
 
-                    if "keys" in result_type:
-                        to_return.append(unsigned_key)
-
+                    value_to_return = None
                     if "values" in result_type:
                         # The object can be deleted between listing and fetching.
                         # Skip such races instead of raising to make iteration robust.
@@ -1097,16 +1094,16 @@ class BasicS3Dict(PersiDict[ValueType]):
                             value_to_return = self[unsigned_key]
                         except KeyError:
                             continue
-                        to_return.append(value_to_return)
 
+                    timestamp_to_return = None
                     if "timestamps" in result_type:
                         timestamp_to_return = key["LastModified"].timestamp()
-                        to_return.append(timestamp_to_return)
 
-                    if len(result_type) == 1:
-                        yield to_return[0]
-                    else:
-                        yield tuple(to_return)
+                    yield self._assemble_iter_result(
+                        result_type
+                        , key=unsigned_key
+                        , value=value_to_return
+                        , timestamp=timestamp_to_return)
 
         return step()
 

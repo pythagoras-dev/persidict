@@ -79,3 +79,62 @@ def test_generic_iter_timestamps_only_empty_dict():
     """EmptyDict returns no items for {"timestamps"} without error."""
     d = EmptyDict()
     assert list(d._generic_iter({"timestamps"})) == []
+
+
+def test_assemble_iter_result_field_ordering():
+    """_assemble_iter_result always emits fields in (key, value, timestamp) order.
+
+    Single-element requests return a bare value; multi-element requests
+    return a tuple whose positions follow the canonical ordering regardless
+    of the insertion order of the result_type set.
+    """
+    d = EmptyDict()
+    key, value, ts = SafeStrTuple(("a",)), 42, 1.0
+
+    # Single-element requests yield the bare value.
+    assert d._assemble_iter_result({"keys"}, key=key, value=value, timestamp=ts) == key
+    assert d._assemble_iter_result({"values"}, key=key, value=value, timestamp=ts) == value
+    assert d._assemble_iter_result({"timestamps"}, key=key, value=value, timestamp=ts) == ts
+
+    # Two-element requests yield a 2-tuple in canonical order.
+    assert d._assemble_iter_result({"keys", "values"}, key=key, value=value, timestamp=ts) == (key, value)
+    assert d._assemble_iter_result({"keys", "timestamps"}, key=key, value=value, timestamp=ts) == (key, ts)
+    assert d._assemble_iter_result({"values", "timestamps"}, key=key, value=value, timestamp=ts) == (value, ts)
+
+    # Three-element request yields the full triple.
+    assert d._assemble_iter_result(
+        {"keys", "values", "timestamps"}, key=key, value=value, timestamp=ts) == (key, value, ts)
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_generic_iter_field_values_consistent_across_result_types(tmpdir, DictToTest, kwargs):
+    """Values from _generic_iter are consistent across different result_type combos.
+
+    Writing known data and then iterating with different result_type sets
+    must produce matching keys, values, and timestamps regardless of which
+    fields are requested together.
+    """
+    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d.clear()
+    expected = {"a": 10, "b": 20, "c": 30}
+    for k, v in expected.items():
+        d[k] = v
+
+    full = {row[0]: row for row in d._generic_iter({"keys", "values", "timestamps"})}
+
+    # keys-only iteration must match keys from the full triple.
+    keys_only = set(d._generic_iter({"keys"}))
+    assert keys_only == set(full.keys())
+
+    # values-only iteration must match values from the full triple (as sorted lists).
+    values_only = sorted(d._generic_iter({"values"}))
+    values_from_full = sorted(row[1] for row in full.values())
+    assert values_only == values_from_full
+
+    # (key, value) pairs must match the first two elements of each full triple.
+    kv_pairs = {kv[0]: kv[1] for kv in d._generic_iter({"keys", "values"})}
+    for k, triple in full.items():
+        assert kv_pairs[k] == triple[1]
+
+    d.clear()

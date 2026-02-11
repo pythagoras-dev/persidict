@@ -451,17 +451,11 @@ class LocalDict(PersiDict[ValueType]):
             bucket = node.values.get(self.serialization_format, {})
             for leaf, (val, ts, *_rest) in bucket.items():
                 full_key = SafeStrTuple((*prefix, leaf))
-                to_return: list[Any] = []
-                if "keys" in result_type:
-                    to_return.append(full_key)
-                if "values" in result_type:
-                    to_return.append(deepcopy(val))
-                if "timestamps" in result_type:
-                    to_return.append(ts)
-                if len(result_type) == 1:
-                    yield to_return[0]
-                else:
-                    yield tuple(to_return)
+                yield self._assemble_iter_result(
+                    result_type
+                    , key=full_key
+                    , value=deepcopy(val)
+                    , timestamp=ts)
             # then recurse into children
             for name, child in node.subdicts.items():
                 yield from walk((*prefix, name), child)

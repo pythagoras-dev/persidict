@@ -779,13 +779,10 @@ class FileDirDict(PersiDict[ValueType]):
                         result_key = (*splitter(prefix_key), f[:-ext_len])
                         result_key = SafeStrTuple(result_key)
 
-                        to_return = []
+                        key_to_return = unsign_safe_str_tuple(
+                            result_key, self.digest_len)
 
-                        if "keys" in result_type:
-                            key_to_return = unsign_safe_str_tuple(
-                                result_key, self.digest_len)
-                            to_return.append(key_to_return)
-
+                        value_to_return = None
                         if "values" in result_type:
                             # The file can be deleted between listing and fetching.
                             # Skip such races instead of raising to make iteration robust.
@@ -797,17 +794,17 @@ class FileDirDict(PersiDict[ValueType]):
                                     continue
                                 else:
                                     raise
-                            to_return.append(value_to_return)
 
+                        timestamp_to_return = None
                         if "timestamps" in result_type:
                             timestamp_to_return = os.path.getmtime(
                                 os.path.join(dir_name, f))
-                            to_return.append(timestamp_to_return)
 
-                        if len(result_type) == 1:
-                            yield to_return[0]
-                        else:
-                            yield tuple(to_return)
+                        yield self._assemble_iter_result(
+                            result_type
+                            , key=key_to_return
+                            , value=value_to_return
+                            , timestamp=timestamp_to_return)
 
         return step()
 

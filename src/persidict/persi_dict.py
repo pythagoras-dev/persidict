@@ -867,6 +867,44 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             raise ValueError("result_type must include at least one of 'keys', 'values', 'timestamps'")
 
 
+    def _assemble_iter_result(
+            self
+            , result_type: set[str]
+            , *
+            , key: Any = None
+            , value: Any = None
+            , timestamp: Any = None
+            ) -> Any:
+        """Build a single yield value for _generic_iter from named fields.
+
+        Assembles an iteration result by selecting the requested fields
+        (key, value, timestamp) in canonical order and returning either a
+        single value or a tuple, depending on how many fields were requested.
+
+        Args:
+            result_type: The same set passed to _generic_iter —
+                a non-empty subset of {"keys", "values", "timestamps"}.
+            key: The key to include when "keys" is in result_type.
+            value: The value to include when "values" is in result_type.
+            timestamp: The timestamp to include when "timestamps" is in
+                result_type.
+
+        Returns:
+            A single item if only one field is requested, otherwise a tuple
+            of the requested fields in (key, value, timestamp) order.
+        """
+        to_return: list[Any] = []
+        if "keys" in result_type:
+            to_return.append(key)
+        if "values" in result_type:
+            to_return.append(value)
+        if "timestamps" in result_type:
+            to_return.append(timestamp)
+        if len(result_type) == 1:
+            return to_return[0]
+        return tuple(to_return)
+
+
     @abstractmethod
     def _generic_iter(self, result_type: set[str]) -> Any:
         """Underlying implementation for iterator helpers.
