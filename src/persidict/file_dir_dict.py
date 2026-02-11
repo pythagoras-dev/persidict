@@ -616,6 +616,22 @@ class FileDirDict(PersiDict[ValueType]):
                     + f" but it is {type(result)} instead.")
         return result
 
+    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
+        """Return the value and ETag for a key with a single stat+read."""
+        key = NonEmptySafeStrTuple(key)
+        filename = self._build_full_path(key)
+        try:
+            stat_result = os.stat(filename)
+        except FileNotFoundError as exc:
+            raise KeyError(f"File {filename} does not exist") from exc
+        result = self._read_from_file(filename)
+        if self.base_class_for_values is not None:
+            if not isinstance(result, self.base_class_for_values):
+                raise TypeError(
+                    f"Value must be of type {self.base_class_for_values},"
+                    + f" but it is {type(result)} instead.")
+        return result, self._etag_from_stat(stat_result)
+
 
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
@@ -809,6 +825,16 @@ class FileDirDict(PersiDict[ValueType]):
         except FileNotFoundError as exc:
             raise KeyError(f"File {filename} does not exist") from exc
 
+    @staticmethod
+    def _etag_from_stat(stat_result: os.stat_result) -> ETagValue:
+        """Derive an ETag from an os.stat_result."""
+        mtime_ns = getattr(stat_result, "st_mtime_ns", None)
+        if mtime_ns is None:
+            mtime_part = f"{stat_result.st_mtime:.6f}"
+        else:
+            mtime_part = str(mtime_ns)
+        return ETagValue(f"{mtime_part}:{stat_result.st_size}")
+
     def etag(self, key:NonEmptyPersiDictKey) -> ETagValue:
         """Return a stable ETag derived from mtime and file size.
 
@@ -825,12 +851,7 @@ class FileDirDict(PersiDict[ValueType]):
             stat_result = os.stat(filename)
         except FileNotFoundError as exc:
             raise KeyError(f"File {filename} does not exist") from exc
-        mtime_ns = getattr(stat_result, "st_mtime_ns", None)
-        if mtime_ns is None:
-            mtime_part = f"{stat_result.st_mtime:.6f}"
-        else:
-            mtime_part = str(mtime_ns)
-        return ETagValue(f"{mtime_part}:{stat_result.st_size}")
+        return self._etag_from_stat(stat_result)
 
 
     def random_key(self) -> NonEmptySafeStrTuple | None:

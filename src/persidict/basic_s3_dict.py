@@ -319,6 +319,10 @@ class BasicS3Dict(PersiDict[ValueType]):
                     f"Key {key} not found in S3 bucket {self.bucket_name}")
             raise
 
+    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
+        """Return the value and ETag for a key in a single S3 request."""
+        return self._get_object_with_etag(key)
+
     def _result_for_missing_key(
             self,
             condition: ETagConditionFlag,
@@ -337,13 +341,17 @@ class BasicS3Dict(PersiDict[ValueType]):
             return_existing_value: bool = True
     ) -> ConditionalOperationResult:
         """Build result for a failed conditional write/delete."""
+        if return_existing_value and always_retrieve_value:
+            try:
+                new_value, new_actual = self._get_value_and_etag(key)
+            except KeyError:
+                return self._result_item_not_available(condition, False)
+            return self._result_unchanged(condition, False, new_actual, new_value)
+
         new_actual = self._actual_etag(key)
         if new_actual is ITEM_NOT_AVAILABLE:
             return self._result_item_not_available(condition, False)
-        if return_existing_value:
-            new_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
-        else:
-            new_value = VALUE_NOT_RETRIEVED
+        new_value = VALUE_NOT_RETRIEVED
         return self._result_unchanged(condition, False, new_actual, new_value)
 
     def get_item_if(

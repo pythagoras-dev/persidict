@@ -282,6 +282,24 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         except (KeyError, FileNotFoundError):
             return ITEM_NOT_AVAILABLE
 
+    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
+        """Return the value and ETag for a key.
+
+        Subclasses can override to fetch both in a single backend pass.
+
+        Args:
+            key: Normalized dictionary key.
+
+        Returns:
+            tuple[ValueType, ETagValue]: The value and its current ETag.
+
+        Raises:
+            KeyError: If the key does not exist.
+        """
+        value = self[key]
+        actual_etag = self.etag(key)
+        return value, actual_etag
+
     # --- ConditionalOperationResult factory methods ---
 
     @staticmethod
@@ -371,17 +389,34 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             ConditionalOperationResult with the outcome of the operation.
         """
         key = NonEmptySafeStrTuple(key)
-        actual_etag = self._actual_etag(key)
-        satisfied = self._check_condition(condition, expected_etag, actual_etag)
+        if always_retrieve_value:
+            try:
+                value, actual_etag = self._get_value_and_etag(key)
+            except (KeyError, FileNotFoundError):
+                satisfied = self._check_condition(
+                    condition, expected_etag, ITEM_NOT_AVAILABLE)
+                return self._result_item_not_available(condition, satisfied)
+            satisfied = self._check_condition(condition, expected_etag, actual_etag)
+            return self._result_unchanged(condition, satisfied, actual_etag, value)
 
+        actual_etag = self._actual_etag(key)
         if actual_etag is ITEM_NOT_AVAILABLE:
+            satisfied = self._check_condition(condition, expected_etag, actual_etag)
             return self._result_item_not_available(condition, satisfied)
 
-        if always_retrieve_value or expected_etag != actual_etag:
-            value = self[key]
-        else:
-            value = VALUE_NOT_RETRIEVED
+        if expected_etag == actual_etag:
+            satisfied = self._check_condition(condition, expected_etag, actual_etag)
+            return self._result_unchanged(
+                condition, satisfied, actual_etag, VALUE_NOT_RETRIEVED)
 
+        try:
+            value, actual_etag = self._get_value_and_etag(key)
+        except (KeyError, FileNotFoundError):
+            satisfied = self._check_condition(
+                condition, expected_etag, ITEM_NOT_AVAILABLE)
+            return self._result_item_not_available(condition, satisfied)
+
+        satisfied = self._check_condition(condition, expected_etag, actual_etag)
         return self._result_unchanged(condition, satisfied, actual_etag, value)
 
     def set_item_if(

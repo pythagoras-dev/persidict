@@ -356,6 +356,24 @@ class LocalDict(PersiDict[ValueType]):
                     f" but it is {type(value)} instead.")
         return value
 
+    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
+        """Return the value and ETag for a key in a single lookup."""
+        key = NonEmptySafeStrTuple(key)
+        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
+        if parent_node is None:
+            raise KeyError(f"Key {key} not found")
+        bucket = parent_node.values.get(self.serialization_format, {})
+        if leaf not in bucket:
+            raise KeyError(f"Key {key} not found")
+        value = deepcopy(bucket[leaf][0])
+        if self.base_class_for_values is not None:
+            if not isinstance(value, self.base_class_for_values):
+                raise TypeError(
+                    f"Value must be of type {self.base_class_for_values},"
+                    f" but it is {type(value)} instead.")
+        etag = ETagValue(str(bucket[leaf][2]))
+        return value, etag
+
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value for a key.
 
