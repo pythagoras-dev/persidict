@@ -76,7 +76,7 @@ class EmptyDict(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType,
+            value: ValueType | Joker,
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,

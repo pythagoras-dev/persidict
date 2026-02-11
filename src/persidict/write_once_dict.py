@@ -18,6 +18,7 @@ from mixinforge import sort_dict_by_keys
 from .jokers_and_status_flags import (
     KEEP_CURRENT,
     KeepCurrentFlag,
+    Joker,
     ETagConditionFlag,
     ETagIfExists,
     ETagValue,
@@ -192,7 +193,7 @@ class WriteOnceDict(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType,
+            value: ValueType | Joker,
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,

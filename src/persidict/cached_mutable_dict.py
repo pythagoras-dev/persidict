@@ -4,6 +4,7 @@ from __future__ import annotations
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
+                                      Joker,
                                       ETagValue,
                                       ETagConditionFlag,
                                       ETAG_HAS_CHANGED,
@@ -274,7 +275,7 @@ class MutableDictCached(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType,
+            value: ValueType | Joker,
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,

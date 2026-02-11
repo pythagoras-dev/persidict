@@ -13,6 +13,7 @@ from .cached_mutable_dict import MutableDictCached
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (ETagConditionFlag, ETagValue,
                                       ETagIfExists,
+                                      Joker,
                                       ConditionalOperationResult,
                                       OperationResult,
                                       TransformingFunction)
@@ -256,7 +257,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            value: ValueType,
+            value: ValueType | Joker,
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
