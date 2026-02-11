@@ -400,7 +400,7 @@ class FileDirDict(PersiDict[ValueType]):
         for i in range(n_retries):
             try:
                 return fn(*args, **kwargs)
-            except retried_exceptions as e:
+            except retried_exceptions:
                 if i < n_retries - 1:
                     time.sleep(random.uniform(0.01, 0.2) * (1.75 ** i))
                 else:
