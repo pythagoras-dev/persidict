@@ -6,7 +6,6 @@ This file exercises the contract that the monotonic write counter lives on
 the backend and is shared, not per-LocalDict-instance.
 """
 
-import pytest
 
 from persidict import LocalDict
 from persidict.jokers_and_status_flags import (

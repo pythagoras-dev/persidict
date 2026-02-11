@@ -14,7 +14,6 @@ import pytest
 from persidict import FileDirDict, LocalDict
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME,
-    ITEM_NOT_AVAILABLE,
 )
 
 
