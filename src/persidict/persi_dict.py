@@ -471,7 +471,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 condition, True, actual_etag, VALUE_NOT_RETRIEVED)
 
         if value is DELETE_CURRENT:
-            self.discard(key)
+            if not self.discard(key):
+                return self._result_item_not_available(condition, False)
             return self._result_delete_success(condition, actual_etag)
 
         self[key] = value
@@ -564,7 +565,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return self._result_item_not_available(condition, satisfied)
 
         if satisfied:
-            self.discard(key)
+            if not self.discard(key):
+                return self._result_item_not_available(condition, False)
             return self._result_delete_success(condition, actual_etag)
 
         return self._result_unchanged(

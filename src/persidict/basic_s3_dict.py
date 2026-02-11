@@ -692,7 +692,8 @@ class BasicS3Dict(PersiDict[ValueType]):
             return self._result_unchanged(
                 condition, True, actual_etag, VALUE_NOT_RETRIEVED)
         if value is DELETE_CURRENT:
-            self.discard(key)
+            if not self.discard(key):
+                return self._result_item_not_available(condition, False)
             return self._result_delete_success(condition, actual_etag)
 
         # Attempt conditional write when possible
