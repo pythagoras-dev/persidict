@@ -2,7 +2,11 @@ import pytest
 
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
-from persidict.jokers_and_status_flags import ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED
+from persidict.jokers_and_status_flags import (
+    ITEM_NOT_AVAILABLE,
+    ETAG_HAS_CHANGED,
+    ETAG_IS_THE_SAME,
+)
 from persidict.jokers_and_status_flags import KEEP_CURRENT
 
 
@@ -78,6 +82,19 @@ def test_set_item_get_etag_mirrors_to_cache(append_only_env):
     assert main[("p",)] == cache[("p",)] == [1, 2, 3]
     # For FileDirDict, etag is derived from timestamp (string)
     assert isinstance(etag, (str, type(None)))
+
+
+def test_set_item_if_failed_condition_populates_cache(append_only_env):
+    main, cache, wrapper = append_only_env
+
+    main[("k",)] = "v1"
+    assert ("k",) not in cache
+
+    res = wrapper.set_item_if(("k",), KEEP_CURRENT, "bogus", ETAG_IS_THE_SAME)
+
+    assert not res.condition_was_satisfied
+    assert res.new_value == "v1"
+    assert cache[("k",)] == "v1"
 
 
 # --- Edge cases and error handling -----------------------------------------

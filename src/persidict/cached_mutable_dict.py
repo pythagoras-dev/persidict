@@ -264,21 +264,19 @@ class MutableDictCached(PersiDict[ValueType]):
             *,
             always_retrieve_value: bool = True
     ) -> ConditionalOperationResult:
-        """Set item only if ETag satisfies a condition; update caches on success."""
+        """Set item only if ETag satisfies a condition; update caches when a value is returned."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.set_item_if(
             key, value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
-        if res.condition_was_satisfied:
-            if value is KEEP_CURRENT:
-                pass  # No cache update needed
-            elif value is DELETE_CURRENT:
-                self._data_cache.discard(key)
-                self._etag_cache.discard(key)
-            else:
-                self._data_cache[key] = value
-                if not isinstance(res.resulting_etag, ItemNotAvailableFlag):
-                    self._set_cached_etag(key, res.resulting_etag)
+        if (res.new_value is not ITEM_NOT_AVAILABLE
+                and res.new_value is not VALUE_NOT_RETRIEVED):
+            self._data_cache[key] = res.new_value
+            if not isinstance(res.resulting_etag, ItemNotAvailableFlag):
+                self._set_cached_etag(key, res.resulting_etag)
+        elif res.condition_was_satisfied and value is DELETE_CURRENT:
+            self._data_cache.discard(key)
+            self._etag_cache.discard(key)
         return res
 
 

@@ -253,13 +253,16 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             *,
             always_retrieve_value: bool = True
     ) -> ConditionalOperationResult:
-        """Append-only: delegates to main dict; caches value on success."""
+        """Append-only: delegates to main dict; caches a returned value when available."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.set_item_if(
             key, value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
-        if res.condition_was_satisfied and not isinstance(value, Joker):
-            self._data_cache[key] = value
+        if (res.new_value is not ITEM_NOT_AVAILABLE
+                and res.new_value is not VALUE_NOT_RETRIEVED
+                and not isinstance(res.new_value, Joker)):
+            if key not in self._data_cache:
+                self._data_cache[key] = res.new_value
         return res
 
     def discard_item_if(

@@ -7,6 +7,8 @@ from persidict.file_dir_dict import FileDirDict
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME,
     ETAG_HAS_CHANGED,
+    KEEP_CURRENT,
+    VALUE_NOT_RETRIEVED,
 )
 from persidict.local_dict import LocalDict
 
@@ -51,6 +53,37 @@ def test_set_item_if_etag_different_updates_and_preserves_on_match(cached_env):
     assert wrapper["k"] == "v3"
     assert data_cache["k"] == "v3"
     assert etag_cache["k"] == wrapper.etag("k")
+
+
+def test_set_item_if_failed_condition_refreshes_caches(cached_env):
+    main, data_cache, etag_cache, wrapper = cached_env
+    wrapper["k"] = "v1"
+    actual_etag = main.etag("k")
+
+    data_cache["k"] = "stale"
+    etag_cache["k"] = "stale_etag"
+
+    res = wrapper.set_item_if("k", KEEP_CURRENT, "bogus", ETAG_IS_THE_SAME)
+
+    assert not res.condition_was_satisfied
+    assert res.new_value == "v1"
+    assert data_cache["k"] == "v1"
+    assert etag_cache["k"] == actual_etag
+
+
+def test_set_item_if_no_value_does_not_update_caches(cached_env):
+    main, data_cache, etag_cache, wrapper = cached_env
+    wrapper["k"] = "v1"
+
+    data_cache["k"] = "stale"
+    etag_cache["k"] = "stale_etag"
+
+    res = wrapper.set_item_if(
+        "k", "v2", "bogus", ETAG_IS_THE_SAME, always_retrieve_value=False)
+
+    assert res.new_value is VALUE_NOT_RETRIEVED
+    assert data_cache["k"] == "stale"
+    assert etag_cache["k"] == "stale_etag"
 
 
 def test_delete_item_if_etag_equal_clears_caches(cached_env):
