@@ -51,6 +51,7 @@ feature-oriented so it is quick to scan.
   - tests/storage_backends/test_concurrency_filedirdict.py
   - tests/storage_backends/test_filedirdict_retry.py
   - tests/storage_backends/test_local_dict.py
+  - tests/storage_backends/test_local_dict_etag_shared_counter.py
   - tests/storage_backends/test_discard_local_dict.py
   - tests/storage_backends/test_unc_support.py
 
