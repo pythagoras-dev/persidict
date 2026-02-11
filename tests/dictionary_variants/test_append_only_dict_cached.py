@@ -312,6 +312,43 @@ def test_iterators_with_timestamps_delegate(append_only_env):
 
 
 
+def test_setdefault_if_insert_populates_cache(append_only_env):
+    """Verify setdefault_if delegates to main and mirrors value into cache on insert."""
+    main, cache, wrapper = append_only_env
+
+    res = wrapper.setdefault_if(
+        ("sdi",), "default_val", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+
+    assert res.condition_was_satisfied
+    assert ("sdi",) in main and ("sdi",) in cache
+    assert main[("sdi",)] == cache[("sdi",)] == "default_val"
+
+
+def test_setdefault_if_existing_key_populates_cache(append_only_env):
+    """Verify setdefault_if on existing key caches the returned value."""
+    main, cache, wrapper = append_only_env
+    main[("sde",)] = "original"
+    assert ("sde",) not in cache
+
+    res = wrapper.setdefault_if(
+        ("sde",), "ignored", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+
+    assert res.new_value == "original"
+    assert cache[("sde",)] == "original"
+
+
+def test_setdefault_if_absent_condition_fails_no_cache_pollution(append_only_env):
+    """Verify setdefault_if with unsatisfied condition leaves caches empty."""
+    main, cache, wrapper = append_only_env
+
+    res = wrapper.setdefault_if(
+        ("sdx",), "val", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+
+    assert not res.condition_was_satisfied
+    assert ("sdx",) not in main
+    assert ("sdx",) not in cache
+
+
 def test_getitem_read_through_populates_cache(append_only_env):
     main, cache, wrapper = append_only_env
 

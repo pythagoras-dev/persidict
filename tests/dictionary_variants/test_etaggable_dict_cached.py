@@ -9,6 +9,8 @@ from persidict.jokers_and_status_flags import (
     KEEP_CURRENT,
     DELETE_CURRENT,
     ETAG_HAS_CHANGED,
+    ETAG_IS_THE_SAME,
+    ITEM_NOT_AVAILABLE,
 )
 
 
@@ -344,6 +346,48 @@ def test_timestamp_delegation_to_main(cached_env):
     assert ts_wrap2 == ts_main2
     assert ts_main2 >= ts_main
 
+
+
+def test_setdefault_if_insert_updates_caches(cached_env):
+    """Verify setdefault_if delegates to main_dict and syncs caches on insert."""
+    main, data_cache, etag_cache, wrapper = cached_env
+
+    res = wrapper.setdefault_if(
+        ("sd",), "default_val", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+
+    assert res.condition_was_satisfied
+    assert wrapper[("sd",)] == "default_val"
+    assert data_cache[("sd",)] == "default_val"
+    assert etag_cache[("sd",)] == res.resulting_etag
+
+
+def test_setdefault_if_existing_key_preserves_caches(cached_env):
+    """Verify setdefault_if does not mutate when key exists; caches reflect existing value."""
+    main, data_cache, etag_cache, wrapper = cached_env
+    wrapper[("sd2",)] = "original"
+    etag = wrapper.etag(("sd2",))
+
+    res = wrapper.setdefault_if(
+        ("sd2",), "ignored", etag, ETAG_IS_THE_SAME)
+
+    assert res.condition_was_satisfied
+    assert res.new_value == "original"
+    assert res.resulting_etag == etag
+    assert data_cache[("sd2",)] == "original"
+    assert etag_cache[("sd2",)] == etag
+
+
+def test_setdefault_if_absent_condition_fails_no_cache_pollution(cached_env):
+    """Verify setdefault_if with unsatisfied condition leaves caches empty."""
+    main, data_cache, etag_cache, wrapper = cached_env
+
+    res = wrapper.setdefault_if(
+        ("sd3",), "val", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+
+    assert not res.condition_was_satisfied
+    assert ("sd3",) not in main
+    assert ("sd3",) not in data_cache
+    assert ("sd3",) not in etag_cache
 
 
 def test_contains_ignores_cache_only_ghosts(cached_env):
