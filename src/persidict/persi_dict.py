@@ -471,6 +471,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             ConditionalOperationResult with the outcome of the operation.
         """
+        if isinstance(default_value, Joker):
+            raise TypeError("default_value must be a regular value, not a Joker command")
         key = NonEmptySafeStrTuple(key)
         actual_etag = self._actual_etag(key)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)

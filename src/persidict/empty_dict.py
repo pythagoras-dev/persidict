@@ -11,6 +11,7 @@ from typing import Any, Iterator
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
 from .jokers_and_status_flags import (ETagConditionFlag, ETagIfExists,
+                                      Joker,
                                       ITEM_NOT_AVAILABLE,
                                       ConditionalOperationResult,
                                       OperationResult)
@@ -108,6 +109,8 @@ class EmptyDict(PersiDict[ValueType]):
             always_retrieve_value: bool = True
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
+        if isinstance(default_value, Joker):
+            raise TypeError("default_value must be a regular value, not a Joker command")
         satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
         if satisfied:
             return ConditionalOperationResult(

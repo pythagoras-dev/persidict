@@ -802,6 +802,8 @@ class BasicS3Dict(PersiDict[ValueType]):
         Returns:
             ConditionalOperationResult with the outcome of the operation.
         """
+        if isinstance(default_value, Joker):
+            raise TypeError("default_value must be a regular value, not a Joker command")
         key = NonEmptySafeStrTuple(key)
         self._validate_value(default_value)
 
