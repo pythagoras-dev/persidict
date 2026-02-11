@@ -22,6 +22,7 @@ rules:
       - tests/core_behavior/test_delete_if_exists.py
       - tests/core_behavior/test_discard.py
       - tests/core_behavior/test_discard_empty_dict.py
+      - tests/core_behavior/test_append_only_delete.py
       - tests/core_behavior/test_empty_dict.py
       - tests/core_behavior/test_bool.py
       - tests/core_behavior/test_equality.py
