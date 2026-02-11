@@ -291,6 +291,24 @@ class MutableDictCached(PersiDict[ValueType]):
         return res
 
 
+    def setdefault_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            default_value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Insert default if absent and condition satisfied; delegate to main dict."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main_dict.setdefault_if(
+            key, default_value, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
+        self._sync_caches_from_result(
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
+        return res
+
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,

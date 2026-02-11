@@ -268,6 +268,20 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             key, value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
 
+    def setdefault_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            default_value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Insert default if absent and condition satisfied; delegate to cached dict."""
+        return self._cached_dict.setdefault_if(
+            key, default_value, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
+
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,

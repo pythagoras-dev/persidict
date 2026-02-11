@@ -265,6 +265,26 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
                 self._data_cache[key] = res.new_value
         return res
 
+    def setdefault_if(
+            self,
+            key: NonEmptyPersiDictKey,
+            default_value: ValueType,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag,
+            *,
+            always_retrieve_value: bool = True
+    ) -> ConditionalOperationResult:
+        """Insert default if absent and condition satisfied; delegate to main dict."""
+        key = NonEmptySafeStrTuple(key)
+        res = self._main.setdefault_if(
+            key, default_value, expected_etag, condition,
+            always_retrieve_value=always_retrieve_value)
+        if (res.new_value is not ITEM_NOT_AVAILABLE
+                and res.new_value is not VALUE_NOT_RETRIEVED
+                and key not in self._data_cache):
+            self._data_cache[key] = res.new_value
+        return res
+
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
