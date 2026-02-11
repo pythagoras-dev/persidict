@@ -1,5 +1,6 @@
 import pytest
 from persidict import EmptyDict
+from persidict.jokers_and_status_flags import ETAG_IS_THE_SAME
 
 pytestmark = pytest.mark.smoke
 
@@ -43,6 +44,25 @@ def test_empty_dict_basic_operations():
     assert result == "default_value"
     assert "new_key" not in empty_dict
     assert len(empty_dict) == 0
+
+
+@pytest.mark.parametrize("bad_key", [
+    (),  # empty tuple key
+    ("",),  # empty segment
+    ("ok", 1),  # non-string segment
+    123,  # non-sequence / invalid key type
+    b"bytes",  # bytes not accepted
+])
+def test_empty_dict_conditional_ops_reject_invalid_keys(bad_key):
+    """Verify conditional operations validate keys consistently."""
+    empty_dict = EmptyDict()
+
+    with pytest.raises((TypeError, ValueError)):
+        empty_dict.get_item_if(bad_key, "etag", ETAG_IS_THE_SAME)
+    with pytest.raises((TypeError, ValueError)):
+        empty_dict.setdefault_if(bad_key, "v", "etag", ETAG_IS_THE_SAME)
+    with pytest.raises((TypeError, ValueError)):
+        empty_dict.discard_item_if(bad_key, "etag", ETAG_IS_THE_SAME)
 
 
 def test_empty_dict_delete_operations():
