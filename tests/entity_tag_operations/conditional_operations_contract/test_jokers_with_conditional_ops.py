@@ -10,7 +10,8 @@ from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
     ITEM_NOT_AVAILABLE,
-    KEEP_CURRENT, DELETE_CURRENT, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED
+    KEEP_CURRENT, DELETE_CURRENT,
+    ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -264,3 +265,52 @@ def test_delete_current_with_unknown_etag_fails(tmpdir, DictToTest, kwargs):
 
     assert not result.condition_was_satisfied
     assert "key1" in d
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_delete_current_success_result_fields(tmpdir, DictToTest, kwargs):
+    """Verify result fields on successful DELETE_CURRENT.
+
+    On success: resulting_etag is ITEM_NOT_AVAILABLE (key gone),
+    actual_etag is the pre-delete etag, new_value is ITEM_NOT_AVAILABLE.
+    """
+    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d["key1"] = "value"
+    etag = d.etag("key1")
+
+    result = d.set_item_if("key1", DELETE_CURRENT, etag, ETAG_IS_THE_SAME)
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag == etag
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+    assert result.new_value is ITEM_NOT_AVAILABLE
+    assert "key1" not in d
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_delete_current_with_any_etag_succeeds(tmpdir, DictToTest, kwargs):
+    """Verify DELETE_CURRENT with ANY_ETAG deletes an existing key."""
+    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d["key1"] = "value"
+    etag_before = d.etag("key1")
+
+    result = d.set_item_if("key1", DELETE_CURRENT, "irrelevant", ANY_ETAG)
+
+    assert result.condition_was_satisfied
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+    assert result.new_value is ITEM_NOT_AVAILABLE
+    assert "key1" not in d
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_delete_current_with_any_etag_missing_key(tmpdir, DictToTest, kwargs):
+    """Verify DELETE_CURRENT with ANY_ETAG on a missing key."""
+    d = DictToTest(base_dir=tmpdir, **kwargs)
+
+    result = d.set_item_if("nonexistent", DELETE_CURRENT, "irrelevant", ANY_ETAG)
+
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE

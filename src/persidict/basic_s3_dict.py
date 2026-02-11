@@ -692,9 +692,29 @@ class BasicS3Dict(PersiDict[ValueType]):
             return self._result_unchanged(
                 condition, True, actual_etag, VALUE_NOT_RETRIEVED)
         if value is DELETE_CURRENT:
-            if not self.discard(key):
+            if actual_etag is ITEM_NOT_AVAILABLE:
                 return self._result_item_not_available(condition, False)
-            return self._result_delete_success(condition, actual_etag)
+            if not type(self)._conditional_delete_probed:
+                self._probe_conditional_delete()
+            if type(self)._conditional_delete_supported:
+                obj_name = self._build_full_objectname(key)
+                try:
+                    self.s3_client.delete_object(
+                        Bucket=self.bucket_name,
+                        Key=obj_name,
+                        IfMatch=actual_etag)
+                    return self._result_delete_success(condition, actual_etag)
+                except ClientError as e:
+                    if not_found_error(e) or conditional_request_failed(e):
+                        return self._conditional_failure_result(
+                            key, condition,
+                            always_retrieve_value=False,
+                            return_existing_value=False)
+                    raise
+            else:
+                if not self.discard(key):
+                    return self._result_item_not_available(condition, False)
+                return self._result_delete_success(condition, actual_etag)
 
         # Attempt conditional write when possible
         if condition in (ETAG_IS_THE_SAME, ETAG_HAS_CHANGED):
