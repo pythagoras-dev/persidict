@@ -383,10 +383,10 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6547 | 9760 | 16307 |
-| Source Lines Of Code (SLOC) | 2941 | 6265 | 9206 |
+| Lines Of Code (LOC) | 6625 | 9841 | 16466 |
+| Source Lines Of Code (SLOC) | 2996 | 6316 | 9312 |
 | Classes | 28 | 8 | 36 |
-| Functions / Methods | 269 | 547 | 816 |
+| Functions / Methods | 272 | 553 | 825 |
 | Files | 16 | 100 | 116 |
 <!-- MIXINFORGE_STATS_END -->
 
