@@ -12,9 +12,20 @@ Concurrent access from multiple processes or machines is a first‑class use cas
 
 - Last‑write‑wins: For mutable data, the last write to a key overwrites prior values. This simple strategy works well for many distributed workloads.
 - Atomic single‑key operations: `FileDirDict` uses atomic `os.replace` to avoid partial writes, while S3 provides its own guarantees for object-level atomicity. Multi‑key atomic transactions are not supported.
-- ETag/timestamp validation: For cloud storage, `S3Dict` and caching layers leverage ETags for conditional requests to minimize transfer and ensure efficient, consistent reads. For other backends, timestamps are used in lieu of ETags.
+- ETag/timestamp validation: For cloud storage, `S3Dict` and caching layers leverage ETags for conditional requests to minimize transfer and ensure efficient, consistent reads. For other backends, timestamps are used in lieu of ETags (see conditional operations below).
 
-## 3. Pluggable, cloud‑ready storage backends
+## 3. Conditional operations are first‑class
+
+Conditional operations are the primary mechanism for avoiding lost updates. Instead of implicit compare‑and‑swap, the API makes the condition explicit and returns structured results:
+
+- Conditional reads and writes: `get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`, and the retrying `transform_item`.
+- Explicit conditions and absent‑key handling: `ANY_ETAG`, `ETAG_IS_THE_SAME`, `ETAG_HAS_CHANGED`, with `ITEM_NOT_AVAILABLE` standing in for missing keys.
+- Joker values and full results: `KEEP_CURRENT` and `DELETE_CURRENT` allow no‑op and delete in write paths; results include actual and resulting ETags plus the resulting value.
+- Backend atomicity is explicit: `BasicS3Dict` uses S3 conditional headers for atomicity, while `FileDirDict` uses check‑then‑act to remain compatible with shared folders that do not propagate locks.
+
+For the full contract, see `etag_conditional_ops_requirements.md`.
+
+## 4. Pluggable, cloud‑ready storage backends
 
 A unified API spans multiple storage mechanisms, so you can switch backends with minimal code changes. Primary backends include:
 
@@ -22,21 +33,21 @@ A unified API spans multiple storage mechanisms, so you can switch backends with
 - `S3Dict`: AWS S3‑backed storage for scalable, distributed applications.
 - `LocalDict`: In‑memory storage for testing and ephemeral data.
 
-## 4. Hierarchical, filesystem‑safe keys
+## 5. Hierarchical, filesystem‑safe keys
 
 Keys are a core design feature, not just strings:
 
 - Hierarchical structure: Keys are sequences of safe strings (`SafeStrTuple`), forming a natural directory‑like hierarchy and enabling features like `get_subdict()`.
 - Safety and portability: `SafeStrTuple` restricts components to URL/filename‑safe characters. `FileDirDict` can also add a hash suffix (`digest_len`) to prevent collisions on case‑insensitive filesystems, keeping keys portable across OSes.
 
-## 5. Flexible serialization and optional type safety
+## 6. Flexible serialization and optional type safety
 
 Storage format and type safety are configurable:
 
 - Multiple formats: Choose via `serialization_format`: `pkl` (any Python object), `json` (human‑readable), or plain text.
 - Optional type safety: Enforce that values are instances of a specific class with `base_class_for_values` when strict validation is required.
 
-## 6. Layered architecture and composition
+## 7. Layered architecture and composition
 
 Capabilities are composed in layers:
 
@@ -47,7 +58,7 @@ Capabilities are composed in layers:
 
 This design lets you stack capabilities (e.g., S3 storage + caching + write‑once semantics) by composing classes.
 
-## 7. Performance through intelligent caching
+## 8. Performance through intelligent caching
 
 Caching strategies can be tuned for different access patterns:
 

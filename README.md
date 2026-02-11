@@ -43,7 +43,7 @@ checking with mypy/pyright.
 * **Advanced Functionality**: Includes features like write-once dictionaries, 
 timestamping of entries, and tools for handling file-system-safe keys.
 * **ETag-Based Conditional Operations**: Optimistic concurrency helpers for
-conditional reads, writes, and deletes based on per-key ETags.
+conditional reads, writes, deletes, and transforms based on per-key ETags.
 * **Hierarchical Keys**: Keys can be sequences of strings, 
 creating a directory-like structure within the storage backend.
 
@@ -151,6 +151,18 @@ at runtime. For example, `Callable[[int], str]`, `Literal["a", "b"]`,
 `TypedDict`, and `NewType` have no `isinstance` equivalent. Use generics for
 development-time safety; use `base_class_for_values` when you need runtime validation.
 
+### 3.4 Conditional Operations
+
+Use conditional operations to avoid lost updates in concurrent scenarios. The
+insert-if-absent pattern uses `ITEM_NOT_AVAILABLE` with `ETAG_IS_THE_SAME`.
+
+```python
+from persidict import FileDirDict, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME
+
+d = FileDirDict(base_dir="./data")
+r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+```
+
 ## 4. Comparison With Python Built-in Dictionaries
 
 ### 4.1 Similarities 
@@ -174,6 +186,8 @@ You can also constrain values to a specific class.
 * **Additional Methods**: `PersiDict` provides extra methods not in the standard 
 dict API, such as `timestamp()`, `etag()`, `random_key()`, `newest_keys()`
 , `subdicts()`, `discard()`, `get_params()` and more.
+* **Conditional Operations**: ETag-based compare-and-swap reads/writes with
+structured results to avoid lost updates.
 * **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
 and `DELETE_CURRENT` to delete a value during an assignment.
 
@@ -247,6 +261,13 @@ ensures the existing value is not changed.
 * **`DELETE_CURRENT`**: A "joker" value that deletes the key-value pair 
 from the dictionary when assigned to a key.
 
+### 5.6 ETags and Conditional Flags
+
+* **`ETagValue`**: Opaque per-key version string used for conditional operations.
+* **`ETag conditions`**: `ANY_ETAG` (unconditional), `ETAG_IS_THE_SAME` (expected == actual), `ETAG_HAS_CHANGED` (expected != actual).
+* **`ITEM_NOT_AVAILABLE`**: Sentinel used when a key is missing (stands in for the ETag).
+* **`VALUE_NOT_RETRIEVED`**: Sentinel indicating a value exists but was not fetched.
+
 ## 6. API Highlights
 
 `PersiDict` subclasses support the standard Python dictionary API, plus these additional methods for advanced functionality:
@@ -264,27 +285,43 @@ from the dictionary when assigned to a key.
 | `discard(key)` | `bool` | Deletes a key-value pair if it exists and returns `True`; otherwise, returns `False`. |
 | `get_params()` | `dict` | Returns a dictionary of the instance's configuration parameters, supporting the `mixinforge` API. |
 
-### 6.1 ETag-Based Conditional Operations
+### 6.1 Conditional Operations (ETag-based)
 
-PersiDict exposes ETag-aware methods for optimistic concurrency. On local
-backends, ETags default to stringified timestamps; on S3 they use native object
-ETags. These methods let you avoid overwriting concurrent updates by checking
-the last-seen ETag before reading or writing.
+PersiDict exposes explicit conditional operations for optimistic concurrency.
+Each key has an ETag; missing keys use `ITEM_NOT_AVAILABLE`. Conditions are
+`ANY_ETAG` (unconditional), `ETAG_IS_THE_SAME` (expected == actual), and
+`ETAG_HAS_CHANGED` (expected != actual). Methods return a structured result
+with whether the condition was satisfied, the actual ETag, the resulting ETag,
+and the resulting value (or `VALUE_NOT_RETRIEVED` when value retrieval is
+skipped).
 
-Pass `ETAG_UNKNOWN` when you do not have a prior ETag value; this makes the
-intent explicit and avoids extra fetches.
+Common methods and flags:
 
-Common methods and return flags:
+| Item | Kind | Notes |
+| :--- | :--- | :--- |
+| `get_item_if(key, expected_etag, condition, *, always_retrieve_value=True)` | Method | Conditional read. |
+| `set_item_if(key, value, expected_etag, condition, *, always_retrieve_value=True)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
+| `setdefault_if(key, default_value, expected_etag, condition, *, always_retrieve_value=True)` | Method | Insert-if-absent. |
+| `discard_item_if(key, expected_etag, condition)` | Method | Conditional delete. |
+| `transform_item(key, transformer, *, n_retries=6)` | Method | Retry loop for read-modify-write. |
+| `ETagValue` | Type | NewType over `str`. |
+| `ITEM_NOT_AVAILABLE` | Sentinel | Missing key marker. |
+| `VALUE_NOT_RETRIEVED` | Sentinel | Value exists but was not fetched. |
 
-* `etag(key) -> ETagValue | None`
-* `set_item_get_etag(key, value) -> ETagValue | None`
-* `get_item_if_etag(key, etag, condition) -> tuple[Any, ETagValue | None] | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
-* `set_item_if_etag(key, value, etag, condition) -> ETagValue | None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
-* `delete_item_if_etag(key, etag, condition) -> None | ETAG_HAS_CHANGED | ETAG_HAS_NOT_CHANGED`
-* `discard_item_if_etag(key, etag, condition) -> bool`
-* `ETagValue` (NewType over `str`)
-* `EQUAL_ETAG` / `DIFFERENT_ETAG` (condition selectors)
-* `ETAG_UNKNOWN` (sentinel for unknown ETag inputs)
+Example: compare-and-swap loop
+
+```python
+from persidict import FileDirDict, ANY_ETAG, ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE
+
+d = FileDirDict(base_dir="./data")
+
+while True:
+    r = d.get_item_if("count", ITEM_NOT_AVAILABLE, ANY_ETAG)
+    new_value = 1 if r.new_value is ITEM_NOT_AVAILABLE else r.new_value + 1
+    r2 = d.set_item_if("count", new_value, r.actual_etag, ETAG_IS_THE_SAME)
+    if r2.condition_was_satisfied:
+        break
+```
 
 ## 7. Installation
 
@@ -346,11 +383,11 @@ For development and testing, the following packages are used:
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6337 | 9426 | 15763 |
-| Source Lines Of Code (SLOC) | 2812 | 6040 | 8852 |
+| Lines Of Code (LOC) | 6344 | 9500 | 15844 |
+| Source Lines Of Code (SLOC) | 2819 | 6090 | 8909 |
 | Classes | 28 | 8 | 36 |
-| Functions / Methods | 257 | 528 | 785 |
-| Files | 16 | 98 | 114 |
+| Functions / Methods | 257 | 532 | 789 |
+| Files | 16 | 99 | 115 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## 9. Contributing
