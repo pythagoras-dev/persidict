@@ -92,6 +92,8 @@ class BasicS3Dict(PersiDict[ValueType]):
     region: str
     bucket_name: str
     root_prefix: str
+    _conditional_delete_probed: bool = False
+    _conditional_delete_supported: bool = True
 
     def __init__(self, bucket_name: str = "my_bucket",
                  region: str = None,
@@ -716,6 +718,35 @@ class BasicS3Dict(PersiDict[ValueType]):
         return self._result_write_success(
             condition, actual_etag, resulting_etag, value)
 
+    def _probe_conditional_delete(self) -> None:
+        """Test whether the S3 backend enforces IfMatch on delete_object.
+
+        Some S3-compatible backends (e.g. moto) silently ignore conditional
+        headers on deletes. This probe runs once per class and caches the
+        result so the fast path is only used when the backend supports it.
+        """
+        cls = type(self)
+        if cls._conditional_delete_probed:
+            return
+        probe_key = self.root_prefix + "__persidict_probe__"
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name, Key=probe_key, Body=b"probe")
+            try:
+                self.s3_client.delete_object(
+                    Bucket=self.bucket_name, Key=probe_key,
+                    IfMatch='"__wrong_etag__"')
+                # Delete succeeded with wrong IfMatch — backend doesn't enforce it
+                cls._conditional_delete_supported = False
+            except ClientError:
+                # Backend correctly rejected the mismatched IfMatch
+                cls._conditional_delete_supported = True
+                self.s3_client.delete_object(
+                    Bucket=self.bucket_name, Key=probe_key)
+        except ClientError:
+            cls._conditional_delete_supported = False
+        cls._conditional_delete_probed = True
+
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
@@ -736,6 +767,60 @@ class BasicS3Dict(PersiDict[ValueType]):
             ConditionalOperationResult with the outcome.
         """
         key = NonEmptySafeStrTuple(key)
+
+        # Fast path: ETAG_IS_THE_SAME with a real ETag — skip the HEAD.
+        # Requires S3 backend to enforce IfMatch on delete_object.
+        if (not self.append_only
+                and condition is ETAG_IS_THE_SAME
+                and not isinstance(expected_etag, ItemNotAvailableFlag)):
+            if not type(self)._conditional_delete_probed:
+                self._probe_conditional_delete()
+            if type(self)._conditional_delete_supported:
+                return self._discard_item_if_fast_path(
+                    key, expected_etag, condition)
+
+        return self._discard_item_if_fallback(
+            key, expected_etag, condition)
+
+    def _discard_item_if_fast_path(
+            self,
+            key: NonEmptySafeStrTuple,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag
+    ) -> ConditionalOperationResult:
+        """Optimistic S3 conditional delete for ETAG_IS_THE_SAME.
+
+        Attempts a single S3 delete with IfMatch header,
+        avoiding a separate ETag check round-trip.
+        """
+        obj_name = self._build_full_objectname(key)
+        try:
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=obj_name,
+                IfMatch=expected_etag)
+            return self._result_delete_success(condition, expected_etag)
+        except ClientError as e:
+            if not_found_error(e):
+                return self._result_for_missing_key(condition, expected_etag)
+            if not conditional_request_failed(e):
+                raise
+            return self._conditional_failure_result(
+                key, condition,
+                always_retrieve_value=False,
+                return_existing_value=False)
+
+    def _discard_item_if_fallback(
+            self,
+            key: NonEmptySafeStrTuple,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag
+    ) -> ConditionalOperationResult:
+        """Check-then-delete path for conditions other than the fast path.
+
+        Handles ETAG_HAS_CHANGED, ANY_ETAG, ETAG_IS_THE_SAME with
+        ITEM_NOT_AVAILABLE, and append_only mode.
+        """
         actual_etag = self._actual_etag(key)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
@@ -746,24 +831,6 @@ class BasicS3Dict(PersiDict[ValueType]):
                 condition, False, actual_etag, VALUE_NOT_RETRIEVED)
         if self.append_only:
             raise KeyError("Can't delete an immutable key-value pair")
-
-        # Use S3 conditional delete when possible
-        if (condition is ETAG_IS_THE_SAME
-                and not isinstance(expected_etag, ItemNotAvailableFlag)):
-            obj_name = self._build_full_objectname(key)
-            try:
-                self.s3_client.delete_object(
-                    Bucket=self.bucket_name,
-                    Key=obj_name,
-                    IfMatch=expected_etag)
-                return self._result_delete_success(condition, actual_etag)
-            except ClientError as e:
-                if not_found_error(e) or conditional_request_failed(e):
-                    return self._conditional_failure_result(
-                        key, condition,
-                        always_retrieve_value=False,
-                        return_existing_value=False)
-                raise
 
         # Atomic delete: guard against concurrent changes since the HEAD
         obj_name = self._build_full_objectname(key)
