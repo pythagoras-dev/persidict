@@ -17,6 +17,32 @@ Every stored item carries an **ETag** — an opaque version string that changes 
 
 This is the same model used by HTTP (`If-Match` / `If-None-Match`) and S3 conditional requests.
 
+## Atomicity Matrix
+
+The following table summarizes which operation × backend combinations are atomic (free of TOCTOU races). This is the single most important property of the system — consult it before choosing a backend.
+
+| Operation | `BasicS3Dict` | `FileDirDict` | `LocalDict` | `MutableDictCached` | `AppendOnlyDictCached` |
+|---|---|---|---|---|---|
+| `get_item_if` | **Atomic** (S3 conditional GET) | Best-effort | Best-effort | Delegates to `main_dict` | Delegates to `main_dict` |
+| `set_item_if` | **Atomic** (S3 conditional PUT) | Best-effort | Best-effort | Delegates to `main_dict` | Delegates to `main_dict` |
+| `setdefault_if` | **Atomic** (`IfNoneMatch: *`) | Best-effort | Best-effort | Delegates to `main_dict` | Delegates to `main_dict` |
+| `discard_item_if` | **Atomic** (S3 conditional DELETE) | Best-effort | Best-effort | Delegates to `main_dict` | N/A (`append_only`) |
+| `transform_item` | **Atomic** (via atomic conditional ops) | Best-effort | Best-effort | Delegates to `main_dict` | N/A (`append_only`) |
+| `etag` | S3-native ETag | `mtime_ns:file_size` (weak) | Monotonic counter (strong) | Cached, from `main_dict` | From `main_dict` |
+
+**Key:**
+- **Atomic** — the ETag check and the mutation happen as a single server-side operation; no concurrent writer can slip in between.
+- **Best-effort** — the ETag check and the mutation are separate steps (check-then-act); safe for single-process use, but concurrent writers can interleave between them. Suitable when external coordination is provided or races are tolerable.
+- **Delegates to `main_dict`** — the caching layer forwards the call to the underlying backend and updates its caches as a side effect. Atomicity depends entirely on the `main_dict` backend.
+- **N/A** — operation is not supported (raises `TypeError` or `NotImplementedError`).
+
+### Testable invariants
+
+- **No lost updates (atomic backends):** Under concurrent writers, `set_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must never produce a lost update. If two processes race, exactly one succeeds and the other receives `condition_was_satisfied=False`.
+- **Insert-if-absent (atomic backends):** `setdefault_if` with `ETAG_IS_THE_SAME` + `expected=ITEM_NOT_AVAILABLE` on `BasicS3Dict` must ensure at most one writer inserts the key. All others receive the existing value.
+- **Delete-known-version (atomic backends):** `discard_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must not delete a version that differs from the expected ETag.
+- **Cache coherence:** After a successful conditional write through `MutableDictCached`, the cache must reflect the written value and its resulting ETag. After a failed conditional write, the cache must not reflect the *proposed* value. However, when the operation retrieves the current value from the backend (i.e. `always_retrieve_value=True`), caches may be updated to reflect the *actual* backend state (see R11).
+
 ## Requirements
 
 ### R1. Every item has a version identifier (ETag)
@@ -27,10 +53,11 @@ This is the same model used by HTTP (`If-Match` / `If-None-Match`) and S3 condit
 - ETag is opaque; do not assume a new ETag after a write if the value is identical.
 
 **Weak semantics note:** ETags are best-effort version identifiers, not a
-cryptographic guarantee. Some backends use timestamp-derived ETags, which can
-repeat under coarse clock/filesystem resolution, and even native S3 ETags have
-a non-zero theoretical collision probability. Treat ETag matches as a strong
-hint, not absolute proof of identity.
+cryptographic guarantee. `FileDirDict` uses timestamp-derived ETags, which can
+repeat under coarse filesystem resolution, and even native S3 ETags have
+a non-zero theoretical collision probability. `LocalDict` uses a monotonic
+integer counter, which eliminates collisions within a single process. Treat
+ETag matches as a strong hint, not absolute proof of identity.
 
 ### R2. Three condition modes
 
@@ -100,6 +127,63 @@ This lets callers decide what to do next without an extra round-trip.
 ### R12. transform_item uses conditional operations
 
 `transform_item` is implemented as a conditional-ops retry loop. It is atomic only when the backend's conditional operations are atomic; otherwise it remains non-atomic. On persistent conflicts it raises `TransformConflictError` after exhausting `n_retries` retries. For strict control, callers can still use explicit `get_item_if` + `set_item_if` loops or external synchronization.
+
+## Failure Modes & Recovery
+
+Conditional operations are designed to fail gracefully — they return structured results instead of raising exceptions for condition mismatches. However, callers must understand the distinct failure scenarios to handle them correctly.
+
+### F1. ETag mismatch (condition not satisfied)
+
+- **Trigger:** The item's current ETag does not satisfy the requested condition. Another process wrote or deleted the item between the caller's read and conditional write.
+- **Applies to:** `set_item_if`, `setdefault_if`, `discard_item_if`, `get_item_if`.
+- **Result fields:** `condition_was_satisfied=False`. `actual_etag` reflects the current state. `resulting_etag == actual_etag` (no mutation). `new_value` is the existing value (if `always_retrieve_value=True`), `VALUE_NOT_RETRIEVED` (if `False`), or `ITEM_NOT_AVAILABLE` (if the key is absent).
+- **Recovery:** Re-read with `get_item_if` using `ANY_ETAG` to get the fresh value and ETag, then retry the conditional write. This is the standard optimistic-concurrency retry loop.
+
+### F2. Key disappeared between read and write
+
+- **Trigger:** The caller read an item and its ETag, but by the time the conditional write executes, the key no longer exists (another process deleted it).
+- **Applies to:** `set_item_if`, `discard_item_if`.
+- **Result fields:** `condition_was_satisfied=False`. `actual_etag=ITEM_NOT_AVAILABLE`. `resulting_etag=ITEM_NOT_AVAILABLE`. `new_value=ITEM_NOT_AVAILABLE`.
+- **Recovery:** The caller can choose to re-insert (via `set_item_if` with `expected=ITEM_NOT_AVAILABLE`) or treat the deletion as authoritative and stop.
+
+### F3. Key appeared between read and write (insert-if-absent race)
+
+- **Trigger:** The caller intended to insert a new key (`expected=ITEM_NOT_AVAILABLE`, `condition=ETAG_IS_THE_SAME`), but another process inserted it first.
+- **Applies to:** `set_item_if`, `setdefault_if`.
+- **Result fields:** `condition_was_satisfied=False`. `actual_etag` is the ETag of the newly inserted item. `new_value` is the existing value (if retrieved). For `setdefault_if`, the existing value is returned without mutation regardless of condition outcome.
+- **Recovery:** Accept the existing value, or re-read and retry with the new ETag if the caller needs to overwrite.
+
+### F4. `TransformConflictError` (retries exhausted)
+
+- **Trigger:** `transform_item` encountered ETag conflicts on every attempt and exhausted `n_retries`.
+- **Applies to:** `transform_item` only.
+- **Exception:** `TransformConflictError(key, attempts)` is raised (not a result — this is the only failure mode that raises).
+- **Recovery:** The caller can retry with a higher `n_retries`, use `n_retries=None` for unbounded retries, or fall back to an explicit `get_item_if` + `set_item_if` loop with custom backoff. Persistent conflicts suggest high contention — consider redesigning the key space or using external coordination.
+
+### F5. S3 conditional request failure (412/409)
+
+- **Trigger:** S3 returns HTTP 412 Precondition Failed or 409 Conflict because the conditional header (`IfMatch`, `IfNoneMatch`) did not match the object's current ETag.
+- **Applies to:** `BasicS3Dict` internal handling of `set_item_if`, `setdefault_if`, `discard_item_if`.
+- **Visible effect:** The S3 error is caught internally and translated into a `ConditionalOperationResult` with `condition_was_satisfied=False`. The caller never sees the `ClientError` — it is the same as F1.
+- **Recovery:** Same as F1.
+
+### F6. Weak ETag collision (false match)
+
+- **Trigger:** Two different values produce the same ETag. This can happen with timestamp-derived ETags on `FileDirDict` (coarse mtime resolution), and has a non-zero theoretical probability even for S3-native ETags. `LocalDict` uses a monotonic counter and is not susceptible to this failure mode within a single process.
+- **Applies to:** All backends, but practically significant only for `FileDirDict`.
+- **Visible effect:** `ETAG_IS_THE_SAME` incorrectly reports that the item has not changed. A conditional write may succeed when it should have failed, or `ETAG_HAS_CHANGED` may fail when the item actually did change.
+- **Recovery:** No programmatic recovery. This is a known limitation documented in R1. Callers who require strong consistency must use `BasicS3Dict` or add external coordination.
+
+### Failure identification quick reference
+
+| Scenario | `condition_was_satisfied` | `actual_etag` | `resulting_etag` | `new_value` | Raises? |
+|---|---|---|---|---|---|
+| F1: ETag mismatch (key exists) | `False` | current ETag | `== actual_etag` | existing value or `VALUE_NOT_RETRIEVED` | No |
+| F2: Key disappeared | `False` | `ITEM_NOT_AVAILABLE` | `ITEM_NOT_AVAILABLE` | `ITEM_NOT_AVAILABLE` | No |
+| F3: Key appeared (insert race) | `False` | new ETag | `== actual_etag` | existing value or `VALUE_NOT_RETRIEVED` | No |
+| F4: Retries exhausted | N/A | N/A | N/A | N/A | `TransformConflictError` |
+| F5: S3 412/409 | `False` | re-read ETag | `== actual_etag` | existing value or `VALUE_NOT_RETRIEVED` | No |
+| F6: Weak ETag collision | `True` (incorrect) | stale ETag | may change | may be wrong value | No |
 
 ## Design Decisions
 

@@ -10,9 +10,10 @@
 | `ITEM_NOT_AVAILABLE` | Key is absent (used in place of an ETag when key doesn't exist) |
 
 ETag values are best-effort version identifiers. Collisions are possible
-(timestamp-based ETags can repeat, and even S3 ETags have a non-zero
-theoretical collision probability). Treat equality as a strong hint, not an
-absolute guarantee.
+(timestamp-based ETags on `FileDirDict` can repeat, and even S3 ETags have a
+non-zero theoretical collision probability). `LocalDict` uses a monotonic
+integer counter, which eliminates collisions within a single process. Treat
+equality as a strong hint, not an absolute guarantee.
 
 ### ETag Conditions
 
@@ -35,6 +36,24 @@ absolute guarantee.
 |---|---|
 | `ITEM_NOT_AVAILABLE` | Key does not exist (in `actual_etag`, `resulting_etag`, or `new_value`) |
 | `VALUE_NOT_RETRIEVED` | Value exists but wasn't fetched (`always_retrieve_value=False`) |
+
+---
+
+## Atomicity Matrix
+
+| Operation | `BasicS3Dict` | `FileDirDict` | `LocalDict` | `MutableDictCached` | `AppendOnlyDictCached` |
+|---|---|---|---|---|---|
+| `get_item_if` | **Atomic** | Best-effort | Best-effort | Delegates | Delegates |
+| `set_item_if` | **Atomic** | Best-effort | Best-effort | Delegates | Delegates |
+| `setdefault_if` | **Atomic** | Best-effort | Best-effort | Delegates | Delegates |
+| `discard_item_if` | **Atomic** | Best-effort | Best-effort | Delegates | N/A |
+| `transform_item` | **Atomic** | Best-effort | Best-effort | Delegates | N/A |
+| `etag` source | S3-native | `mtime_ns:size` (weak) | Monotonic counter (strong) | Cached | From `main_dict` |
+
+**Atomic** = server-side ETag check + mutation in one request (no TOCTOU).
+**Best-effort** = check-then-act; safe for single-process use, but concurrent writers can interleave.
+**Delegates** = caching layer forwards to `main_dict`; atomicity depends on the underlying backend.
+**N/A** = not supported (`append_only`; raises `TypeError` / `NotImplementedError`).
 
 ---
 
@@ -151,7 +170,7 @@ r = d.transform_item(k, increment)
 |---|---|---|
 | `BasicS3Dict` | S3 native ETag (`head_object`) | Atomic (S3 conditional headers) |
 | `FileDirDict` | `mtime_ns:file_size` (timestamp-based, weak) | Non-atomic (check-then-act)\* |
-| `LocalDict` | `timestamp` (float, 6 decimals, weak) | Non-atomic (check-then-act) |
+| `LocalDict` | Monotonic write counter (integer, strong) | Non-atomic (check-then-act) |
 
 \* `FileDirDict` intentionally avoids OS-native file locking because it must work with shared folders synced via Dropbox (and similar services), where advisory/mandatory locks are not reliably propagated across machines.
 
@@ -216,3 +235,24 @@ if not r.condition_was_satisfied:
 ```python
 r = d.discard_item_if(k, known_etag, ETAG_IS_THE_SAME)
 ```
+
+---
+
+## Failure Modes Quick Reference
+
+Every conditional operation returns a result rather than raising on condition mismatch. The table below maps each failure scenario to the result fields the caller should inspect.
+
+| Failure | Trigger | `condition_was_satisfied` | `actual_etag` | `new_value` | Raises? |
+|---|---|---|---|---|---|
+| **ETag mismatch** | Another writer changed the item | `False` | current ETag | existing value or `VALUE_NOT_RETRIEVED` | No |
+| **Key disappeared** | Item deleted between read and write | `False` | `ITEM_NOT_AVAILABLE` | `ITEM_NOT_AVAILABLE` | No |
+| **Key appeared** | Insert-if-absent race lost | `False` | new ETag | existing value or `VALUE_NOT_RETRIEVED` | No |
+| **Retries exhausted** | `transform_item` hit `n_retries` conflicts | N/A | N/A | N/A | `TransformConflictError` |
+| **S3 412/409** | S3 conditional header mismatch | `False` | re-read ETag | existing value or `VALUE_NOT_RETRIEVED` | No |
+| **Weak ETag collision** | Different values, same ETag (timestamp-based on `FileDirDict`) | `True` (incorrect) | stale ETag | may be wrong value | No |
+
+### Recovery strategies
+
+- **ETag mismatch / Key disappeared / Key appeared / S3 412/409:** Re-read with `get_item_if(..., ANY_ETAG)` to get the fresh value and ETag, then retry the conditional write. This is the standard optimistic-concurrency loop.
+- **Retries exhausted:** Increase `n_retries`, use `n_retries=None` for unbounded retries, or fall back to an explicit `get_item_if` + `set_item_if` loop with custom backoff. Persistent conflicts suggest high contention on the key.
+- **Weak ETag collision:** No programmatic recovery. Use `BasicS3Dict` for strong consistency, or add external coordination for file-based backends.

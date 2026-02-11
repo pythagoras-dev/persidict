@@ -12,7 +12,7 @@ Concurrent access from multiple processes or machines is a first‑class use cas
 
 - Last‑write‑wins: For mutable data, the last write to a key overwrites prior values. This simple strategy works well for many distributed workloads.
 - Atomic single‑key operations: `FileDirDict` uses atomic `os.replace` to avoid partial writes, while S3 provides its own guarantees for object-level atomicity. Multi‑key atomic transactions are not supported.
-- ETag/timestamp validation: For cloud storage, `S3Dict` and caching layers leverage ETags for conditional requests to minimize transfer and ensure efficient, consistent reads. For other backends, timestamps are used in lieu of ETags (see conditional operations below).
+- ETag/timestamp validation: For cloud storage, `S3Dict` and caching layers leverage ETags for conditional requests to minimize transfer and ensure efficient, consistent reads. For other backends, `FileDirDict` uses filesystem timestamps and `LocalDict` uses a monotonic write counter in lieu of S3-native ETags (see conditional operations below).
 
 ## 3. Conditional operations are first‑class
 
