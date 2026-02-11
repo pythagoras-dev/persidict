@@ -138,7 +138,7 @@ class EmptyDict(PersiDict[ValueType]):
             resulting_etag=ITEM_NOT_AVAILABLE,
             new_value=ITEM_NOT_AVAILABLE)
 
-    def transform_item(self, key, transformer) -> OperationResult:
+    def transform_item(self, key, transformer, *, n_retries: int | None = 6) -> OperationResult:
         """Transform always receives ITEM_NOT_AVAILABLE, result is discarded."""
         return OperationResult(
             resulting_etag=ITEM_NOT_AVAILABLE,

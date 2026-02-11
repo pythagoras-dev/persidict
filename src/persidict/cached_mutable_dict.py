@@ -299,11 +299,13 @@ class MutableDictCached(PersiDict[ValueType]):
     def transform_item(
             self,
             key: NonEmptyPersiDictKey,
-            transformer: TransformingFunction
+            transformer: TransformingFunction,
+            *,
+            n_retries: int | None = 6
     ) -> OperationResult:
         """Apply a transformation; delegate to main dict and update caches."""
         key = NonEmptySafeStrTuple(key)
-        res = self._main_dict.transform_item(key, transformer)
+        res = self._main_dict.transform_item(key, transformer, n_retries=n_retries)
         if isinstance(res.resulting_etag, ItemNotAvailableFlag):
             self._data_cache.discard(key)
             self._etag_cache.discard(key)

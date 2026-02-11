@@ -279,10 +279,12 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     def transform_item(
             self,
             key: NonEmptyPersiDictKey,
-            transformer: TransformingFunction
+            transformer: TransformingFunction,
+            *,
+            n_retries: int | None = 6
     ) -> OperationResult:
         """Transform item; delegate to cached dict."""
-        return self._cached_dict.transform_item(key, transformer)
+        return self._cached_dict.transform_item(key, transformer, n_retries=n_retries)
 
     def discard(self, key: NonEmptyPersiDictKey) -> bool:
         """Delete an item without raising an exception if it doesn't exist.

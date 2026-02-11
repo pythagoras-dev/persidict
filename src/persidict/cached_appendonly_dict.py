@@ -271,7 +271,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 
-    def transform_item(self, key, transformer):
+    def transform_item(self, key, transformer, *, n_retries: int | None = 6):
         """Not supported for append-only dictionaries."""
         raise NotImplementedError("append-only dicts do not support transform_item")
 

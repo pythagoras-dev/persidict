@@ -21,6 +21,7 @@ from collections.abc import MutableMapping
 import heapq
 from itertools import zip_longest
 import random
+import time
 from typing import Any, Sequence, Optional, TypeVar, Iterator, Mapping
 
 from mixinforge import ParameterizableMixin, sort_dict_by_keys
@@ -57,6 +58,16 @@ The characters within strings must be URL/filename-safe.
 If a string (or a sequence of strings) is passed to a PersiDict as a key,
 it will be automatically converted into SafeStrTuple.
 """
+
+class TransformConflictError(RuntimeError):
+    """Raised when transform_item exhausts retries due to concurrent updates."""
+
+    def __init__(self, key: NonEmptySafeStrTuple, attempts: int) -> None:
+        super().__init__(
+            f"transform_item failed after {attempts} attempt(s) for key {key!r}")
+        self.key = key
+        self.attempts = attempts
+
 
 class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], ParameterizableMixin):
     """Abstract dict-like interface for durable key-value stores.
@@ -519,59 +530,89 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def transform_item(
             self,
             key: NonEmptyPersiDictKey,
-            transformer: TransformingFunction
+            transformer: TransformingFunction,
+            *,
+            n_retries: int | None = 6
     ) -> OperationResult:
         """Apply a transformation function to a key's value.
 
         Reads the current value (or ITEM_NOT_AVAILABLE if absent), calls
-        transformer(current_value), and writes the result back.
+        transformer(current_value), and writes the result back using
+        conditional operations.
 
         If the transformer returns DELETE_CURRENT, the key is deleted
         (or no-op if already absent). If the transformer returns
         KEEP_CURRENT, the value is left unchanged.
 
         Warning:
-            This base class implementation is not atomic. Subclasses that
-            require concurrency safety should override this method.
+            This base class implementation is not atomic unless the backend's
+            conditional operations are atomic. The transformer may be called
+            multiple times if conflicts occur.
 
         Args:
             key: Dictionary key.
             transformer: A callable that receives the current value (or
                 ITEM_NOT_AVAILABLE) and returns a new value,
                 DELETE_CURRENT, or KEEP_CURRENT.
+            n_retries: Number of retries after ETag conflicts. None retries
+                indefinitely.
+
+        Raises:
+            TransformConflictError: If conflicts persist after n_retries.
 
         Returns:
             OperationResult with resulting_etag and new_value.
         """
         key = NonEmptySafeStrTuple(key)
+        if n_retries is not None:
+            try:
+                n_retries = int(n_retries)
+            except (TypeError, ValueError) as exc:
+                raise TypeError("n_retries must be a non-negative int or None") from exc
+            if n_retries < 0:
+                raise ValueError("n_retries must be a non-negative int or None")
 
-        if key in self:
-            current_value = self[key]
-        else:
-            current_value = ITEM_NOT_AVAILABLE
+        retries = 0
+        while True:
+            read_res = self.get_item_if(
+                key,
+                ITEM_NOT_AVAILABLE,
+                ANY_ETAG,
+                always_retrieve_value=True)
+            current_value = read_res.new_value
+            actual_etag = read_res.actual_etag
 
-        new_value = transformer(current_value)
+            new_value = transformer(current_value)
 
-        if new_value is DELETE_CURRENT:
-            self.discard(key)
-            return OperationResult(
-                resulting_etag=ITEM_NOT_AVAILABLE,
-                new_value=ITEM_NOT_AVAILABLE)
-
-        if new_value is KEEP_CURRENT:
-            if current_value is ITEM_NOT_AVAILABLE:
+            if new_value is KEEP_CURRENT:
                 return OperationResult(
-                    resulting_etag=ITEM_NOT_AVAILABLE,
-                    new_value=ITEM_NOT_AVAILABLE)
-            return OperationResult(
-                resulting_etag=self._actual_etag(key),
-                new_value=current_value)
+                    resulting_etag=actual_etag,
+                    new_value=current_value)
 
-        self[key] = new_value
-        resulting_etag = self._actual_etag(key)
-        return OperationResult(
-            resulting_etag=resulting_etag,
-            new_value=new_value)
+            if new_value is DELETE_CURRENT:
+                delete_res = self.discard_item_if(
+                    key, actual_etag, ETAG_IS_THE_SAME)
+                if delete_res.condition_was_satisfied:
+                    return OperationResult(
+                        resulting_etag=ITEM_NOT_AVAILABLE,
+                        new_value=ITEM_NOT_AVAILABLE)
+            else:
+                write_res = self.set_item_if(
+                    key,
+                    new_value,
+                    actual_etag,
+                    ETAG_IS_THE_SAME,
+                    always_retrieve_value=False)
+                if write_res.condition_was_satisfied:
+                    return OperationResult(
+                        resulting_etag=write_res.resulting_etag,
+                        new_value=new_value)
+
+            if n_retries is not None and retries >= n_retries:
+                raise TransformConflictError(key, retries + 1)
+
+            time.sleep(random.uniform(0.01, 0.2) * (1.75 ** retries))
+            retries += 1
 
 
     @abstractmethod
