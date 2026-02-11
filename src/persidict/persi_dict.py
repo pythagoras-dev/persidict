@@ -485,8 +485,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     ) -> ConditionalOperationResult:
         """Discard a key only if an ETag condition is satisfied.
 
-        No always_retrieve_value parameter — new_value is always
-        ITEM_NOT_AVAILABLE (item is gone after deletion or was already absent).
+        No always_retrieve_value parameter — new_value is ITEM_NOT_AVAILABLE
+        on delete success or missing key; on condition failure it is
+        VALUE_NOT_RETRIEVED.
 
         Warning:
             This base class implementation is not atomic. Subclasses that
@@ -513,7 +514,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return self._result_delete_success(condition, actual_etag)
 
         return self._result_unchanged(
-            condition, False, actual_etag, ITEM_NOT_AVAILABLE)
+            condition, False, actual_etag, VALUE_NOT_RETRIEVED)
 
     def transform_item(
             self,
