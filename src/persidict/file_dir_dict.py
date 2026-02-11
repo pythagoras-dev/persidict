@@ -807,13 +807,14 @@ class FileDirDict(PersiDict[ValueType]):
                                     raise
                             to_return.append(value_to_return)
 
+                        if "timestamps" in result_type:
+                            timestamp_to_return = os.path.getmtime(
+                                os.path.join(dir_name, f))
+                            to_return.append(timestamp_to_return)
+
                         if len(result_type) == 1:
                             yield to_return[0]
                         else:
-                            if "timestamps" in result_type:
-                                timestamp_to_return = os.path.getmtime(
-                                    os.path.join(dir_name, f))
-                                to_return.append(timestamp_to_return)
                             yield tuple(to_return)
 
         return step()

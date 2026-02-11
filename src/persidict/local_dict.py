@@ -455,11 +455,11 @@ class LocalDict(PersiDict[ValueType]):
                     to_return.append(full_key)
                 if "values" in result_type:
                     to_return.append(deepcopy(val))
+                if "timestamps" in result_type:
+                    to_return.append(ts)
                 if len(result_type) == 1:
                     yield to_return[0]
                 else:
-                    if "timestamps" in result_type:
-                        to_return.append(ts)
                     yield tuple(to_return)
             # then recurse into children
             for name, child in node.subdicts.items():

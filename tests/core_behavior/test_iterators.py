@@ -1,6 +1,7 @@
 import pytest
 from moto import mock_aws
 
+from persidict import SafeStrTuple, EmptyDict
 from tests.data_for_mutable_tests import mutable_tests
 
 
@@ -29,3 +30,52 @@ def test_iterators(tmpdir, DictToTest, kwargs):
         [str(v) for v in model_dict.values()])
 
     dict_to_test.clear()
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_generic_iter_all_result_types(tmpdir, DictToTest, kwargs):
+    """Every valid result_type subset yields correct item count and shape.
+
+    Covers the singleton {"timestamps"} case (no public method exposes it)
+    alongside all other combinations, verifying tuple structure for each.
+    """
+    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d.clear()
+    n_items = 3
+    for i in range(n_items):
+        d[f"k{i}"] = i * 10
+
+    # Single-element result types yield bare values, not 1-tuples.
+    for result_type, expected_type in [
+        ({"keys"}, SafeStrTuple),
+        ({"values"}, int),
+        ({"timestamps"}, float),
+    ]:
+        results = list(d._generic_iter(result_type))
+        assert len(results) == n_items
+        assert all(isinstance(r, expected_type) for r in results)
+
+    # Multi-element result types yield tuples.
+    multi_specs = [
+        ({"keys", "values"}, (SafeStrTuple, int)),
+        ({"keys", "timestamps"}, (SafeStrTuple, float)),
+        ({"values", "timestamps"}, (int, float)),
+        ({"keys", "values", "timestamps"}, (SafeStrTuple, int, float)),
+    ]
+    for result_type, type_pattern in multi_specs:
+        results = list(d._generic_iter(result_type))
+        assert len(results) == n_items
+        for row in results:
+            assert isinstance(row, tuple)
+            assert len(row) == len(type_pattern)
+            for element, expected in zip(row, type_pattern):
+                assert isinstance(element, expected)
+
+    d.clear()
+
+
+def test_generic_iter_timestamps_only_empty_dict():
+    """EmptyDict returns no items for {"timestamps"} without error."""
+    d = EmptyDict()
+    assert list(d._generic_iter({"timestamps"})) == []
