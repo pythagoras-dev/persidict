@@ -25,5 +25,5 @@ def test_discard_immutable_raises():
     ld = LocalDict(append_only=True)
     k = ("root", "leaf")
     ld[k] = 5
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         ld.discard(k)

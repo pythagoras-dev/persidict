@@ -851,7 +851,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             return self._result_unchanged(
                 condition, False, actual_etag, VALUE_NOT_RETRIEVED)
         if self.append_only:
-            raise KeyError("Can't delete an immutable key-value pair")
+            raise TypeError("append-only dicts do not support deletion")
 
         # Atomic delete: guard against concurrent changes since the HEAD
         obj_name = self._build_full_objectname(key)
@@ -968,7 +968,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                 or NonEmptyPersiDictKey).
 
         Raises:
-            KeyError: If append_only is True, or if the key does not exist.
+            TypeError: If append_only is True.
+            KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)

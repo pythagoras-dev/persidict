@@ -294,7 +294,7 @@ def test_delete_current_with_any_etag_succeeds(tmpdir, DictToTest, kwargs):
     """Verify DELETE_CURRENT with ANY_ETAG deletes an existing key."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
-    etag_before = d.etag("key1")
+    d.etag("key1")
 
     result = d.set_item_if("key1", DELETE_CURRENT, "irrelevant", ANY_ETAG)
 

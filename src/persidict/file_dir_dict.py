@@ -225,11 +225,11 @@ class FileDirDict(PersiDict[ValueType]):
         """Remove all elements from the dictionary.
 
         Raises:
-            KeyError: If append_only is True.
+            TypeError: If append_only is True.
         """
 
         if self.append_only:
-            raise KeyError("Can't clear a dict that contains immutable items")
+            raise TypeError("append-only dicts do not support deletion")
 
         # we can't use shutil.rmtree() because
         # there may be overlapping dictionaries
@@ -706,7 +706,8 @@ class FileDirDict(PersiDict[ValueType]):
                 or NonEmptySafeStrTuple).
 
         Raises:
-            KeyError: If append_only is True or if the key does not exist.
+            TypeError: If append_only is True.
+            KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)

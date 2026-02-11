@@ -786,11 +786,12 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Dictionary key (string or sequence of strings
                 or NonEmptySafeStrTuple).
         Raises:
-            KeyError: If attempting to delete an item when
-                append_only is True or if the key does not exist.
+            TypeError: If attempting to delete an item when
+                append_only is True.
+            KeyError: If the key does not exist.
         """
         if self.append_only:
-            raise KeyError("Can't delete an immutable key-value pair")
+            raise TypeError("append-only dicts do not support deletion")
 
         key = NonEmptySafeStrTuple(key)
 
@@ -806,7 +807,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Raises:
-            KeyError: If append_only is True or if the key does not exist.
+            TypeError: If append_only is True.
+            KeyError: If the key does not exist.
             NotImplementedError: Subclasses must implement deletion.
         """
         self._process_delitem_args(key)
@@ -1038,10 +1040,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Remove all items from the dictionary.
 
         Raises:
-            KeyError: If the dictionary is append-only.
+            TypeError: If the dictionary is append-only.
         """
         if self.append_only:
-            raise KeyError("Can't delete an immutable key-value pair")
+            raise TypeError("append-only dicts do not support deletion")
 
         for k in self.keys():
             try:
@@ -1062,11 +1064,11 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             bool: True if the item existed and was deleted; False otherwise.
 
         Raises:
-            KeyError: If the dictionary is append-only.
+            TypeError: If the dictionary is append-only.
         """
 
         if self.append_only:
-            raise KeyError("Can't delete an immutable key-value pair")
+            raise TypeError("append-only dicts do not support deletion")
 
         key = NonEmptySafeStrTuple(key)
 

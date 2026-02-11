@@ -214,7 +214,7 @@ class LocalDict(PersiDict[ValueType]):
         """
         # Override for efficiency (optional). Remove only our serialization_format data.
         if self.append_only:
-            raise KeyError("Can't delete an immutable key-value pair")
+            raise TypeError("append-only dicts do not support deletion")
 
         def clear_ft(node: _RAMBackend):
             node.values.pop(self.serialization_format, None)
@@ -406,7 +406,8 @@ class LocalDict(PersiDict[ValueType]):
             key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
 
         Raises:
-            KeyError: If append_only is True or the key does not exist.
+            TypeError: If append_only is True.
+            KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)

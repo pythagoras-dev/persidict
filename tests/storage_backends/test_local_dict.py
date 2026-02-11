@@ -82,11 +82,11 @@ def test_immutable_items_prohibits_overwrite_and_delete():
     ld[k] = 5
     with pytest.raises(KeyError):
         ld[k] = 6
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         del ld[k]
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         ld.clear()
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         ld.discard(k)
 
 
@@ -410,5 +410,5 @@ def test_timestamp_overwrite_vs_keep_current(monkeypatch):
 @pytest.mark.parametrize("serialization_format", ["pkl", "json"])
 def test_discard_immutable_raises(serialization_format):
     ld = make_ld(serialization_format=serialization_format, append_only=True)
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         ld.discard(("a",))
