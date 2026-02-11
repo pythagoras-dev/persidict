@@ -65,8 +65,8 @@ Key Features
 * **Flexible Serialization**: Support for pickle, JSON, or plain text storage formats
 * **Type Safety**: Optional enforcement that all values are instances of a specific class
 * **Generic Type Parameters**: Static type checking with ``FileDirDict[MyClass]`` syntax
-* **Advanced Features**: Write-once dictionaries, timestamps, and tools for handling file-system-safe keys
-* **ETag-Based Conditional Operations**: Optimistic concurrency helpers for conditional reads, writes, and deletes
+* **Advanced Features**: Write-once dictionaries, timestamps, and tools for handling filesystem-safe keys
+* **ETag-Based Conditional Operations**: Optimistic concurrency helpers for conditional reads, writes, deletes, and transforms
 * **Hierarchical Keys**: Keys can be sequences of strings, creating directory-like structures
 
 Core Concepts
@@ -311,72 +311,60 @@ Utility Methods
    get_params() -> dict
        Returns configuration parameters (mixinforge API)
 
-ETag Operations
-^^^^^^^^^^^^^^^
+Conditional Operations (ETag-based)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-ETag-aware methods provide optimistic concurrency controls. On local backends,
-ETags default to stringified timestamps; on S3 they use native object ETags.
-Use them to avoid overwriting concurrent updates by checking the last-seen ETag
-before reading or writing.
-
-Use ``ETAG_UNKNOWN`` when you do not have a prior ETag value; this makes the
-intent explicit without an extra fetch.
+Conditional operations provide optimistic concurrency. Each key has an ETag;
+missing keys use ``ITEM_NOT_AVAILABLE``. Conditions are ``ANY_ETAG``
+(unconditional), ``ETAG_IS_THE_SAME`` (expected == actual), and
+``ETAG_HAS_CHANGED`` (expected != actual). Methods return structured results
+with whether the condition was satisfied, the actual ETag, the resulting ETag,
+and the resulting value (or ``VALUE_NOT_RETRIEVED`` when value retrieval is
+skipped).
 
 .. code-block:: python
 
-   from persidict import (
-       FileDirDict,
-       ETAG_HAS_CHANGED,
-       ETAG_HAS_NOT_CHANGED,
-       EQUAL_ETAG,
-       DIFFERENT_ETAG,
-   )
+   from persidict import FileDirDict, ANY_ETAG, ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE
 
    d = FileDirDict(base_dir="my_app_data")
    d["counter"] = 1
 
-   etag = d.etag("counter")
-
-   # Conditional read: only fetch if changed.
-   res = d.get_item_if_etag("counter", etag, DIFFERENT_ETAG)
-   if res is ETAG_HAS_NOT_CHANGED:
-       print("No change")
-   else:
-       value, etag = res
-
-   # Conditional write: compare-and-set.
-   res = d.set_item_if_etag("counter", value + 1, etag, EQUAL_ETAG)
-   if res is ETAG_HAS_CHANGED:
-       print("Conflict; reload and retry")
-   else:
-       etag = res
+   # Compare-and-swap loop.
+   while True:
+       r = d.get_item_if("counter", ITEM_NOT_AVAILABLE, ANY_ETAG)
+       new_value = 1 if r.new_value is ITEM_NOT_AVAILABLE else r.new_value + 1
+       r2 = d.set_item_if("counter", new_value, r.actual_etag, ETAG_IS_THE_SAME)
+       if r2.condition_was_satisfied:
+           break
 
 .. code-block:: python
 
-   ETAG_UNKNOWN
-       Sentinel for unknown ETag inputs
-   ETagValue
-       Type for ETag strings (NewType over ``str``)
-   EQUAL_ETAG / DIFFERENT_ETAG
+   ANY_ETAG / ETAG_IS_THE_SAME / ETAG_HAS_CHANGED
        Condition selectors for ETag-based operations
 
-   etag(key) -> ETagValue | None
-       Returns ETag for the key (or timestamp-based equivalent)
+   ITEM_NOT_AVAILABLE / VALUE_NOT_RETRIEVED
+       Sentinels for missing keys and skipped retrievals
 
-   set_item_get_etag(key, value) -> ETagValue | None
-       Stores value and returns new ETag
+   ETagValue
+       Type for ETag strings (NewType over ``str``)
 
-   get_item_if_etag(key, etag, condition) -> tuple[Any, ETagValue | None] | ETagChangeFlag
-       Retrieves value only if ETag satisfies condition
+   get_item_if(key, expected_etag, condition, *, always_retrieve_value=True) -> ConditionalOperationResult
+       Conditional read
 
-   set_item_if_etag(key, value, etag, condition) -> ETagValue | None | ETagChangeFlag
-       Stores value only if ETag satisfies condition
+   set_item_if(key, value, expected_etag, condition, *, always_retrieve_value=True) -> ConditionalOperationResult
+       Conditional write (supports KEEP_CURRENT and DELETE_CURRENT)
 
-   delete_item_if_etag(key, etag, condition) -> None | ETagChangeFlag
-       Deletes key only if ETag satisfies condition
+   setdefault_if(key, default_value, expected_etag, condition, *, always_retrieve_value=True) -> ConditionalOperationResult
+       Insert-if-absent
 
-   discard_item_if_etag(key, etag, condition) -> bool
-       Discards key only if ETag satisfies condition
+   discard_item_if(key, expected_etag, condition) -> ConditionalOperationResult
+       Conditional delete
+
+   transform_item(key, transformer, *, n_retries=6) -> OperationResult
+       Retry loop for read-modify-write
+
+   etag(key) -> ETagValue
+       Returns ETag for the key
 
 Enhanced Iterators
 ^^^^^^^^^^^^^^^^^^
@@ -397,11 +385,12 @@ Design Principles
 
 1. **Familiar dict-like API**: Mirrors Python's built-in dict interface
 2. **Optimistic concurrency**: Assumes conflicts are rare; last-write-wins for mutations
-3. **Pluggable backends**: Unified API across filesystem, S3, and in-memory storage
-4. **Hierarchical keys**: Sequences of safe strings form natural directory structures
-5. **Flexible serialization**: Choose pickle, JSON, or plain text per use case
-6. **Layered architecture**: Compose capabilities (storage + caching + write-once)
-7. **Intelligent caching**: Tune performance for mutable vs append-only access patterns
+3. **Conditional operations**: Explicit ETag-based reads and writes with structured results
+4. **Pluggable backends**: Unified API across filesystem, S3, and in-memory storage
+5. **Hierarchical keys**: Sequences of safe strings form natural directory structures
+6. **Flexible serialization**: Choose pickle, JSON, or plain text per use case
+7. **Layered architecture**: Compose capabilities (storage + caching + write-once)
+8. **Intelligent caching**: Tune performance for mutable vs append-only access patterns
 
 Trade-offs
 ^^^^^^^^^^
@@ -723,25 +712,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6337
-     - 9426
-     - 15763
+     - 6344
+     - 9500
+     - 15844
    * - Source Lines Of Code (SLOC)
-     - 2812
-     - 6040
-     - 8852
+     - 2819
+     - 6090
+     - 8909
    * - Classes
      - 28
      - 8
      - 36
    * - Functions / Methods
      - 257
-     - 528
-     - 785
+     - 532
+     - 789
    * - Files
      - 16
-     - 98
-     - 114
+     - 99
+     - 115
 
 .. MIXINFORGE_STATS_END
 

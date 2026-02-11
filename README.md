@@ -1,6 +1,6 @@
 # persidict
 
-[![PyPi version](https://img.shields.io/pypi/v/persidict.svg?color=green)](https://pypi.org/project/persidict/)
+[![PyPI version](https://img.shields.io/pypi/v/persidict.svg?color=green)](https://pypi.org/project/persidict/)
 [![Python versions](https://img.shields.io/pypi/pyversions/persidict.svg)](https://github.com/pythagoras-dev/persidict)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/pythagoras-dev/persidict/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/persidict?color=blue)](https://pypistats.org/packages/persidict)
@@ -16,22 +16,24 @@ Simple persistent dictionaries for distributed applications in Python.
 `persidict` is a lightweight persistent key-value store for Python. 
 It saves a dictionary to either a local directory or an AWS S3 bucket, 
 storing each value as its own file or S3 object. Keys are limited to 
-text strings or sequences of strings.
+URL/filename-safe strings or sequences of strings.
 
-In contrast to traditional persistent dictionaries (e.g., Python’s `shelve)`, 
+In contrast to traditional persistent dictionaries (e.g., Python's `shelve`), 
 `persidict` is [designed](https://github.com/pythagoras-dev/persidict/blob/master/design_principles.md) 
 for distributed environments where multiple processes 
 on different machines concurrently work with the same store.
 
 ## 2. Why Use It?
 
+A small API surface with scalable storage backends and explicit concurrency controls.
+
 ## 2.1 Features
 
 * **Persistent Storage**: Save dictionaries to the local filesystem 
 (`FileDirDict`) or AWS S3 (`S3Dict`).
-* **Standard Dictionary API**: Use persidict objects like standard 
-Python dictionaries with methods like `__getitem__`, `__setitem__`, 
-`__delitem__`, `keys`, `values`, `items`, etc.
+* **Standard Dictionary API**: Use `PersiDict` objects like standard 
+Python dictionaries (`__getitem__`, `__setitem__`, `__delitem__`, 
+`keys`, `values`, `items`).
 * **Distributed Computing Ready**: Designed for concurrent access 
 in distributed environments.
 * **Flexible Serialization**: Store values as pickles (`pkl`), 
@@ -41,7 +43,7 @@ instances of a specific class.
 * **Generic Type Parameters**: Use `FileDirDict[MyClass]` for static type
 checking with mypy/pyright.
 * **Advanced Functionality**: Includes features like write-once dictionaries, 
-timestamping of entries, and tools for handling file-system-safe keys.
+timestamping of entries, and tools for handling filesystem-safe keys.
 * **ETag-Based Conditional Operations**: Optimistic concurrency helpers for
 conditional reads, writes, deletes, and transforms based on per-key ETags.
 * **Hierarchical Keys**: Keys can be sequences of strings, 
@@ -98,6 +100,7 @@ print(f"Number of settings: {len(reloaded_settings)}")
 print("username" in reloaded_settings)
 # >>> True
 ```
+
 ### 3.2 Storing Data in the Cloud (AWS S3)
 
 For distributed applications, you can use **`S3Dict`** to store data in 
@@ -121,7 +124,7 @@ print(f"API Key: {cloud_config['api_key']}")
 
 ### 3.3 Using Type Hints
 
-persidict supports two complementary type safety mechanisms:
+`persidict` supports two complementary type safety mechanisms:
 
 **Static type checking** with generic parameters (checked by mypy/pyright):
 
@@ -165,7 +168,7 @@ r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 
 ## 4. Comparison With Python Built-in Dictionaries
 
-### 4.1 Similarities 
+### 4.1 Similarities
 
 `PersiDict` subclasses can be used like regular Python dictionaries, supporting: 
 
@@ -173,23 +176,19 @@ r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 * Iteration over keys, values, and items.
 * Membership testing with `in`.
 * Length checking with `len()`.
-* Standard methods like `keys()`, `values()`, `items()`, `get()`, `clear()`
-, `setdefault()`, and `update()`.
+* Standard methods like `keys()`, `values()`, `items()`, `get()`, `clear()`, `setdefault()`, and `update()`.
 
-### 4.2 Differences 
+### 4.2 Differences
 
 * **Persistence**: Data is saved between program executions.
 * **Keys**: Keys must be URL/filename-safe strings or their sequences.
-* **Values**: Values must be pickleable. 
-You can also constrain values to a specific class.
+* **Values**: Values must be serializable in the chosen format (pickle, JSON, or text). You can also constrain values to a specific class.
 * **Order**: Insertion order is not preserved.
-* **Additional Methods**: `PersiDict` provides extra methods not in the standard 
-dict API, such as `timestamp()`, `etag()`, `random_key()`, `newest_keys()`
-, `subdicts()`, `discard()`, `get_params()` and more.
+* **Additional Methods**: `PersiDict` provides extra methods not in the standard dict API, such as `timestamp()`, `etag()`, `random_key()`, `newest_keys()`, `subdicts()`, `discard()`, `get_params()`, and more.
 * **Conditional Operations**: ETag-based compare-and-swap reads/writes with
-structured results to avoid lost updates.
+structured results (see Section 6.1).
 * **Special Values**: Use `KEEP_CURRENT` to avoid updating a value 
-and `DELETE_CURRENT` to delete a value during an assignment.
+and `DELETE_CURRENT` to delete a value during a write.
 
 ## 5. Glossary
 
@@ -200,7 +199,7 @@ for all persistent dictionaries in the package. It's the foundation
 upon which everything else is built.
 * **`NonEmptyPersiDictKey`**: A type hint that specifies what can be used
 as a key in any `PersiDict`. It can be a `NonEmptySafeStrTuple`, a single string, 
-or a sequence of strings. When a `PesiDict` method requires a key as an input,
+or a sequence of strings. When a `PersiDict` method requires a key as an input,
 it will accept any of these types and convert them to 
 a `NonEmptySafeStrTuple` internally.
 * **`NonEmptySafeStrTuple`**: The core data structure for keys. 
@@ -219,9 +218,9 @@ suitable for distributed environments.
 ### 5.3 Key Parameters
 
 * **`serialization_format`**: A key parameter for `FileDirDict` and `S3Dict` that 
-        determines the serialization format used to store values. 
-        Common options are `"pkl"` (pickle) and `"json"`. 
-        Any other value is treated as plain text for string storage.
+determines the serialization format used to store values. 
+Common options are `"pkl"` (pickle) and `"json"`. 
+Any other value is treated as plain text for string storage.
 * **`base_class_for_values`**: An optional parameter for any `PersiDict` 
 that enforces type checking on all stored values, ensuring they are 
 instances of a specific class.
@@ -248,9 +247,9 @@ but with different `serialization_format`s.
 * **`LocalDict`**: An in-memory `PersiDict` backed by 
 a RAM-only hierarchical store.
 * **`EmptyDict`**: A minimal implementation of `PersiDict` that behaves  
-like a null device in OS - accepts all writes but discards them, 
-returns nothing on reads. Always appears empty 
-regardless of operations performed on it.
+like a null device in the OS: accepts all writes, discards them, 
+and returns nothing on reads. Always appears empty regardless of 
+operations performed on it.
 
 ### 5.5 Special "Joker" Values
 
@@ -264,13 +263,14 @@ from the dictionary when assigned to a key.
 ### 5.6 ETags and Conditional Flags
 
 * **`ETagValue`**: Opaque per-key version string used for conditional operations.
-* **`ETag conditions`**: `ANY_ETAG` (unconditional), `ETAG_IS_THE_SAME` (expected == actual), `ETAG_HAS_CHANGED` (expected != actual).
+* **`ETag conditions`**: `ANY_ETAG` (unconditional), `ETAG_IS_THE_SAME` (expected == actual), 
+`ETAG_HAS_CHANGED` (expected != actual).
 * **`ITEM_NOT_AVAILABLE`**: Sentinel used when a key is missing (stands in for the ETag).
 * **`VALUE_NOT_RETRIEVED`**: Sentinel indicating a value exists but was not fetched.
 
 ## 6. API Highlights
 
-`PersiDict` subclasses support the standard Python dictionary API, plus these additional methods for advanced functionality:
+`PersiDict` subclasses support the standard Python dictionary API, plus these additional methods:
 
 | Method | Return Type | Description |
 | :--- | :--- | :--- |
