@@ -623,11 +623,7 @@ class FileDirDict(PersiDict[ValueType]):
         if not self._with_retry(os.path.isfile, filename):
             raise KeyError(f"File {filename} does not exist")
         result = self._read_from_file(filename)
-        if self.base_class_for_values is not None:
-            if not isinstance(result, self.base_class_for_values):
-                raise TypeError(
-                    f"Value must be of type {self.base_class_for_values},"
-                    + f" but it is {type(result)} instead.")
+        self._validate_returned_value(result)
         return result
 
     def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
@@ -639,11 +635,7 @@ class FileDirDict(PersiDict[ValueType]):
         except FileNotFoundError as exc:
             raise KeyError(f"File {filename} does not exist") from exc
         result = self._read_from_file(filename)
-        if self.base_class_for_values is not None:
-            if not isinstance(result, self.base_class_for_values):
-                raise TypeError(
-                    f"Value must be of type {self.base_class_for_values},"
-                    + f" but it is {type(result)} instead.")
+        self._validate_returned_value(result)
         return result, self._etag_from_stat(stat_result)
 
 

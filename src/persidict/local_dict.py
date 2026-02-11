@@ -358,11 +358,7 @@ class LocalDict(PersiDict[ValueType]):
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
         value = deepcopy(bucket[leaf][0])
-        if self.base_class_for_values is not None:
-            if not isinstance(value, self.base_class_for_values):
-                raise TypeError(
-                    f"Value must be of type {self.base_class_for_values},"
-                    f" but it is {type(value)} instead.")
+        self._validate_returned_value(value)
         return value
 
     def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
@@ -375,11 +371,7 @@ class LocalDict(PersiDict[ValueType]):
         if leaf not in bucket:
             raise KeyError(f"Key {key} not found")
         value = deepcopy(bucket[leaf][0])
-        if self.base_class_for_values is not None:
-            if not isinstance(value, self.base_class_for_values):
-                raise TypeError(
-                    f"Value must be of type {self.base_class_for_values},"
-                    f" but it is {type(value)} instead.")
+        self._validate_returned_value(value)
         etag = ETagValue(str(bucket[leaf][2]))
         return value, etag
 

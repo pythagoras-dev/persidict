@@ -33,6 +33,7 @@ rules:
       - tests/core_behavior/test_unpicklable.py
       - tests/core_behavior/test_typing.py
       - tests/core_behavior/test_jokers.py
+      - tests/core_behavior/test_validate_returned_value.py
       - tests/key_handling/test_safe_chars.py
       - tests/key_handling/test_safe_str_tuple.py
       - tests/key_handling/test_complex_keys.py

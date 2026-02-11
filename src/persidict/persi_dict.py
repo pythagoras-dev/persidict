@@ -695,6 +695,23 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                     raise TypeError(f"Value must be an instance of"
                                     f" {self.base_class_for_values.__name__}")
 
+    def _validate_returned_value(self, value: ValueType) -> None:
+        """Validate that a value retrieved from storage matches base_class_for_values.
+
+        Args:
+            value: The deserialized value retrieved from storage.
+
+        Raises:
+            TypeError: If base_class_for_values is set and the value
+                does not match it.
+        """
+        if self.base_class_for_values is not None:
+            if not isinstance(value, self.base_class_for_values):
+                raise TypeError(
+                    f"Value must be an instance of"
+                    f" {self.base_class_for_values.__name__},"
+                    f" but it is {type(value).__name__} instead.")
+
     def _validate_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                                ) -> NonEmptySafeStrTuple:
         """Validate setitem arguments without applying joker side effects.
