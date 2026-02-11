@@ -457,7 +457,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
                 return self._result_item_not_available(condition, False)
-            existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+            if always_retrieve_value:
+                try:
+                    existing_value, actual_etag = self._get_value_and_etag(key)
+                except (KeyError, FileNotFoundError):
+                    return self._result_item_not_available(condition, False)
+            else:
+                existing_value = VALUE_NOT_RETRIEVED
             return self._result_unchanged(condition, False, actual_etag, existing_value)
 
         if value is KEEP_CURRENT:

@@ -8,9 +8,11 @@ import time
 import pytest
 from moto import mock_aws
 
+from persidict import LocalDict
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
-    ConditionalOperationResult
+    ConditionalOperationResult,
+    ITEM_NOT_AVAILABLE
 )
 
 from tests.data_for_mutable_tests import mutable_tests
@@ -156,6 +158,26 @@ def test_concurrent_modification_detection_simulation(tmpdir, DictToTest, kwargs
 
     assert not result.condition_was_satisfied
     assert d["key1"] == "modified_by_other"
+
+
+@mock_aws
+def test_set_item_if_failed_condition_missing_key_returns_item_not_available(monkeypatch):
+    """Verify missing-key race during failed condition returns ITEM_NOT_AVAILABLE."""
+    d = LocalDict(serialization_format="pkl", bucket_name="local_bucket")
+    d["key1"] = "original"
+
+    def _get_value_and_etag_racy(key):
+        del d[key]
+        raise KeyError("Simulated concurrent deletion")
+
+    monkeypatch.setattr(d, "_get_value_and_etag", _get_value_and_etag_racy)
+
+    result = d.set_item_if("key1", "updated", "wrong_etag", ETAG_IS_THE_SAME)
+
+    assert not result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+    assert result.new_value is ITEM_NOT_AVAILABLE
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
