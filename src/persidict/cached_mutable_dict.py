@@ -177,13 +177,35 @@ class MutableDictCached(PersiDict[ValueType]):
             key: NonEmptySafeStrTuple,
             *,
             new_value: ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag,
-            resulting_etag: ETagIfExists
+            resulting_etag: ETagIfExists,
+            actual_etag: ETagIfExists | None = None
     ) -> None:
-        """Update or clear caches based on an operation result."""
+        """Update or clear caches based on an operation result.
+
+        Args:
+            key: The key that was operated on.
+            new_value: The value returned by the operation, or a sentinel.
+            resulting_etag: The ETag after the operation completed.
+            actual_etag: The ETag observed *before* the operation (from
+                ``ConditionalOperationResult.actual_etag``).  When provided
+                alongside ``VALUE_NOT_RETRIEVED``, it lets us distinguish
+                a successful mutation (``actual_etag != resulting_etag``)
+                from a no-op (same etags).
+        """
         if new_value is ITEM_NOT_AVAILABLE or isinstance(resulting_etag, ItemNotAvailableFlag):
             self._purge_caches(key)
             return
         if new_value is VALUE_NOT_RETRIEVED:
+            # Value wasn't fetched.  If we can prove the item was mutated
+            # (actual_etag differs from resulting_etag), purge the stale
+            # cached value and record the new etag so etag() stays
+            # accurate.  When the etags match the item is unchanged and
+            # caches (even if stale from some other cause) are left alone
+            # — the self-healing __getitem__ path will fix them on read.
+            if actual_etag is not None and actual_etag != resulting_etag:
+                self._data_cache.discard(key)
+                if not isinstance(resulting_etag, ItemNotAvailableFlag):
+                    self._set_cached_etag(key, resulting_etag)
             return
         self._data_cache[key] = new_value
         if not isinstance(resulting_etag, ItemNotAvailableFlag):
@@ -252,7 +274,8 @@ class MutableDictCached(PersiDict[ValueType]):
             key, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
         self._sync_caches_from_result(
-            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag,
+            actual_etag=res.actual_etag)
         return res
 
 
@@ -287,7 +310,8 @@ class MutableDictCached(PersiDict[ValueType]):
             key, value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
         self._sync_caches_from_result(
-            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag,
+            actual_etag=res.actual_etag)
         return res
 
 
@@ -306,7 +330,8 @@ class MutableDictCached(PersiDict[ValueType]):
             key, default_value, expected_etag, condition,
             always_retrieve_value=always_retrieve_value)
         self._sync_caches_from_result(
-            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag,
+            actual_etag=res.actual_etag)
         return res
 
     def discard_item_if(
@@ -319,7 +344,8 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.discard_item_if(key, expected_etag, condition)
         self._sync_caches_from_result(
-            key, new_value=res.new_value, resulting_etag=res.resulting_etag)
+            key, new_value=res.new_value, resulting_etag=res.resulting_etag,
+            actual_etag=res.actual_etag)
         return res
 
     def transform_item(
