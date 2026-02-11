@@ -25,6 +25,11 @@ class _RAMBackend:
         values (dict[str, dict[str, tuple[Any, float]]]):
             Mapping of serialization_format to a dictionary of leaf-name -> (value, timestamp)
             pairs. The timestamp is a POSIX float seconds value (time.time()).
+        _write_counter (list[int]):
+            Shared mutable monotonic counter used for ETag generation. Stored as
+            a single-element list so that child nodes created via child() share
+            the same counter object, ensuring ETags are unique across the entire
+            backend tree.
 
     Notes:
         - This backend is intentionally minimal and does not enforce character
@@ -44,9 +49,13 @@ class _RAMBackend:
         Attributes initialized:
             subdicts: Empty mapping for first-level child nodes.
             values: Empty mapping for per-serialization_format value buckets.
+            _write_counter: Monotonic counter shared by all LocalDict instances
+                that reference this backend (directly or via subdicts), ensuring
+                ETags are unique across the entire backend tree.
         """
         self.subdicts: dict[str, _RAMBackend] = {}
         self.values: dict[str, dict[str, tuple[Any, float]]] = {}
+        self._write_counter: list[int] = [0]
 
     def child(self, name: str) -> "_RAMBackend":
         """Return a child node for the given path segment, creating if missing.
@@ -66,6 +75,7 @@ class _RAMBackend:
         child_backend = self.subdicts.get(name)
         if child_backend is None:
             child_backend = _RAMBackend()
+            child_backend._write_counter = self._write_counter
             self.subdicts[name] = child_backend
         return child_backend
 
@@ -150,7 +160,6 @@ class LocalDict(PersiDict[ValueType]):
                 invalid type.
         """
         self._backend = backend or _RAMBackend()
-        self._write_counter: int = 0
         # Pruning throttling
         if prune_interval is None:
             self._prune_interval = None
@@ -396,8 +405,8 @@ class LocalDict(PersiDict[ValueType]):
             return None
         parent_node, leaf = self._navigate_to_parent(key)
         bucket = parent_node.get_values_bucket(self.serialization_format)
-        self._write_counter += 1
-        bucket[leaf] = (deepcopy(value), time.time(), self._write_counter)
+        self._backend._write_counter[0] += 1
+        bucket[leaf] = (deepcopy(value), time.time(), self._backend._write_counter[0])
 
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
         """Delete a stored value for a key.
@@ -493,9 +502,10 @@ class LocalDict(PersiDict[ValueType]):
         """Return a unique ETag for a key based on a monotonic write counter.
 
         Unlike the base class (which formats the timestamp), LocalDict uses
-        an integer counter that increments on every write, guaranteeing
-        a distinct ETag even when two writes occur within the same
-        clock tick.
+        an integer counter stored on the backend that increments on every
+        write, guaranteeing a distinct ETag even when two writes occur
+        within the same clock tick or from different LocalDict instances
+        sharing the same backend.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
