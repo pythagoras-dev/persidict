@@ -400,3 +400,47 @@ def test_contains_ignores_cache_only_ghosts(cached_env):
 
     # __contains__ must reflect main only, ignoring cache-only ghosts
     assert ("ghost2",) not in wrapper
+
+
+def test_getitem_etag_warm_data_cold_repopulates_both_caches(cached_env):
+    """When etag_cache has an entry but data_cache does not, __getitem__
+    should fetch from main in a single call and repopulate both caches."""
+    main, data_cache, etag_cache, wrapper = cached_env
+
+    wrapper[("k",)] = "v1"
+    etag = wrapper.etag(("k",))
+    assert data_cache[("k",)] == "v1"
+    assert etag_cache[("k",)] == etag
+
+    # Evict only the data cache, simulating independent eviction
+    del data_cache[("k",)]
+    assert ("k",) not in data_cache
+    assert etag_cache[("k",)] == etag
+
+    # Read should succeed and repopulate both caches
+    assert wrapper[("k",)] == "v1"
+    assert data_cache[("k",)] == "v1"
+    assert etag_cache[("k",)] == etag
+
+
+def test_getitem_etag_warm_data_cold_key_deleted_raises_and_purges(cached_env):
+    """When etag_cache has an entry but data_cache does not and the key
+    was deleted from main, __getitem__ should raise KeyError and purge
+    the stale etag_cache entry."""
+    main, data_cache, etag_cache, wrapper = cached_env
+
+    wrapper[("k",)] = "v1"
+    assert ("k",) in etag_cache
+
+    # Remove from data cache and main, leaving only etag cache
+    del data_cache[("k",)]
+    del main[("k",)]
+    assert ("k",) not in data_cache
+    assert ("k",) not in main
+    assert ("k",) in etag_cache
+
+    with pytest.raises(KeyError):
+        _ = wrapper[("k",)]
+
+    # Stale etag cache entry should be purged
+    assert ("k",) not in etag_cache

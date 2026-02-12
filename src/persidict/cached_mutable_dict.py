@@ -246,6 +246,16 @@ class MutableDictCached(PersiDict[ValueType]):
         except KeyError:
             cached_etag = ITEM_NOT_AVAILABLE
 
+        # If etag is cached but data is not, skip the conditional GET
+        # and fetch directly — avoids a wasted IfNoneMatch round-trip.
+        has_cached_data = key in self._data_cache
+        if cached_etag is not ITEM_NOT_AVAILABLE and not has_cached_data:
+            res = self.get_item_if(
+                key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+            if res.new_value is ITEM_NOT_AVAILABLE:
+                raise KeyError(f"Key {key} not found")
+            return res.new_value
+
         res = self.get_item_if(
             key, cached_etag, ETAG_HAS_CHANGED,
             retrieve_value=IF_ETAG_CHANGED)
@@ -254,11 +264,11 @@ class MutableDictCached(PersiDict[ValueType]):
             raise KeyError(f"Key {key} not found")
 
         if res.new_value is VALUE_NOT_RETRIEVED:
-            # Etag hasn't changed, try the data cache
+            # Etag hasn't changed, return from data cache
             try:
                 return self._data_cache[key]
             except KeyError:
-                # Cache miss — fetch fresh
+                # Shouldn't happen (we checked above), but handle gracefully
                 res2 = self.get_item_if(
                     key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
                 if res2.new_value is ITEM_NOT_AVAILABLE:
