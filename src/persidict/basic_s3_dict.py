@@ -95,6 +95,8 @@ class BasicS3Dict(PersiDict[ValueType]):
     root_prefix: str
     _conditional_delete_probed: bool = False
     _conditional_delete_supported: bool = True
+    _if_none_match_etag_probed: bool = False
+    _if_none_match_etag_supported: bool = True
 
     _CONTENT_TYPE_MAP: dict[str, str] = {
         'json': 'application/json',
@@ -605,9 +607,11 @@ class BasicS3Dict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
 
-        Uses S3 conditional headers (IfMatch) for ETAG_IS_THE_SAME when
-        the expected_etag is an actual ETag value. For other conditions,
-        falls back to check-then-write.
+        Uses S3 conditional headers (IfMatch / IfNoneMatch) for a
+        single-roundtrip put when the condition can be fully expressed
+        without a prior HEAD.  This covers ETAG_IS_THE_SAME (any
+        expected_etag) and ETAG_HAS_CHANGED with a real expected_etag.
+        Other combinations fall back to check-then-write.
 
         Args:
             key: Dictionary key.
@@ -625,12 +629,33 @@ class BasicS3Dict(PersiDict[ValueType]):
             raise KeyError("Can't modify an immutable key-value pair")
         self._validate_value(value)
 
-        # Fast path: use S3 conditional put directly for ETAG_IS_THE_SAME
-        # with a real value (not a joker) and non-append-only mode.
-        if (not self.append_only
-                and condition is ETAG_IS_THE_SAME
-                and value is not KEEP_CURRENT
-                and value is not DELETE_CURRENT):
+        # Fast path: single-roundtrip S3 conditional put using
+        # IfMatch / IfNoneMatch headers.  Eligible when we can fully
+        # express the condition in S3 headers without a prior HEAD:
+        #   - ETAG_IS_THE_SAME (any expected_etag)
+        #   - ETAG_HAS_CHANGED with a real expected_etag, provided
+        #     the backend enforces IfNoneMatch with specific ETags
+        #     (ITEM_NOT_AVAILABLE needs actual_etag for IfMatch,
+        #      so it must go through the fallback HEAD path)
+        _fast_eligible = (
+            not self.append_only
+            and value is not KEEP_CURRENT
+            and value is not DELETE_CURRENT
+            and condition is ETAG_IS_THE_SAME
+        )
+        if not _fast_eligible and (
+            not self.append_only
+            and value is not KEEP_CURRENT
+            and value is not DELETE_CURRENT
+            and condition is ETAG_HAS_CHANGED
+            and not isinstance(expected_etag, ItemNotAvailableFlag)
+        ):
+            if not type(self)._if_none_match_etag_probed:
+                self._probe_if_none_match_etag()
+            if type(self)._if_none_match_etag_supported:
+                _fast_eligible = True
+
+        if _fast_eligible:
             return self._set_item_if_fast_path(
                 key, value, expected_etag, condition, always_retrieve_value)
 
@@ -645,13 +670,25 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             always_retrieve_value: bool
     ) -> ConditionalOperationResult:
-        """Optimistic S3 conditional write for ETAG_IS_THE_SAME.
+        """Optimistic S3 conditional write in a single round-trip.
 
-        Attempts a single S3 put with IfMatch/IfNoneMatch headers,
-        avoiding a separate ETag check round-trip.
+        Supports ETAG_IS_THE_SAME (any expected_etag) and
+        ETAG_HAS_CHANGED (with a real expected_etag).  Attempts a
+        single S3 put with IfMatch/IfNoneMatch headers, avoiding a
+        separate ETag check round-trip.
+
+        For ETAG_IS_THE_SAME the reported actual_etag equals
+        expected_etag (the PUT confirms it matched).  For
+        ETAG_HAS_CHANGED the true pre-write ETag is unknown (S3 does
+        not return it); actual_etag is set to expected_etag as the
+        caller's last-known reference.
         """
         if_match, if_none_match = self._compute_conditional_headers(
             condition, expected_etag)
+        # Best available pre-write ETag: for ETAG_IS_THE_SAME a
+        # successful PUT confirms the object had this ETag; for
+        # ETAG_HAS_CHANGED the true value is unknown, so we report
+        # the caller's last-known ETag as a stable reference.
         actual_etag = (ITEM_NOT_AVAILABLE
                        if isinstance(expected_etag, ItemNotAvailableFlag)
                        else expected_etag)
@@ -779,6 +816,43 @@ class BasicS3Dict(PersiDict[ValueType]):
         except ClientError:
             cls._conditional_delete_supported = False
         cls._conditional_delete_probed = True
+
+    def _probe_if_none_match_etag(self) -> None:
+        """Test whether the S3 backend enforces IfNoneMatch with a specific ETag.
+
+        Some S3-compatible backends (e.g. moto) only enforce
+        IfNoneMatch: * (wildcard) but silently ignore IfNoneMatch with
+        a concrete ETag value.  This probe runs once per class so the
+        ETAG_HAS_CHANGED fast path is only used when the backend
+        rejects a put whose current ETag matches the IfNoneMatch value.
+        """
+        cls = type(self)
+        if cls._if_none_match_etag_probed:
+            return
+        probe_key = self.root_prefix + "__persidict_probe_inm__"
+        try:
+            resp = self.s3_client.put_object(
+                Bucket=self.bucket_name, Key=probe_key, Body=b"probe")
+            probe_etag = resp["ETag"]
+            try:
+                # IfNoneMatch with the object's own ETag — should be rejected
+                self.s3_client.put_object(
+                    Bucket=self.bucket_name, Key=probe_key,
+                    Body=b"probe2", IfNoneMatch=probe_etag)
+                # Write succeeded despite matching ETag — backend is broken
+                cls._if_none_match_etag_supported = False
+            except ClientError:
+                # Backend correctly rejected the matching IfNoneMatch
+                cls._if_none_match_etag_supported = True
+            # Clean up probe object
+            try:
+                self.s3_client.delete_object(
+                    Bucket=self.bucket_name, Key=probe_key)
+            except ClientError:
+                pass
+        except ClientError:
+            cls._if_none_match_etag_supported = False
+        cls._if_none_match_etag_probed = True
 
     def discard_item_if(
             self,
