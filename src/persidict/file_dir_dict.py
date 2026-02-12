@@ -92,9 +92,11 @@ if os.name == 'nt':
 
 else:
     def add_long_path_prefix(path: str) -> str:
+        """No-op on non-Windows platforms; returns path unchanged."""
         return path
 
     def drop_long_path_prefix(path: str) -> str:
+        """No-op on non-Windows platforms; returns path unchanged."""
         return path
 
 jsonpickle_numpy.register_handlers()

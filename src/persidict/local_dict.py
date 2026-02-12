@@ -1,3 +1,11 @@
+"""In-memory persistent dictionary backed by a RAM-only hierarchical store.
+
+This module provides `LocalDict`, a `PersiDict` implementation that keeps
+all data in process memory using a simple tree structure (`_RAMBackend`).
+It mirrors `FileDirDict` semantics without any disk or network I/O, making
+it useful for tests and ephemeral workloads where durability is not required.
+"""
+
 from __future__ import annotations
 
 import time

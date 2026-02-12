@@ -1135,6 +1135,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return True
 
     def __ne__(self, other: Any) -> bool:
+        """Return True if the dictionaries are not equal."""
         if self is other:
             return False
 

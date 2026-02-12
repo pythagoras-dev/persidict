@@ -198,6 +198,11 @@ class WriteOnceDict(PersiDict[ValueType]):
             *,
             always_retrieve_value: bool = True
     ) -> ConditionalOperationResult:
+        """Not supported for write-once dictionaries.
+
+        Raises:
+            NotImplementedError: Always raised.
+        """
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -304,6 +309,11 @@ class WriteOnceDict(PersiDict[ValueType]):
 
 
     def __delitem__(self, key):
+        """Deletion is not supported for write-once dictionaries.
+
+        Raises:
+            TypeError: Always raised to indicate immutable items.
+        """
         raise TypeError(
             f"{self.__class__.__name__} has immutable items "
             "and does not support deletion.")

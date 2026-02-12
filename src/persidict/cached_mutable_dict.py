@@ -1,3 +1,11 @@
+"""Mutable persistent dictionary adapter with ETag-aware read-through caching.
+
+This module provides `MutableDictCached`, an adapter that composes three
+concrete `PersiDict` instances (main dict, data cache, ETag cache) to
+present a single mutable mapping with local caching. ETag validation
+ensures cached values are consistent with the authoritative store.
+"""
+
 from __future__ import annotations
 
 
