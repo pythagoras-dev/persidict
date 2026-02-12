@@ -11,7 +11,6 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ALWAYS_RETRIEVE,
     NEVER_RETRIEVE,
     IF_ETAG_CHANGED,
     ITEM_NOT_AVAILABLE,
