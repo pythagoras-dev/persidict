@@ -6,7 +6,7 @@ conditional put and the subsequent read.
 """
 
 import pytest
-from unittest.mock import patch, PropertyMock
+from unittest.mock import patch
 from botocore.exceptions import ClientError
 from moto import mock_aws
 
