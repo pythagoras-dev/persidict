@@ -90,7 +90,7 @@ def test_conditional_set_detects_subdict_write():
     sub = parent.get_subdict(["a"])
     sub["b"] = "sneaky_update"
 
-    result = parent.set_item_if(("a", "b"), "should_fail", ETAG_IS_THE_SAME, stale_etag)
+    result = parent.set_item_if(("a", "b"), value="should_fail", condition=ETAG_IS_THE_SAME, expected_etag=stale_etag)
 
     assert not result.condition_was_satisfied
     assert parent["a", "b"] == "sneaky_update"
@@ -105,7 +105,7 @@ def test_conditional_get_detects_subdict_write():
     sub = parent.get_subdict(["a"])
     sub["b"] = "v2"
 
-    result = parent.get_item_if(("a", "b"), ETAG_HAS_CHANGED, stale_etag)
+    result = parent.get_item_if(("a", "b"), condition=ETAG_HAS_CHANGED, expected_etag=stale_etag)
 
     assert result.condition_was_satisfied
     assert result.new_value == "v2"

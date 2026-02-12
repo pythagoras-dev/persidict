@@ -22,12 +22,12 @@ def test_timestamp(tmpdir):
         tmstmp = d.timestamp("a")
         for i in range(5):
             assert d.timestamp("a") == tmstmp
-        oldest = d.oldest_keys(3)
+        oldest = d.oldest_keys(max_n=3)
         assert oldest == ['a', 'c', 'd']
         assert [d[i] for i in oldest] == ['aaaaa', 'ccccc', 'ddddd']
 
-        newest = d.newest_keys(3)
+        newest = d.newest_keys(max_n=3)
         assert newest == ['g', 'e', 'd']
         assert [d[i] for i in newest] == ['ggggg', 'eeeee', 'ddddd']
 
-        assert d.newest_keys(100) == list(reversed(d.oldest_keys(100)))
+        assert d.newest_keys(max_n=100) == list(reversed(d.oldest_keys(max_n=100)))

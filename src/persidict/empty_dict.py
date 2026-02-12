@@ -61,9 +61,9 @@ class EmptyDict(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
@@ -83,10 +83,10 @@ class EmptyDict(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
@@ -97,10 +97,10 @@ class EmptyDict(PersiDict[ValueType]):
     def setdefault_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
@@ -113,6 +113,7 @@ class EmptyDict(PersiDict[ValueType]):
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
@@ -120,7 +121,7 @@ class EmptyDict(PersiDict[ValueType]):
         NonEmptySafeStrTuple(key)
         return self._absent_key_result(condition, expected_etag)
 
-    def transform_item(self, key, transformer, *, n_retries: int | None = 6) -> OperationResult:
+    def transform_item(self, key, *, transformer, n_retries: int | None = 6) -> OperationResult:
         """No-op: returns ITEM_NOT_AVAILABLE without calling the transformer."""
         return OperationResult(
             resulting_etag=ITEM_NOT_AVAILABLE,

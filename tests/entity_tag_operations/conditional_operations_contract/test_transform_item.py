@@ -17,17 +17,17 @@ from persidict.jokers_and_status_flags import (
     VALUE_NOT_RETRIEVED,
 )
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_transform_returns_new_value(tmpdir, DictToTest, kwargs):
     """Transformer returning a new value updates the stored value."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "original"
 
-    result = d.transform_item("key1", lambda v: v + "_transformed")
+    result = d.transform_item("key1", transformer=lambda v: v + "_transformed")
 
     assert result.new_value == "original_transformed"
     assert d["key1"] == "original_transformed"
@@ -38,10 +38,10 @@ def test_transform_returns_new_value(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_transform_returns_delete_current(tmpdir, DictToTest, kwargs):
     """Transformer returning DELETE_CURRENT removes the key."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.transform_item("key1", lambda v: DELETE_CURRENT)
+    result = d.transform_item("key1", transformer=lambda v: DELETE_CURRENT)
 
     assert result.new_value is ITEM_NOT_AVAILABLE
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
@@ -52,9 +52,9 @@ def test_transform_returns_delete_current(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_transform_returns_delete_current_missing_key(tmpdir, DictToTest, kwargs):
     """DELETE_CURRENT on missing key is a no-op, no error."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.transform_item("nonexistent", lambda v: DELETE_CURRENT)
+    result = d.transform_item("nonexistent", transformer=lambda v: DELETE_CURRENT)
 
     assert result.new_value is ITEM_NOT_AVAILABLE
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
@@ -65,11 +65,11 @@ def test_transform_returns_delete_current_missing_key(tmpdir, DictToTest, kwargs
 @mock_aws
 def test_transform_returns_keep_current(tmpdir, DictToTest, kwargs):
     """KEEP_CURRENT leaves value unchanged and returns actual value, not sentinel."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "original"
     etag_before = d.etag("key1")
 
-    result = d.transform_item("key1", lambda v: KEEP_CURRENT)
+    result = d.transform_item("key1", transformer=lambda v: KEEP_CURRENT)
 
     assert result.new_value == "original"
     assert result.new_value is not KEEP_CURRENT
@@ -81,9 +81,9 @@ def test_transform_returns_keep_current(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_transform_returns_keep_current_missing_key(tmpdir, DictToTest, kwargs):
     """KEEP_CURRENT on missing key returns ITEM_NOT_AVAILABLE, key stays absent."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.transform_item("nonexistent", lambda v: KEEP_CURRENT)
+    result = d.transform_item("nonexistent", transformer=lambda v: KEEP_CURRENT)
 
     assert result.new_value is ITEM_NOT_AVAILABLE
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
@@ -94,11 +94,11 @@ def test_transform_returns_keep_current_missing_key(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_transform_receives_current_value(tmpdir, DictToTest, kwargs):
     """Transformer receives the actual stored value."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = {"nested": [1, 2, 3]}
     received = []
 
-    d.transform_item("key1", lambda v: (received.append(v), v)[1])
+    d.transform_item("key1", transformer=lambda v: (received.append(v), v)[1])
 
     assert len(received) == 1
     assert received[0] == {"nested": [1, 2, 3]}
@@ -108,10 +108,10 @@ def test_transform_receives_current_value(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_transform_receives_item_not_available_for_missing_key(tmpdir, DictToTest, kwargs):
     """Transformer receives ITEM_NOT_AVAILABLE when key is absent."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     received = []
 
-    d.transform_item("nonexistent", lambda v: (received.append(v), KEEP_CURRENT)[1])
+    d.transform_item("nonexistent", transformer=lambda v: (received.append(v), KEEP_CURRENT)[1])
 
     assert len(received) == 1
     assert received[0] is ITEM_NOT_AVAILABLE
@@ -121,9 +121,9 @@ def test_transform_receives_item_not_available_for_missing_key(tmpdir, DictToTes
 @mock_aws
 def test_transform_creates_new_key(tmpdir, DictToTest, kwargs):
     """Transformer can create a new key from ITEM_NOT_AVAILABLE input."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.transform_item("new_key", lambda v: "created")
+    result = d.transform_item("new_key", transformer=lambda v: "created")
 
     assert result.new_value == "created"
     assert isinstance(result.resulting_etag, str)
@@ -134,11 +134,11 @@ def test_transform_creates_new_key(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_transform_keep_current_does_not_change_etag(tmpdir, DictToTest, kwargs):
     """KEEP_CURRENT preserves the exact etag (no write occurs)."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
     etag_before = d.etag("key1")
 
-    result = d.transform_item("key1", lambda v: KEEP_CURRENT)
+    result = d.transform_item("key1", transformer=lambda v: KEEP_CURRENT)
     etag_after = d.etag("key1")
 
     assert etag_before == etag_after
@@ -169,7 +169,7 @@ def test_transform_conflict_retries_then_raises(monkeypatch):
         return "new"
 
     with pytest.raises(TransformConflictError) as excinfo:
-        d.transform_item("key", transformer, n_retries=1)
+        d.transform_item("key", transformer=transformer, n_retries=1)
 
     assert excinfo.value.attempts == 2
     assert len(calls) == 2
@@ -185,4 +185,4 @@ def test_transform_rejects_invalid_n_retries(n_retries, exc_type):
     d["key"] = "value"
 
     with pytest.raises(exc_type):
-        d.transform_item("key", lambda v: v, n_retries=n_retries)
+        d.transform_item("key", transformer=lambda v: v, n_retries=n_retries)

@@ -17,7 +17,7 @@ from persidict import (
     NonEmptySafeStrTuple,
 )
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 # =============================================================================
@@ -74,7 +74,7 @@ def test_safe_str_tuple_copy_in_deepcopy_memo():
 @mock_aws
 def test_persidict_copy_creates_new_instance(tmpdir, DictToTest, kwargs):
     """copy.copy() creates a new PersiDict instance, not the same object."""
-    original = DictToTest(base_dir=tmpdir, **kwargs)
+    original = make_test_dict(DictToTest, tmpdir, **kwargs)
     copied = copy.copy(original)
 
     assert copied is not original
@@ -85,7 +85,7 @@ def test_persidict_copy_creates_new_instance(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_persidict_copy_shares_storage(tmpdir, DictToTest, kwargs):
     """Copied PersiDict shares the same underlying storage as the original."""
-    original = DictToTest(base_dir=tmpdir, **kwargs)
+    original = make_test_dict(DictToTest, tmpdir, **kwargs)
     original.clear()
     original[("test", "key")] = "value"
 
@@ -112,7 +112,7 @@ def test_persidict_copy_shares_storage(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_persidict_copy_preserves_parameters(tmpdir, DictToTest, kwargs):
     """Copied PersiDict has the same configuration parameters as the original."""
-    original = DictToTest(base_dir=tmpdir, **kwargs)
+    original = make_test_dict(DictToTest, tmpdir, **kwargs)
     copied = copy.copy(original)
 
     original_params = original.get_params()
@@ -200,7 +200,7 @@ def test_s3_dict_copy_same_bucket(tmp_path):
 @mock_aws
 def test_persidict_copy_of_empty_dict(tmpdir, DictToTest, kwargs):
     """Copying an empty PersiDict works correctly."""
-    original = DictToTest(base_dir=tmpdir, **kwargs)
+    original = make_test_dict(DictToTest, tmpdir, **kwargs)
     original.clear()
 
     copied = copy.copy(original)
@@ -215,7 +215,7 @@ def test_persidict_copy_of_empty_dict(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_persidict_multiple_copies_share_storage(tmpdir, DictToTest, kwargs):
     """Multiple copies all share the same storage."""
-    original = DictToTest(base_dir=tmpdir, **kwargs)
+    original = make_test_dict(DictToTest, tmpdir, **kwargs)
     original.clear()
 
     copy1 = copy.copy(original)

@@ -12,7 +12,7 @@ from moto import mock_aws
 
 from persidict import LocalDict, SafeStrTuple
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 # =============================================================================
@@ -24,7 +24,7 @@ from tests.data_for_mutable_tests import mutable_tests
 @mock_aws
 def test_update_with_dict(tmpdir, DictToTest, kwargs):
     """update() with a standard dict adds all key-value pairs."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     source = {
@@ -47,7 +47,7 @@ def test_update_with_dict(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_with_iterable_of_pairs(tmpdir, DictToTest, kwargs):
     """update() with an iterable of (key, value) pairs."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     pairs = [
@@ -70,7 +70,7 @@ def test_update_with_iterable_of_pairs(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_overwrites_existing_keys(tmpdir, DictToTest, kwargs):
     """update() overwrites values for existing keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     d[("existing",)] = "old_value"
@@ -86,7 +86,7 @@ def test_update_overwrites_existing_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_with_another_persidict(tmpdir, DictToTest, kwargs):
     """update() can use another PersiDict as the source."""
-    d1 = DictToTest(base_dir=tmpdir, **kwargs)
+    d1 = make_test_dict(DictToTest, tmpdir, **kwargs)
     d1.clear()
     d1[("from", "d1")] = "d1_value"
 
@@ -110,7 +110,7 @@ def test_update_with_another_persidict(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_with_empty_source(tmpdir, DictToTest, kwargs):
     """update() with empty source leaves dict unchanged."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
     d[("pre", "existing")] = "value"
 
@@ -127,7 +127,7 @@ def test_update_with_empty_source(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_on_empty_dict(tmpdir, DictToTest, kwargs):
     """update() on an empty dict adds all items."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     assert len(d) == 0
@@ -149,7 +149,7 @@ def test_update_on_empty_dict(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_with_safe_str_tuple_keys(tmpdir, DictToTest, kwargs):
     """update() works correctly with SafeStrTuple keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     key1 = SafeStrTuple("safe", "key", "one")
@@ -169,7 +169,7 @@ def test_update_with_safe_str_tuple_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_mixed_key_formats(tmpdir, DictToTest, kwargs):
     """update() handles mixed key formats (tuple and SafeStrTuple)."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     d.update({
@@ -193,7 +193,7 @@ def test_update_mixed_key_formats(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_with_complex_values(tmpdir, DictToTest, kwargs):
     """update() handles various value types correctly."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     complex_data = {
@@ -226,7 +226,7 @@ def test_update_with_complex_values(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_multiple_updates(tmpdir, DictToTest, kwargs):
     """Multiple update() calls accumulate and overwrite correctly."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     d.update({("a",): 1, ("b",): 2})
@@ -250,7 +250,7 @@ def test_multiple_updates(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_returns_none(tmpdir, DictToTest, kwargs):
     """update() returns None, like dict.update()."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     result = d.update({("key",): "value"})
@@ -268,7 +268,7 @@ def test_update_returns_none(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_with_generator(tmpdir, DictToTest, kwargs):
     """update() works with a generator of key-value pairs."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     def pair_generator():
@@ -293,7 +293,7 @@ def test_update_with_generator(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_update_matches_dict_behavior(tmpdir, DictToTest, kwargs):
     """PersiDict.update() behaves like dict.update()."""
-    pd = DictToTest(base_dir=tmpdir, **kwargs)
+    pd = make_test_dict(DictToTest, tmpdir, **kwargs)
     pd.clear()
     model = {}
 

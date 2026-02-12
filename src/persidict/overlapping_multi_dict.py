@@ -38,7 +38,7 @@ class OverlappingMultiDict:
         TypeError: If pickling is attempted or item access is used on the
             OverlappingMultiDict itself rather than its sub-dicts.
     """
-    def __init__(self,
+    def __init__(self, *,
                  dict_type: type[PersiDict],
                  shared_subdicts_params: dict[str, Any],
                  **individual_subdicts_params: dict[str, Any]) -> None:

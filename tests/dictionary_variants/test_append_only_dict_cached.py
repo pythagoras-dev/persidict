@@ -15,7 +15,7 @@ def append_only_env(tmp_path):
     # Use FileDirDict because it exposes digest_len used by the wrapper
     main = FileDirDict(base_dir=str(tmp_path / "main"), append_only=True, serialization_format="json")
     cache = FileDirDict(base_dir=str(tmp_path / "cache"), append_only=True, serialization_format="json")
-    wrapper = AppendOnlyDictCached(main, cache)
+    wrapper = AppendOnlyDictCached(main_dict=main, data_cache=cache)
     return main, cache, wrapper
 
 
@@ -59,7 +59,7 @@ def test_get_item_if_etag_different_populates_cache(append_only_env):
     main[("x",)] = "v1"
 
     # First call with ITEM_NOT_AVAILABLE returns value and etag, and must cache it
-    res = wrapper.get_item_if(("x",), ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
+    res = wrapper.get_item_if(("x",), condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
     assert res.condition_was_satisfied
     v = res.new_value
     etag = res.resulting_etag
@@ -68,7 +68,7 @@ def test_get_item_if_etag_different_populates_cache(append_only_env):
     assert ("x",) in cache and cache[("x",)] == "v1"
 
     # Second call with the same etag should report not changed and keep cache
-    res2 = wrapper.get_item_if(("x",), ETAG_HAS_CHANGED, etag)
+    res2 = wrapper.get_item_if(("x",), condition=ETAG_HAS_CHANGED, expected_etag=etag)
     assert not res2.condition_was_satisfied
     assert cache[("x",)] == "v1"
 
@@ -90,7 +90,7 @@ def test_set_item_if_failed_condition_populates_cache(append_only_env):
     main[("k",)] = "v1"
     assert ("k",) not in cache
 
-    res = wrapper.set_item_if(("k",), KEEP_CURRENT, ETAG_IS_THE_SAME, "bogus")
+    res = wrapper.set_item_if(("k",), value=KEEP_CURRENT, condition=ETAG_IS_THE_SAME, expected_etag="bogus")
 
     assert not res.condition_was_satisfied
     assert res.new_value == "v1"
@@ -142,7 +142,7 @@ def test_value_type_validation(tmp_path):
     # Create a typed environment: only ints allowed
     main = FileDirDict(base_dir=str(tmp_path / "typed_main"), append_only=True, serialization_format="json", base_class_for_values=int)
     cache = FileDirDict(base_dir=str(tmp_path / "typed_cache"), append_only=True, serialization_format="json", base_class_for_values=int)
-    wrapper = AppendOnlyDictCached(main, cache)
+    wrapper = AppendOnlyDictCached(main_dict=main, data_cache=cache)
 
     wrapper[("ok",)] = 123
     with pytest.raises(TypeError):
@@ -220,7 +220,7 @@ def test_get_item_if_etag_different_absent_key_does_not_cache(append_only_env):
     key = ("nope",)
     assert key not in main and key not in cache
 
-    result = wrapper.get_item_if(key, ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
+    result = wrapper.get_item_if(key, condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
     # Cache should remain untouched
@@ -317,7 +317,7 @@ def test_setdefault_if_insert_populates_cache(append_only_env):
     main, cache, wrapper = append_only_env
 
     res = wrapper.setdefault_if(
-        ("sdi",), "default_val", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+        ("sdi",), default_value="default_val", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert res.condition_was_satisfied
     assert ("sdi",) in main and ("sdi",) in cache
@@ -331,7 +331,7 @@ def test_setdefault_if_existing_key_populates_cache(append_only_env):
     assert ("sde",) not in cache
 
     res = wrapper.setdefault_if(
-        ("sde",), "ignored", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+        ("sde",), default_value="ignored", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert res.new_value == "original"
     assert cache[("sde",)] == "original"
@@ -342,7 +342,7 @@ def test_setdefault_if_absent_condition_fails_no_cache_pollution(append_only_env
     main, cache, wrapper = append_only_env
 
     res = wrapper.setdefault_if(
-        ("sdx",), "val", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
+        ("sdx",), default_value="val", condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert not res.condition_was_satisfied
     assert ("sdx",) not in main

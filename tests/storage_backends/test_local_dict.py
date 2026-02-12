@@ -184,8 +184,8 @@ def test_newest_oldest_helpers():
     assert tuple(ok[0]) == ("t", "1") and ov[0] == "a"
 
     # with limits
-    assert [tuple(k) for k in ld.newest_keys(2)] == [("t", "3"), ("t", "2")]
-    assert [tuple(k) for k in ld.oldest_keys(2)] == [("t", "1"), ("t", "2")]
+    assert [tuple(k) for k in ld.newest_keys(max_n=2)] == [("t", "3"), ("t", "2")]
+    assert [tuple(k) for k in ld.oldest_keys(max_n=2)] == [("t", "1"), ("t", "2")]
 
 
 def test_random_key_behavior():

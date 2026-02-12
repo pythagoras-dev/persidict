@@ -7,7 +7,7 @@ pytestmark = pytest.mark.smoke
 
 def test_single_filedirdict_pkl(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict
+        dict_type=FileDirDict
         ,shared_subdicts_params=dict(base_dir=tmpdir)
         , pkl={})
     assert len(d.pkl) == 0
@@ -19,7 +19,7 @@ def test_single_filedirdict_pkl(tmpdir):
 
 def test_single_filedirdict_json(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict
+        dict_type=FileDirDict
         , shared_subdicts_params=dict(base_dir=tmpdir)
         , json={})
     assert len(d.json) == 0
@@ -31,7 +31,7 @@ def test_single_filedirdict_json(tmpdir):
 
 def test_single_filedirdict_txt(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict
+        dict_type=FileDirDict
         , shared_subdicts_params=dict(base_dir=tmpdir)
         , txt={"base_class_for_values": str})
     assert len(d.txt) == 0
@@ -43,7 +43,7 @@ def test_single_filedirdict_txt(tmpdir):
 
 def test_single_filedirdict_py(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict
+        dict_type=FileDirDict
         , shared_subdicts_params=dict(base_dir=tmpdir)
         , py={"base_class_for_values": str})
     assert len(d.py) == 0
@@ -55,7 +55,7 @@ def test_single_filedirdict_py(tmpdir):
 
 def test_2_filedirdicts_py_txt(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict
+        dict_type=FileDirDict
         ,shared_subdicts_params=dict(base_dir=tmpdir)
         , py={"base_class_for_values": str}
         , txt={"base_class_for_values": str})
@@ -75,7 +75,7 @@ def test_2_filedirdicts_py_txt(tmpdir):
 
 def test_4_persidicts_py_txt_json_pkl(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict
+        dict_type=FileDirDict
         ,shared_subdicts_params=dict(base_dir=tmpdir)
         , py={"base_class_for_values": str}
         , txt={"base_class_for_values": str}
@@ -108,21 +108,21 @@ def test_4_persidicts_py_txt_json_pkl(tmpdir):
 def test_overlapping_multi_dict_rejects_invalid_inputs(tmpdir):
     with pytest.raises(TypeError):
         OverlappingMultiDict(
-            dict,
+            dict_type=dict,
             shared_subdicts_params=dict(base_dir=tmpdir),
             pkl={},
         )
 
     with pytest.raises(TypeError):
         OverlappingMultiDict(
-            FileDirDict,
+            dict_type=FileDirDict,
             shared_subdicts_params="not-a-dict",
             pkl={},
         )
 
     with pytest.raises(TypeError):
         OverlappingMultiDict(
-            FileDirDict,
+            dict_type=FileDirDict,
             shared_subdicts_params=dict(base_dir=tmpdir),
             pkl="not-a-dict",
         )
@@ -130,7 +130,7 @@ def test_overlapping_multi_dict_rejects_invalid_inputs(tmpdir):
 
 def test_overlapping_multi_dict_container_item_access_is_blocked(tmpdir):
     d = OverlappingMultiDict(
-        FileDirDict,
+        dict_type=FileDirDict,
         shared_subdicts_params=dict(base_dir=tmpdir),
         pkl={},
     )

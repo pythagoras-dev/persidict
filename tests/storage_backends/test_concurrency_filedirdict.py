@@ -13,7 +13,7 @@ multiprocessing.freeze_support()
 pytestmark = pytest.mark.slow
 
 def many_operations(base_dir:str, process_n:int):
-    d = FileDirDict(base_dir)
+    d = FileDirDict(base_dir=base_dir)
     d["a"] = random.random()
     for i in range(50):
         try:
@@ -34,7 +34,7 @@ def _conditional_write_with_pause(
     proceed_event: multiprocessing.Event,
     result_queue: multiprocessing.Queue,
 ):
-    d = FileDirDict(base_dir)
+    d = FileDirDict(base_dir=base_dir)
     original_save = d._save_to_file
 
     def slow_save(file_name, value):
@@ -43,7 +43,7 @@ def _conditional_write_with_pause(
         return original_save(file_name, value)
 
     d._save_to_file = slow_save
-    result_queue.put(d.set_item_if(key, "conditional", ETAG_IS_THE_SAME, etag))
+    result_queue.put(d.set_item_if(key, value="conditional", condition=ETAG_IS_THE_SAME, expected_etag=etag))
 
 def _unconditional_write(
     base_dir: str,
@@ -51,7 +51,7 @@ def _unconditional_write(
     start_event: multiprocessing.Event,
     started_event: multiprocessing.Event,
 ):
-    d = FileDirDict(base_dir)
+    d = FileDirDict(base_dir=base_dir)
     if not start_event.wait(5):
         return
     started_event.set()
@@ -90,7 +90,7 @@ def test_concurrency_10(tmpdir):
 def test_conditional_and_unconditional_write_can_race(tmpdir):
     base_dir = str(tmpdir)
     key = "mixed_key"
-    d = FileDirDict(base_dir)
+    d = FileDirDict(base_dir=base_dir)
     d[key] = "initial"
     etag = d.etag(key)
 
@@ -125,4 +125,4 @@ def test_conditional_and_unconditional_write_can_race(tmpdir):
     assert p_conditional.exitcode == 0
     assert p_unconditional.exitcode == 0
     assert result_queue.get(timeout=1) is not None
-    assert FileDirDict(base_dir)[key] in {"conditional", "unconditional"}
+    assert FileDirDict(base_dir=base_dir)[key] in {"conditional", "unconditional"}

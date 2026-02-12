@@ -137,12 +137,12 @@ class LocalDict(PersiDict[ValueType]):
           the process exits.
     """
 
-    def __init__(self,
+    def __init__(self, *,
                  backend: Optional[_RAMBackend] = None,
                  serialization_format: str = "pkl",
                  append_only: bool = False,
                  base_class_for_values: Optional[type] = None,
-                 prune_interval: Optional[int] = 64, *args, **kwargs):
+                 prune_interval: Optional[int] = 64):
         """Initialize an in-memory persistent dictionary.
 
         Args:

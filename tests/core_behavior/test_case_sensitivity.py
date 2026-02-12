@@ -1,7 +1,7 @@
 import pytest
 from moto import mock_aws
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -11,7 +11,7 @@ def test_case_sensitivity(tmpdir, DictToTest, kwargs):
     if "digest_len" in kwargs and kwargs["digest_len"] <=3:
         return
 
-    dict_to_test = DictToTest(base_dir = tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     dict_to_test.clear()
     model_dict = dict()
 

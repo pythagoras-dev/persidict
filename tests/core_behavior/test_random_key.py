@@ -5,14 +5,14 @@ import random
 import time
 from persidict import SafeStrTuple
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_empty_dict_returns_none(tmpdir, DictToTest, kwargs):
     """Test that random_key returns None for an empty dictionary."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     assert dict_to_test.random_key() is None
 
 
@@ -20,7 +20,7 @@ def test_empty_dict_returns_none(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_single_item_dict(tmpdir, DictToTest, kwargs):
     """Test that random_key returns the only key for a single-item dictionary."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     dict_to_test["single_key"] = "single_value"
     assert dict_to_test.random_key() == "single_key"
 
@@ -29,7 +29,7 @@ def test_single_item_dict(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_multi_item_dict_with_simple_keys(tmpdir, DictToTest, kwargs):
     """Test that random_key returns a valid key for a multi-item dictionary with simple keys."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     N=50
 
@@ -53,7 +53,7 @@ def test_multi_item_dict_with_simple_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_complex_keys(tmpdir, DictToTest, kwargs):
     """Test that random_key works correctly with complex keys (tuples of strings)."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     complex_keys = [
         ("a", "1"), 
@@ -85,7 +85,7 @@ def test_complex_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_randomness_distribution(tmpdir, DictToTest, kwargs):
     """Test that random_key provides a uniform distribution of keys."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add 5 keys to the dictionary
     for i in range(5):
@@ -109,7 +109,7 @@ def test_randomness_distribution(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_after_removing_keys(tmpdir, DictToTest, kwargs):
     """Test that random_key only returns remaining keys after some keys are removed."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add keys
     for i in range(10):
@@ -131,7 +131,7 @@ def test_after_removing_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_after_adding_keys(tmpdir, DictToTest, kwargs):
     """Test that random_key includes newly added keys."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Start with some keys
     initial_keys = [SafeStrTuple("key1"), SafeStrTuple("key2"), SafeStrTuple("key3")]
@@ -156,7 +156,7 @@ def test_after_adding_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_consistency_with_keys_method(tmpdir, DictToTest, kwargs):
     """Test that random_key only returns keys that would be returned by the keys() method."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add various keys
     dict_to_test["str_key"] = "string value"
@@ -176,7 +176,7 @@ def test_consistency_with_keys_method(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_with_many_keys(tmpdir, DictToTest, kwargs):
     """Test random_key with a dictionary containing many keys."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add many keys (100 keys)
     for i in range(100):
@@ -197,7 +197,7 @@ def test_with_many_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_clear_and_repopulate(tmpdir, DictToTest, kwargs):
     """Test random_key after clearing and repopulating the dictionary."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add initial keys
     for i in range(5):
@@ -225,7 +225,7 @@ def test_clear_and_repopulate(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_updating_keys(tmpdir, DictToTest, kwargs):
     """Test random_key after updating values for existing keys."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add initial keys and values
     for i in range(5):
@@ -249,7 +249,7 @@ def test_updating_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_performance_with_large_dict(tmpdir, DictToTest, kwargs):
     """Test performance of random_key with a large dictionary."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Skip this test for slow implementations
     if hasattr(DictToTest, "slow_implementation") and DictToTest.slow_implementation:
@@ -284,7 +284,7 @@ def test_performance_with_large_dict(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_exactly_two_items(tmpdir, DictToTest, kwargs):
     """Test random_key with a dictionary containing exactly two items."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add exactly two items
     dict_to_test["key1"] = "value1"
@@ -312,7 +312,7 @@ def test_exactly_two_items(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_add_remove_same_key(tmpdir, DictToTest, kwargs):
     """Test random_key when repeatedly adding and removing the same key."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Start with some keys
     dict_to_test["permanent_key1"] = "value1"
@@ -340,7 +340,7 @@ def test_add_remove_same_key(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_consistency_across_calls(tmpdir, DictToTest, kwargs):
     """Test that random_key is consistent in its behavior across multiple calls."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Add a fixed set of keys
     for i in range(10):
@@ -366,7 +366,7 @@ def test_consistency_across_calls(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_empty_then_add_then_empty(tmpdir, DictToTest, kwargs):
     """Test random_key behavior when alternating between empty and non-empty states."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Start with empty dictionary
     assert dict_to_test.random_key() is None

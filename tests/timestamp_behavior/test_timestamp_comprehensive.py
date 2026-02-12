@@ -29,17 +29,17 @@ def test_oldest_keys_basic(tmpdir):
             min_sleep(d)
         
         # Test basic oldest_keys functionality
-        oldest = d.oldest_keys(3)
+        oldest = d.oldest_keys(max_n=3)
         assert len(oldest) == 3
         assert to_str_list(oldest) == ['a', 'b', 'c']
-        
+
         # Test with max_n larger than available items
-        oldest_all = d.oldest_keys(10)
+        oldest_all = d.oldest_keys(max_n=10)
         assert len(oldest_all) == 5
         assert to_str_list(oldest_all) == ['a', 'b', 'c', 'd', 'e']
-        
+
         # Test with max_n=None (should return all)
-        oldest_none = d.oldest_keys(None)
+        oldest_none = d.oldest_keys(max_n=None)
         assert to_str_list(oldest_none) == ['a', 'b', 'c', 'd', 'e']
 
         d.clear()
@@ -58,17 +58,17 @@ def test_newest_keys_basic(tmpdir):
             min_sleep(d)
         
         # Test basic newest_keys functionality
-        newest = d.newest_keys(3)
+        newest = d.newest_keys(max_n=3)
         assert len(newest) == 3
         assert to_str_list(newest) == ['e', 'd', 'c']
-        
+
         # Test with max_n larger than available items
-        newest_all = d.newest_keys(10)
+        newest_all = d.newest_keys(max_n=10)
         assert len(newest_all) == 5
         assert to_str_list(newest_all) == ['e', 'd', 'c', 'b', 'a']
-        
+
         # Test with max_n=None
-        newest_none = d.newest_keys(None)
+        newest_none = d.newest_keys(max_n=None)
         assert to_str_list(newest_none) == ['e', 'd', 'c', 'b', 'a']
 
         d.clear()
@@ -88,17 +88,17 @@ def test_oldest_values_basic(tmpdir):
                 min_sleep(d)
         
         # Test basic oldest_values functionality
-        oldest_values = d.oldest_values(3)
+        oldest_values = d.oldest_values(max_n=3)
         assert len(oldest_values) == 3
         assert oldest_values == ['value_a', 'value_b', 'value_c']
-        
+
         # Test with max_n larger than available items
-        oldest_values_all = d.oldest_values(10)
+        oldest_values_all = d.oldest_values(max_n=10)
         assert len(oldest_values_all) == 5
         assert oldest_values_all == ['value_a', 'value_b', 'value_c', 'value_d', 'value_e']
-        
+
         # Test with max_n=None
-        oldest_values_none = d.oldest_values(None)
+        oldest_values_none = d.oldest_values(max_n=None)
         assert oldest_values_none == ['value_a', 'value_b', 'value_c', 'value_d', 'value_e']
 
         d.clear()
@@ -117,17 +117,17 @@ def test_newest_values_basic(tmpdir):
             min_sleep(d)
         
         # Test basic newest_values functionality
-        newest_values = d.newest_values(3)
+        newest_values = d.newest_values(max_n=3)
         assert len(newest_values) == 3
         assert newest_values == ['value_e', 'value_d', 'value_c']
-        
+
         # Test with max_n larger than available items
-        newest_values_all = d.newest_values(10)
+        newest_values_all = d.newest_values(max_n=10)
         assert len(newest_values_all) == 5
         assert newest_values_all == ['value_e', 'value_d', 'value_c', 'value_b', 'value_a']
-        
+
         # Test with max_n=None
-        newest_values_none = d.newest_values(None)
+        newest_values_none = d.newest_values(max_n=None)
         assert newest_values_none == ['value_e', 'value_d', 'value_c', 'value_b', 'value_a']
 
         d.clear()
@@ -147,16 +147,16 @@ def test_empty_dict_edge_cases(tmpdir):
         assert d.newest_values() == []
         
         # Test with specific max_n values
-        assert d.oldest_keys(5) == []
-        assert d.newest_keys(5) == []
-        assert d.oldest_values(5) == []
-        assert d.newest_values(5) == []
-        
+        assert d.oldest_keys(max_n=5) == []
+        assert d.newest_keys(max_n=5) == []
+        assert d.oldest_values(max_n=5) == []
+        assert d.newest_values(max_n=5) == []
+
         # Test with max_n=0
-        assert d.oldest_keys(0) == []
-        assert d.newest_keys(0) == []
-        assert d.oldest_values(0) == []
-        assert d.newest_values(0) == []
+        assert d.oldest_keys(max_n=0) == []
+        assert d.newest_keys(max_n=0) == []
+        assert d.oldest_values(max_n=0) == []
+        assert d.newest_values(max_n=0) == []
 
         d.clear()
 
@@ -177,16 +177,16 @@ def test_single_item_edge_cases(tmpdir):
         assert d.newest_values() == ['value']
         
         # Test with max_n=1
-        assert d.oldest_keys(1) == ['single']
-        assert d.newest_keys(1) == ['single']
-        assert d.oldest_values(1) == ['value']
-        assert d.newest_values(1) == ['value']
-        
+        assert d.oldest_keys(max_n=1) == ['single']
+        assert d.newest_keys(max_n=1) == ['single']
+        assert d.oldest_values(max_n=1) == ['value']
+        assert d.newest_values(max_n=1) == ['value']
+
         # Test with max_n larger than available
-        assert d.oldest_keys(5) == ['single']
-        assert d.newest_keys(5) == ['single']
-        assert d.oldest_values(5) == ['value']
-        assert d.newest_values(5) == ['value']
+        assert d.oldest_keys(max_n=5) == ['single']
+        assert d.newest_keys(max_n=5) == ['single']
+        assert d.oldest_values(max_n=5) == ['value']
+        assert d.newest_values(max_n=5) == ['value']
 
         d.clear()
 
@@ -204,10 +204,10 @@ def test_non_positive_max_n_edge_cases(tmpdir):
 
         # Test all functions with max_n=0 and negative max_n
         for n in [0, -1, -100]:
-            assert d.oldest_keys(n) == []
-            assert d.newest_keys(n) == []
-            assert d.oldest_values(n) == []
-            assert d.newest_values(n) == []
+            assert d.oldest_keys(max_n=n) == []
+            assert d.newest_keys(max_n=n) == []
+            assert d.oldest_values(max_n=n) == []
+            assert d.newest_values(max_n=n) == []
 
         d.clear()
 
@@ -240,10 +240,10 @@ def test_ordering_after_deletion(tmpdir):
         assert newest_values == ['value_g', 'value_f', 'value_d', 'value_b', 'value_a']
         
         # Test with limited max_n after deletion
-        assert to_str_list(d.oldest_keys(3)) == ['a', 'b', 'd']
-        assert to_str_list(d.newest_keys(3)) == ['g', 'f', 'd']
-        assert d.oldest_values(3) == ['value_a', 'value_b', 'value_d']
-        assert d.newest_values(3) == ['value_g', 'value_f', 'value_d']
+        assert to_str_list(d.oldest_keys(max_n=3)) == ['a', 'b', 'd']
+        assert to_str_list(d.newest_keys(max_n=3)) == ['g', 'f', 'd']
+        assert d.oldest_values(max_n=3) == ['value_a', 'value_b', 'value_d']
+        assert d.newest_values(max_n=3) == ['value_g', 'value_f', 'value_d']
 
         d.clear()
 
@@ -310,10 +310,10 @@ def test_consistency_between_functions(tmpdir):
         
         # Test consistency for various max_n values
         for max_n in [None, 1, 3, 5, 10]:
-            oldest_keys = d.oldest_keys(max_n)
-            oldest_values = d.oldest_values(max_n)
-            newest_keys = d.newest_keys(max_n)
-            newest_values = d.newest_values(max_n)
+            oldest_keys = d.oldest_keys(max_n=max_n)
+            oldest_values = d.oldest_values(max_n=max_n)
+            newest_keys = d.newest_keys(max_n=max_n)
+            newest_values = d.newest_values(max_n=max_n)
             
             # Values should match keys
             assert oldest_values == [d[k] for k in oldest_keys]
@@ -324,8 +324,8 @@ def test_consistency_between_functions(tmpdir):
             assert len(newest_keys) == len(newest_values)
         
         # Test the relationship mentioned in existing tests
-        assert to_str_list(d.newest_keys(100)) == list(reversed(to_str_list(d.oldest_keys(100))))
-        assert d.newest_values(100) == list(reversed(d.oldest_values(100)))
+        assert to_str_list(d.newest_keys(max_n=100)) == list(reversed(to_str_list(d.oldest_keys(max_n=100))))
+        assert d.newest_values(max_n=100) == list(reversed(d.oldest_values(max_n=100)))
 
         d.clear()
 

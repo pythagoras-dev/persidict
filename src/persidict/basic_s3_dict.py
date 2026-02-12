@@ -103,13 +103,13 @@ class BasicS3Dict(PersiDict[ValueType]):
         'pkl': 'application/octet-stream',
     }
 
-    def __init__(self, bucket_name: str = "my_bucket",
+    def __init__(self, *,
+                 bucket_name: str = "my_bucket",
                  region: str = None,
                  root_prefix: str = "",
                  serialization_format: str = "pkl",
                  append_only: bool = False,
-                 base_class_for_values: Optional[type] = None,
-                 *args, **kwargs):
+                 base_class_for_values: Optional[type] = None):
         """Initialize a basic S3-backed persistent dictionary.
 
         Args:
@@ -126,8 +126,6 @@ class BasicS3Dict(PersiDict[ValueType]):
             base_class_for_values: Optional base class that all stored values
                 must inherit from. When specified (and not str), serialization_format
                 must be 'pkl' or 'json' for proper serialization.
-            *args: Additional positional arguments (ignored, reserved for compatibility).
-            **kwargs: Additional keyword arguments (ignored, reserved for compatibility).
             
         Note:
             The S3 bucket will be created if it doesn't exist and AWS permissions
@@ -377,9 +375,9 @@ class BasicS3Dict(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Retrieve the value for a key only if an ETag condition is satisfied.
@@ -621,10 +619,10 @@ class BasicS3Dict(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
@@ -892,6 +890,7 @@ class BasicS3Dict(PersiDict[ValueType]):
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
@@ -993,10 +992,10 @@ class BasicS3Dict(PersiDict[ValueType]):
     def setdefault_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default_value if key is absent; conditioned on ETag check.

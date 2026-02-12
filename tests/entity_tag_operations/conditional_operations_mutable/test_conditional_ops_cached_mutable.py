@@ -20,7 +20,7 @@ def cached_env(tmp_path):
     main = FileDirDict(base_dir=str(tmp_path / "main"), serialization_format="json")
     data_cache = LocalDict(serialization_format="json")
     etag_cache = LocalDict(serialization_format="json")
-    wrapper = MutableDictCached(main, data_cache, etag_cache)
+    wrapper = MutableDictCached(main_dict=main, data_cache=data_cache, etag_cache=etag_cache)
     return main, data_cache, etag_cache, wrapper
 
 
@@ -29,13 +29,13 @@ def test_set_item_if_etag_equal_updates_caches(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    res = wrapper.set_item_if("k", "v22", ETAG_IS_THE_SAME, etag)
+    res = wrapper.set_item_if("k", value="v22", condition=ETAG_IS_THE_SAME, expected_etag=etag)
     assert res.condition_was_satisfied
     assert wrapper["k"] == "v22"
     assert data_cache["k"] == "v22"
     assert etag_cache["k"] == wrapper.etag("k")
 
-    res_mismatch = wrapper.set_item_if("k", "v33", ETAG_IS_THE_SAME, "bogus")
+    res_mismatch = wrapper.set_item_if("k", value="v33", condition=ETAG_IS_THE_SAME, expected_etag="bogus")
     assert not res_mismatch.condition_was_satisfied
     assert wrapper["k"] == "v22"
     assert data_cache["k"] == "v22"
@@ -46,11 +46,11 @@ def test_set_item_if_etag_different_updates_and_preserves_on_match(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    res_match = wrapper.set_item_if("k", "v2", ETAG_HAS_CHANGED, etag)
+    res_match = wrapper.set_item_if("k", value="v2", condition=ETAG_HAS_CHANGED, expected_etag=etag)
     assert not res_match.condition_was_satisfied
     assert wrapper["k"] == "v1"
 
-    res = wrapper.set_item_if("k", "v3", ETAG_HAS_CHANGED, "bogus")
+    res = wrapper.set_item_if("k", value="v3", condition=ETAG_HAS_CHANGED, expected_etag="bogus")
     assert res.condition_was_satisfied
     assert wrapper["k"] == "v3"
     assert data_cache["k"] == "v3"
@@ -65,7 +65,7 @@ def test_set_item_if_failed_condition_refreshes_caches(cached_env):
     data_cache["k"] = "stale"
     etag_cache["k"] = "stale_etag"
 
-    res = wrapper.set_item_if("k", KEEP_CURRENT, ETAG_IS_THE_SAME, "bogus")
+    res = wrapper.set_item_if("k", value=KEEP_CURRENT, condition=ETAG_IS_THE_SAME, expected_etag="bogus")
 
     assert not res.condition_was_satisfied
     assert res.new_value == "v1"
@@ -81,7 +81,7 @@ def test_set_item_if_no_value_does_not_update_caches(cached_env):
     etag_cache["k"] = "stale_etag"
 
     res = wrapper.set_item_if(
-        "k", "v2", ETAG_IS_THE_SAME, "bogus", retrieve_value=NEVER_RETRIEVE)
+        "k", value="v2", condition=ETAG_IS_THE_SAME, expected_etag="bogus", retrieve_value=NEVER_RETRIEVE)
 
     assert res.new_value is VALUE_NOT_RETRIEVED
     assert data_cache["k"] == "stale"
@@ -93,10 +93,10 @@ def test_delete_item_if_etag_equal_clears_caches(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", ETAG_IS_THE_SAME, "bogus").condition_was_satisfied
+    assert not wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag="bogus").condition_was_satisfied
     assert "k" in main and "k" in data_cache and "k" in etag_cache
 
-    assert wrapper.discard_item_if("k", ETAG_IS_THE_SAME, etag).condition_was_satisfied
+    assert wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag).condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
@@ -107,10 +107,10 @@ def test_delete_item_if_etag_different_clears_caches_on_mismatch(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", ETAG_HAS_CHANGED, etag).condition_was_satisfied
+    assert not wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag=etag).condition_was_satisfied
     assert "k" in main
 
-    assert wrapper.discard_item_if("k", ETAG_HAS_CHANGED, "bogus").condition_was_satisfied
+    assert wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag="bogus").condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
@@ -121,10 +121,10 @@ def test_discard_item_if_etag_equal_clears_caches(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", ETAG_IS_THE_SAME, "bogus").condition_was_satisfied
+    assert not wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag="bogus").condition_was_satisfied
     assert "k" in main
 
-    assert wrapper.discard_item_if("k", ETAG_IS_THE_SAME, etag).condition_was_satisfied
+    assert wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag).condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
@@ -135,10 +135,10 @@ def test_discard_item_if_etag_different_clears_caches_on_mismatch(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", ETAG_HAS_CHANGED, etag).condition_was_satisfied
+    assert not wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag=etag).condition_was_satisfied
     assert "k" in main
 
-    assert wrapper.discard_item_if("k", ETAG_HAS_CHANGED, "bogus").condition_was_satisfied
+    assert wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag="bogus").condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
@@ -153,7 +153,7 @@ def test_discard_item_if_missing_key_purges_stale_caches(cached_env):
     etag_cache["ghost"] = "stale_etag"
     assert "ghost" not in main
 
-    wrapper.discard_item_if("ghost", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+    wrapper.discard_item_if("ghost", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert "ghost" not in data_cache
     assert "ghost" not in etag_cache
@@ -171,7 +171,7 @@ def test_discard_item_if_failed_condition_purges_caches_for_gone_key(cached_env)
     assert "k" in data_cache
     assert "k" in etag_cache
 
-    res = wrapper.discard_item_if("k", ETAG_IS_THE_SAME, etag)
+    res = wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     # Key is gone, so actual_etag is ITEM_NOT_AVAILABLE != etag → not satisfied
     assert not res.condition_was_satisfied
@@ -185,7 +185,7 @@ def test_get_item_if_etag_equal_refreshes_caches(cached_env):
     main["k"] = "v1"
     etag = main.etag("k")
 
-    result = wrapper.get_item_if("k", ETAG_IS_THE_SAME, etag)
+    result = wrapper.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
     assert result.condition_was_satisfied
     assert result.new_value == "v1"
     assert result.resulting_etag == etag

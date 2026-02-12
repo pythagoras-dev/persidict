@@ -5,14 +5,14 @@ from moto import mock_aws
 
 from persidict import PersiDict
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_subdicts_returns_dict_of_subdicts(tmpdir, DictToTest, kwargs):
     """Verify subdicts() returns a dict mapping first-level keys to subdicts."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("users", "alice")] = "user_alice"
     d[("users", "bob")] = "user_bob"
     d[("logs", "entry1")] = "log1"
@@ -28,7 +28,7 @@ def test_subdicts_returns_dict_of_subdicts(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_subdicts_empty_dict_returns_empty(tmpdir, DictToTest, kwargs):
     """Verify subdicts() returns empty dict for empty dictionary."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.subdicts()
 
@@ -39,7 +39,7 @@ def test_subdicts_empty_dict_returns_empty(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_subdicts_single_toplevel_key(tmpdir, DictToTest, kwargs):
     """Verify subdicts() with single top-level key returns one entry."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("only_prefix", "key1")] = "value1"
     d[("only_prefix", "key2")] = "value2"
 
@@ -54,7 +54,7 @@ def test_subdicts_single_toplevel_key(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_subdicts_multiple_toplevel_keys(tmpdir, DictToTest, kwargs):
     """Verify subdicts() correctly groups items by first key segment."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("a", "1")] = 10
     d[("a", "2")] = 20
     d[("b", "1")] = 30
@@ -74,7 +74,7 @@ def test_subdicts_multiple_toplevel_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_subdicts_values_are_functional(tmpdir, DictToTest, kwargs):
     """Verify subdicts can be used to read and write values."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("prefix", "existing")] = "original"
 
     subs = d.subdicts()

@@ -45,14 +45,14 @@ def make_write_once_dict(tmp_path):
 def make_append_only_dict_cached(tmp_path):
     main = FileDirDict(base_dir=str(tmp_path / "aodc_main"), append_only=True)
     cache = FileDirDict(base_dir=str(tmp_path / "aodc_cache"), append_only=True)
-    return AppendOnlyDictCached(main, cache)
+    return AppendOnlyDictCached(main_dict=main, data_cache=cache)
 
 
 def make_mutable_dict_cached(tmp_path):
     main = FileDirDict(base_dir=str(tmp_path / "mdc_main"))
     data_cache = FileDirDict(base_dir=str(tmp_path / "mdc_data"))
     etag_cache = FileDirDict(base_dir=str(tmp_path / "mdc_etag"), serialization_format="txt", base_class_for_values=str)
-    return MutableDictCached(main, data_cache, etag_cache)
+    return MutableDictCached(main_dict=main, data_cache=data_cache, etag_cache=etag_cache)
 
 
 def make_basic_s3_dict(tmp_path):
@@ -103,7 +103,7 @@ def test_overlapping_multi_dict_cannot_be_pickled(tmp_path):
     prevents pickling as it contains PersiDict instances.
     """
     instance = OverlappingMultiDict(
-        FileDirDict,
+        dict_type=FileDirDict,
         shared_subdicts_params=dict(base_dir=str(tmp_path / "omd")),
         pkl={},
         json={},
@@ -115,7 +115,7 @@ def test_overlapping_multi_dict_cannot_be_pickled(tmp_path):
 def test_overlapping_multi_dict_setstate_raises(tmp_path):
     """Verify that calling __setstate__ on OverlappingMultiDict raises TypeError."""
     instance = OverlappingMultiDict(
-        FileDirDict,
+        dict_type=FileDirDict,
         shared_subdicts_params=dict(base_dir=str(tmp_path / "omd")),
         pkl={},
     )

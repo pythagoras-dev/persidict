@@ -5,14 +5,14 @@ from moto import mock_aws
 
 from persidict.jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_setdefault_on_missing_key_stores_default(tmpdir, DictToTest, kwargs):
     """Verify setdefault stores and returns default when key is absent."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.setdefault("missing_key", "default_value")
 
@@ -25,7 +25,7 @@ def test_setdefault_on_missing_key_stores_default(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_setdefault_on_existing_key_returns_current(tmpdir, DictToTest, kwargs):
     """Verify setdefault returns existing value without modifying it."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["existing_key"] = "original_value"
 
     result = d.setdefault("existing_key", "ignored_default")
@@ -39,7 +39,7 @@ def test_setdefault_on_existing_key_returns_current(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_setdefault_with_none_default(tmpdir, DictToTest, kwargs):
     """Verify setdefault works correctly with None as default value."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.setdefault("key1", None)
 
@@ -51,7 +51,7 @@ def test_setdefault_with_none_default(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_setdefault_rejects_keep_current_joker(tmpdir, DictToTest, kwargs):
     """Verify setdefault raises TypeError when default is KEEP_CURRENT."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     with pytest.raises(TypeError):
         d.setdefault("key1", KEEP_CURRENT)
@@ -61,7 +61,7 @@ def test_setdefault_rejects_keep_current_joker(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_setdefault_rejects_delete_current_joker(tmpdir, DictToTest, kwargs):
     """Verify setdefault raises TypeError when default is DELETE_CURRENT."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     with pytest.raises(TypeError):
         d.setdefault("key1", DELETE_CURRENT)
@@ -71,7 +71,7 @@ def test_setdefault_rejects_delete_current_joker(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_setdefault_with_complex_keys(tmpdir, DictToTest, kwargs):
     """Verify setdefault works with tuple keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.setdefault(("prefix", "subkey"), {"nested": "data"})
 
@@ -83,7 +83,7 @@ def test_setdefault_with_complex_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_setdefault_with_default_omitted(tmpdir, DictToTest, kwargs):
     """Verify setdefault uses None when default is omitted."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.setdefault("key1")
 
@@ -98,7 +98,7 @@ def test_setdefault_does_not_mutate_stored_value(tmpdir, DictToTest, kwargs):
     if kwargs.get("serialization_format") != "json":
         pytest.skip("Mutation test only relevant for json serialization")
 
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     original = {"x": 1}
 
     returned = d.setdefault("key1", original)

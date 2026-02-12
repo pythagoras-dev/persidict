@@ -8,7 +8,7 @@ from persidict.jokers_and_status_flags import (
     ITEM_NOT_AVAILABLE, KEEP_CURRENT, DELETE_CURRENT, ETAG_HAS_CHANGED
 )
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 MIN_SLEEP = 0.02
 
@@ -17,7 +17,7 @@ MIN_SLEEP = 0.02
 @mock_aws
 def test_etag_returns_string(tmpdir, DictToTest, kwargs):
     """Verify etag() returns a string for existing keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value1"
 
     etag = d.etag("key1")
@@ -30,7 +30,7 @@ def test_etag_returns_string(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_etag_changes_on_update(tmpdir, DictToTest, kwargs):
     """Verify etag changes when value is updated."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value1"
     etag_before = d.etag("key1")
 
@@ -46,7 +46,7 @@ def test_etag_changes_on_update(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_etag_stable_without_update(tmpdir, DictToTest, kwargs):
     """Verify etag remains stable when value is not modified."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value1"
 
     etag1 = d.etag("key1")
@@ -59,7 +59,7 @@ def test_etag_stable_without_update(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
     """Verify etag() raises an error for nonexistent keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     # Different backends may raise different errors (KeyError, FileNotFoundError)
     with pytest.raises((KeyError, FileNotFoundError)):
@@ -70,14 +70,14 @@ def test_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs):
     """Verify get_item_if_etag returns (value, new_etag) when etag differs."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value1"
     old_etag = d.etag("key1")
 
     time.sleep(MIN_SLEEP)
     d["key1"] = "value2"
 
-    result = d.get_item_if("key1", ETAG_HAS_CHANGED, old_etag)
+    result = d.get_item_if("key1", condition=ETAG_HAS_CHANGED, expected_etag=old_etag)
 
     assert result.condition_was_satisfied
     value = result.new_value
@@ -90,11 +90,11 @@ def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs)
 @mock_aws
 def test_get_item_if_etag_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs):
     """Verify get_item_if_etag returns COND_NOT_MET_PH when etag matches."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value1"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if("key1", ETAG_HAS_CHANGED, current_etag)
+    result = d.get_item_if("key1", condition=ETAG_HAS_CHANGED, expected_etag=current_etag)
 
     assert not result.condition_was_satisfied
 
@@ -103,9 +103,9 @@ def test_get_item_if_etag_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs
 @mock_aws
 def test_get_item_if_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
     """Verify get_item_if returns result with ITEM_NOT_AVAILABLE for nonexistent keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.get_item_if("nonexistent", ETAG_HAS_CHANGED, "some_etag")
+    result = d.get_item_if("nonexistent", condition=ETAG_HAS_CHANGED, expected_etag="some_etag")
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
@@ -113,7 +113,7 @@ def test_get_item_if_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_set_item_get_etag_returns_new_etag(tmpdir, DictToTest, kwargs):
     """Verify set_item_get_etag stores value and returns an etag string."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     d["key1"] = "value1"
     etag = d.etag("key1")
@@ -127,7 +127,7 @@ def test_set_item_get_etag_returns_new_etag(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_set_item_get_etag_with_keep_current(tmpdir, DictToTest, kwargs):
     """Verify set_item_get_etag with KEEP_CURRENT returns None and keeps value."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "original"
     original_etag = d.etag("key1")
 
@@ -141,7 +141,7 @@ def test_set_item_get_etag_with_keep_current(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_set_item_get_etag_with_delete_current(tmpdir, DictToTest, kwargs):
     """Verify set_item_get_etag with DELETE_CURRENT returns None and deletes key."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value1"
 
     d["key1"] = DELETE_CURRENT
@@ -153,7 +153,7 @@ def test_set_item_get_etag_with_delete_current(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_etag_with_complex_keys(tmpdir, DictToTest, kwargs):
     """Verify etag works with tuple keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     key = ("prefix", "subkey", "leaf")
     d[key] = "value"
 

@@ -93,7 +93,7 @@ def cached_env():
     main = FakeETagMain()
     data_cache = LocalDict()
     etag_cache = LocalDict(serialization_format="json")  # store etags as str
-    wrapper = MutableDictCached(main, data_cache, etag_cache)
+    wrapper = MutableDictCached(main_dict=main, data_cache=data_cache, etag_cache=etag_cache)
     return main, data_cache, etag_cache, wrapper
 
 
@@ -102,14 +102,14 @@ def test_constructor_validations():
     good_cache = LocalDict()
     # immutable caches are not allowed
     with pytest.raises(ValueError):
-        MutableDictCached(main, LocalDict(append_only=True), good_cache)
+        MutableDictCached(main_dict=main, data_cache=LocalDict(append_only=True), etag_cache=good_cache)
     with pytest.raises(ValueError):
-        MutableDictCached(main, good_cache, LocalDict(append_only=True))
+        MutableDictCached(main_dict=main, data_cache=good_cache, etag_cache=LocalDict(append_only=True))
     # all must be PersiDict
     with pytest.raises(TypeError):
-        MutableDictCached(main, {}, good_cache)  # type: ignore[arg-type]
+        MutableDictCached(main_dict=main, data_cache={}, etag_cache=good_cache)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        MutableDictCached(main, good_cache, {})  # type: ignore[arg-type]
+        MutableDictCached(main_dict=main, data_cache=good_cache, etag_cache={})  # type: ignore[arg-type]
 
 
 def test_setitem_and_caches_updated(cached_env):
@@ -146,13 +146,13 @@ def test_get_item_if_etag_different_semantics(cached_env):
     wrapper["key"] = {"a": 1}
     etag1 = wrapper.etag("key")
     # Ask with current etag: must return sentinel and not modify caches
-    res = wrapper.get_item_if("key", ETAG_HAS_CHANGED, etag1)
+    res = wrapper.get_item_if("key", condition=ETAG_HAS_CHANGED, expected_etag=etag1)
     assert not res.condition_was_satisfied
     # Update value -> new etag; call with old etag should return new value and update caches
     wrapper["key"] = {"a": 2}
     etag2 = wrapper.etag("key")
     assert etag2 != etag1
-    res2 = wrapper.get_item_if("key", ETAG_HAS_CHANGED, etag1)
+    res2 = wrapper.get_item_if("key", condition=ETAG_HAS_CHANGED, expected_etag=etag1)
     assert res2.condition_was_satisfied
     assert res2.new_value == {"a": 2}
     assert res2.resulting_etag == etag2
@@ -302,7 +302,7 @@ def test_constructor_main_type_validation():
     good_cache = LocalDict()
     # main must be a PersiDict too
     with pytest.raises(TypeError):
-        MutableDictCached({}, good_cache, good_cache)  # type: ignore[arg-type]
+        MutableDictCached(main_dict={}, data_cache=good_cache, etag_cache=good_cache)  # type: ignore[arg-type]
 
 
 def test_base_class_for_values_enforced_via_wrapper():
@@ -310,7 +310,7 @@ def test_base_class_for_values_enforced_via_wrapper():
     main = FakeETagMain(base_class_for_values=dict)
     data_cache = LocalDict()
     etag_cache = LocalDict(serialization_format="json")
-    wrapper = MutableDictCached(main, data_cache, etag_cache)
+    wrapper = MutableDictCached(main_dict=main, data_cache=data_cache, etag_cache=etag_cache)
 
     # Wrapper should mirror main's base_class_for_values
     assert wrapper.base_class_for_values is dict
@@ -353,7 +353,7 @@ def test_setdefault_if_insert_updates_caches(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     res = wrapper.setdefault_if(
-        ("sd",), "default_val", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+        ("sd",), default_value="default_val", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert res.condition_was_satisfied
     assert wrapper[("sd",)] == "default_val"
@@ -368,7 +368,7 @@ def test_setdefault_if_existing_key_preserves_caches(cached_env):
     etag = wrapper.etag(("sd2",))
 
     res = wrapper.setdefault_if(
-        ("sd2",), "ignored", ETAG_IS_THE_SAME, etag)
+        ("sd2",), default_value="ignored", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert res.condition_was_satisfied
     assert res.new_value == "original"
@@ -382,7 +382,7 @@ def test_setdefault_if_absent_condition_fails_no_cache_pollution(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     res = wrapper.setdefault_if(
-        ("sd3",), "val", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
+        ("sd3",), default_value="val", condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert not res.condition_was_satisfied
     assert ("sd3",) not in main

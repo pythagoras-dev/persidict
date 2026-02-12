@@ -4,13 +4,13 @@ import pytest
 import numpy as np
 import scipy.sparse
 
-from ..atomic_test_config import atomic_type_tests
+from ..atomic_test_config import atomic_type_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_scipy_csr_matrix(tmp_path, DictToTest):
     """Verify scipy csr_matrix values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = scipy.sparse.csr_matrix([[1, 2, 0], [0, 0, 3], [4, 0, 5]])
@@ -23,7 +23,7 @@ def test_scipy_csr_matrix(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_scipy_csc_matrix(tmp_path, DictToTest):
     """Verify scipy csc_matrix values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = scipy.sparse.csc_matrix([[1, 2, 0], [0, 0, 3], [4, 0, 5]])
@@ -36,7 +36,7 @@ def test_scipy_csc_matrix(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_scipy_coo_matrix(tmp_path, DictToTest):
     """Verify scipy coo_matrix values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = scipy.sparse.coo_matrix([[1, 2, 0], [0, 0, 3], [4, 0, 5]])

@@ -1,7 +1,7 @@
 import pytest
 from moto import mock_aws
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -17,7 +17,7 @@ def test_work_with_basic_datatypes(tmpdir, DictToTest, kwargs):
                     ,True
                     ,(1,2,3,4,5,(6,7,8,9,10,(11,12,13,14,15)))
                     ]
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     dict_to_test.clear()
     model_dict = dict()
     for i,d in enumerate(sample_data):

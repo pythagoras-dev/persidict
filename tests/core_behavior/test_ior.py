@@ -9,7 +9,7 @@ import pytest
 from moto import mock_aws
 
 from persidict import LocalDict
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 
@@ -17,7 +17,7 @@ from tests.data_for_mutable_tests import mutable_tests
 @mock_aws
 def test_ior_overwrites_existing(tmpdir, DictToTest, kwargs):
     """Test |= operator overwrites existing keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
     
     d[("key",)] = "old_value"
@@ -33,7 +33,7 @@ def test_ior_overwrites_existing(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_ior_with_another_persidict(tmpdir, DictToTest, kwargs):
     """Test |= operator with another PersiDict."""
-    d1 = DictToTest(base_dir=tmpdir, **kwargs)
+    d1 = make_test_dict(DictToTest, tmpdir, **kwargs)
     d1.clear()
     d1[("key1",)] = "val1"
     

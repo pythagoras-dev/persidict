@@ -7,7 +7,7 @@ from moto import mock_aws
 from persidict import PersiDict
 from persidict.safe_str_tuple import SafeStrTuple
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 MIN_SLEEP = 0.02
 
@@ -16,7 +16,7 @@ MIN_SLEEP = 0.02
 @mock_aws
 def test_get_subdict_returns_same_type(tmpdir, DictToTest, kwargs):
     """Verify get_subdict returns the same type as the parent dict."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("prefix", "key1")] = "value1"
 
     sub = d.get_subdict("prefix")
@@ -30,7 +30,7 @@ def test_get_subdict_returns_same_type(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_subdict_length_reflects_prefix_items(tmpdir, DictToTest, kwargs):
     """Verify len() on subdict only counts items with matching prefix."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("a", "1")] = 10
     d[("a", "2")] = 20
     d[("b", "1")] = 30
@@ -51,7 +51,7 @@ def test_get_subdict_length_reflects_prefix_items(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_subdict_write_propagates_to_parent(tmpdir, DictToTest, kwargs):
     """Verify writes through subdict are visible in parent."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("prefix", "existing")] = "original"
 
     sub = d.get_subdict("prefix")
@@ -65,7 +65,7 @@ def test_get_subdict_write_propagates_to_parent(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_subdict_parent_write_visible_in_subdict(tmpdir, DictToTest, kwargs):
     """Verify writes to parent are visible through subdict."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     sub = d.get_subdict("prefix")
 
     d[("prefix", "key1")] = "value1"
@@ -78,7 +78,7 @@ def test_get_subdict_parent_write_visible_in_subdict(tmpdir, DictToTest, kwargs)
 @mock_aws
 def test_get_subdict_delete_propagates_bidirectional(tmpdir, DictToTest, kwargs):
     """Verify deletions propagate both from subdict to parent and vice versa."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("prefix", "key1")] = "value1"
     d[("prefix", "key2")] = "value2"
     d[("prefix", "key3")] = "value3"
@@ -100,7 +100,7 @@ def test_get_subdict_delete_propagates_bidirectional(tmpdir, DictToTest, kwargs)
 @mock_aws
 def test_get_subdict_nested_prefixes(tmpdir, DictToTest, kwargs):
     """Verify multi-level prefix like get_subdict(('a', 'b')) works correctly."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("a", "b", "c")] = 1
     d[("a", "b", "d")] = 2
     d[("a", "x", "y")] = 3
@@ -117,7 +117,7 @@ def test_get_subdict_nested_prefixes(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_subdict_nonexistent_prefix_returns_empty(tmpdir, DictToTest, kwargs):
     """Verify get_subdict with nonexistent prefix returns empty dict, not error."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("existing", "key")] = "value"
 
     sub = d.get_subdict("nonexistent")
@@ -132,7 +132,7 @@ def test_get_subdict_nonexistent_prefix_returns_empty(tmpdir, DictToTest, kwargs
 @mock_aws
 def test_get_subdict_iteration_methods(tmpdir, DictToTest, kwargs):
     """Verify keys(), values(), items() work correctly on subdict."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("prefix", "a")] = 1
     d[("prefix", "b")] = 2
     d[("other", "c")] = 3
@@ -154,7 +154,7 @@ def test_get_subdict_iteration_methods(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_subdict_timestamp_behavior(tmpdir, DictToTest, kwargs):
     """Verify timestamps are accessible through subdict."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("prefix", "key1")] = "value1"
     # Use 1.1s sleep for backends with 1-second resolution (mocked S3)
     time.sleep(1.1)
@@ -174,7 +174,7 @@ def test_get_subdict_timestamp_behavior(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_subdict_with_complex_keys(tmpdir, DictToTest, kwargs):
     """Verify subdict works with complex multi-segment keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d[("root", "level1", "level2", "leaf")] = "deep_value"
 
     sub_root = d.get_subdict("root")

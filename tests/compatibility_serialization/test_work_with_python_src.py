@@ -3,7 +3,7 @@ import inspect
 import pytest
 from moto import mock_aws
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 def demo_function(a:int=0, b:str="", c:float=0.0, d:bool=False):
@@ -15,11 +15,9 @@ def demo_function(a:int=0, b:str="", c:float=0.0, d:bool=False):
 @mock_aws
 def test_work_with_python_src(tmpdir, DictToTest, kwargs):
     """Validate how dict_to_test works with Python source code."""
-    new_kwargs = dict(**kwargs)
-    new_kwargs |= dict(base_dir=tmpdir, serialization_format = "py"
-                       , base_class_for_values = str)
-
-    dict_to_test = DictToTest(**new_kwargs)
+    overridden = {**kwargs, "serialization_format": "py",
+                  "base_class_for_values": str}
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **overridden)
     dict_to_test.clear()
 
     src = inspect.getsource(demo_function)

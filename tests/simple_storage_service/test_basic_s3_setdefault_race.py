@@ -130,7 +130,7 @@ def test_setdefault_if_returns_item_not_available_on_concurrent_delete():
                       side_effect=_make_conditional_client_error()), \
          patch.object(type(d), "__getitem__", getitem_raises):
         result = d.setdefault_if(
-            "k", "default_val", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+            "k", default_value="default_val", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert result.actual_etag is ITEM_NOT_AVAILABLE
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
@@ -146,7 +146,7 @@ def test_setdefault_if_returns_existing_when_key_persists():
     d["k"] = "winner"
 
     result = d.setdefault_if(
-        "k", "default_val", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+        "k", default_value="default_val", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert result.new_value == "winner"

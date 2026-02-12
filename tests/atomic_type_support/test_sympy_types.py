@@ -3,13 +3,13 @@
 import pytest
 import sympy
 
-from ..atomic_test_config import atomic_type_tests
+from ..atomic_test_config import atomic_type_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_sympy_symbol(tmp_path, DictToTest):
     """Verify sympy Symbol values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = sympy.Symbol("x")
@@ -22,7 +22,7 @@ def test_sympy_symbol(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_sympy_integer(tmp_path, DictToTest):
     """Verify sympy Integer values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = sympy.Integer(42)
@@ -35,7 +35,7 @@ def test_sympy_integer(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_sympy_rational(tmp_path, DictToTest):
     """Verify sympy Rational values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = sympy.Rational(3, 7)
@@ -48,7 +48,7 @@ def test_sympy_rational(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_sympy_float(tmp_path, DictToTest):
     """Verify sympy Float values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = sympy.Float(3.14159)

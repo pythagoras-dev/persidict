@@ -2,13 +2,13 @@
 
 import pytest
 
-from ..atomic_test_config import atomic_type_tests
+from ..atomic_test_config import atomic_type_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_str_type(tmp_path, DictToTest):
     """Verify string values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["key"] = "hello world"
@@ -20,7 +20,7 @@ def test_str_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_bytes_type(tmp_path, DictToTest):
     """Verify bytes values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["key"] = b"binary data"
@@ -32,7 +32,7 @@ def test_bytes_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_bytearray_type(tmp_path, DictToTest):
     """Verify bytearray values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = bytearray(b"mutable bytes")
@@ -46,7 +46,7 @@ def test_bytearray_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_int_type(tmp_path, DictToTest):
     """Verify integer values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["positive"] = 42
@@ -65,7 +65,7 @@ def test_int_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_float_type(tmp_path, DictToTest):
     """Verify float values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["pi"] = 3.14159
@@ -82,7 +82,7 @@ def test_float_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_complex_type(tmp_path, DictToTest):
     """Verify complex number values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["key"] = complex(3, 4)
@@ -94,7 +94,7 @@ def test_complex_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_bool_type(tmp_path, DictToTest):
     """Verify boolean values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["true"] = True
@@ -109,7 +109,7 @@ def test_bool_type(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_none_type(tmp_path, DictToTest):
     """Verify None values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     d["key"] = None

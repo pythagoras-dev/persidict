@@ -3,13 +3,13 @@
 import pytest
 import networkx as nx
 
-from ..atomic_test_config import atomic_type_tests
+from ..atomic_test_config import atomic_type_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_networkx_graph(tmp_path, DictToTest):
     """Verify networkx Graph values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = nx.Graph()
@@ -25,7 +25,7 @@ def test_networkx_graph(tmp_path, DictToTest):
 @pytest.mark.parametrize("DictToTest", atomic_type_tests)
 def test_networkx_digraph(tmp_path, DictToTest):
     """Verify networkx DiGraph values can be stored and retrieved."""
-    d = DictToTest(base_dir=tmp_path)
+    d = make_test_dict(DictToTest, tmp_path)
     d.clear()
 
     original = nx.DiGraph()

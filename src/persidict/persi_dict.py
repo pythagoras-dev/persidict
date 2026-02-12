@@ -97,10 +97,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     serialization_format:str
 
     def __init__(self,
+                 *,
                  append_only: bool = False,
                  base_class_for_values: type|None = None,
-                 serialization_format: str = "pkl",
-                 *args, **kwargs):
+                 serialization_format: str = "pkl"):
         """Initialize base parameters shared by all persistent dictionaries.
 
         Args:
@@ -111,10 +111,6 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 Defaults to None.
             serialization_format: File extension/format for stored values.
                 Defaults to "pkl".
-            *args: Additional positional arguments (ignored in base class, reserved
-                for subclasses).
-            **kwargs: Additional keyword arguments (ignored in base class, reserved
-                for subclasses).
 
         Raises:
             ValueError: If serialization_format is an empty string,
@@ -385,14 +381,15 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             ConditionalOperationResult with the value in new_value and
             the ETag in actual_etag (and resulting_etag).
         """
-        return self.get_item_if(key, ANY_ETAG, ITEM_NOT_AVAILABLE)
+        return self.get_item_if(
+            key, condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE)
 
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Retrieve the value for a key only if an ETag condition is satisfied.
@@ -453,10 +450,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
@@ -518,10 +515,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def setdefault_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default_value if key is absent; conditioned on ETag check.
@@ -577,6 +574,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
@@ -617,8 +615,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def transform_item(
             self,
             key: NonEmptyPersiDictKey,
-            transformer: TransformingFunction,
             *,
+            transformer: TransformingFunction,
             n_retries: int | None = 6
     ) -> OperationResult:
         """Apply a transformation function to a key's value.
@@ -663,8 +661,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         while True:
             read_res = self.get_item_if(
                 key,
-                ANY_ETAG,
-                ITEM_NOT_AVAILABLE,
+                condition=ANY_ETAG,
+                expected_etag=ITEM_NOT_AVAILABLE,
                 retrieve_value=ALWAYS_RETRIEVE)
             current_value = read_res.new_value
             actual_etag = read_res.actual_etag
@@ -678,7 +676,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
             if new_value is DELETE_CURRENT:
                 delete_res = self.discard_item_if(
-                    key, ETAG_IS_THE_SAME, actual_etag)
+                    key,
+                    condition=ETAG_IS_THE_SAME,
+                    expected_etag=actual_etag)
                 if delete_res.condition_was_satisfied:
                     return OperationResult(
                         resulting_etag=ITEM_NOT_AVAILABLE,
@@ -686,9 +686,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             else:
                 write_res = self.set_item_if(
                     key,
-                    new_value,
-                    ETAG_IS_THE_SAME,
-                    actual_etag,
+                    value=new_value,
+                    condition=ETAG_IS_THE_SAME,
+                    expected_etag=actual_etag,
                     retrieve_value=NEVER_RETRIEVE)
                 if write_res.condition_was_satisfied:
                     return OperationResult(
@@ -1367,7 +1367,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return ETagValue(f"{self.timestamp(key):.6f}")
 
 
-    def _sorted_keys(self, max_n: int | None, *, newest_first: bool
+    def _sorted_keys(self, *, max_n: int | None, newest_first: bool
                       ) -> list[NonEmptySafeStrTuple]:
         """Return keys sorted by timestamp.
 
@@ -1389,7 +1389,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return [key for key, _ in heap_fn(
             max_n, self.keys_and_timestamps(), key=lambda x: x[1])]
 
-    def oldest_keys(self, max_n: int | None = None
+    def oldest_keys(self, *, max_n: int | None = None
                     ) -> list[NonEmptySafeStrTuple]:
         """Return up to max_n oldest keys in the dictionary.
 
@@ -1403,9 +1403,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             The oldest keys, oldest first.
         """
-        return self._sorted_keys(max_n, newest_first=False)
+        return self._sorted_keys(max_n=max_n, newest_first=False)
 
-    def newest_keys(self, max_n: int | None = None
+    def newest_keys(self, *, max_n: int | None = None
                     ) -> list[NonEmptySafeStrTuple]:
         """Return up to max_n newest keys in the dictionary.
 
@@ -1419,9 +1419,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             The newest keys, newest first.
         """
-        return self._sorted_keys(max_n, newest_first=True)
+        return self._sorted_keys(max_n=max_n, newest_first=True)
 
-    def oldest_values(self, max_n: int | None = None) -> list[ValueType]:
+    def oldest_values(self, *, max_n: int | None = None) -> list[ValueType]:
         """Return up to max_n oldest values in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -1434,9 +1434,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             Values corresponding to the oldest keys.
         """
-        return [self[k] for k in self.oldest_keys(max_n)]
+        return [self[k] for k in self.oldest_keys(max_n=max_n)]
 
-    def newest_values(self, max_n: int | None = None) -> list[ValueType]:
+    def newest_values(self, *, max_n: int | None = None) -> list[ValueType]:
         """Return up to max_n newest values in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -1449,4 +1449,4 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             Values corresponding to the newest keys.
         """
-        return [self[k] for k in self.newest_keys(max_n)]
+        return [self[k] for k in self.newest_keys(max_n=max_n)]

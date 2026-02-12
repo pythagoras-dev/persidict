@@ -5,8 +5,8 @@ from persidict import FileDirDict, KEEP_CURRENT, WriteOnceDict
 import pytest
 
 def test_first_entry_dict_no_checks(tmpdir):
-    d = FileDirDict(tmpdir, append_only=True)
-    fed = WriteOnceDict(d, p_consistency_checks=None)
+    d = FileDirDict(base_dir=tmpdir, append_only=True)
+    fed = WriteOnceDict(wrapped_dict=d, p_consistency_checks=None)
     for i in range(1,100):
         key = "a_"+str(i)
         value = i*i
@@ -19,8 +19,8 @@ def test_first_entry_dict_no_checks(tmpdir):
         assert len(fed) == i
 
 def test_first_entry_dict_pchecks_zero(tmpdir):
-    d = FileDirDict(tmpdir, append_only=True)
-    fed = WriteOnceDict(d, p_consistency_checks=0)
+    d = FileDirDict(base_dir=tmpdir, append_only=True)
+    fed = WriteOnceDict(wrapped_dict=d, p_consistency_checks=0)
     for i in range(1,100):
         key = "a_"+str(i)
         value = i*i
@@ -33,8 +33,8 @@ def test_first_entry_dict_pchecks_zero(tmpdir):
         assert len(fed) == i
 
 def test_first_entry_dict_pchecks_one(tmpdir):
-    d = FileDirDict(tmpdir, append_only=True)
-    fed = WriteOnceDict(d, p_consistency_checks=1)
+    d = FileDirDict(base_dir=tmpdir, append_only=True)
+    fed = WriteOnceDict(wrapped_dict=d, p_consistency_checks=1)
     for i in range(1,100):
         key = "a_"+str(i)
         value = i*i*i
@@ -52,21 +52,21 @@ def test_first_entry_dict_pchecks_one(tmpdir):
 
 def test_firs_entry_dict_wrong_init_params(tmpdir):
     with pytest.raises(Exception):
-        _ = WriteOnceDict({}, p_consistency_checks=None)
+        _ = WriteOnceDict(wrapped_dict={}, p_consistency_checks=None)
 
     with pytest.raises(Exception):
         _ = WriteOnceDict(
-            FileDirDict(tmpdir, append_only=True)
+            wrapped_dict=FileDirDict(base_dir=tmpdir, append_only=True)
             , p_consistency_checks=1.2)
 
     with pytest.raises(Exception):
         _ = WriteOnceDict(
-            FileDirDict(tmpdir, append_only=True)
+            wrapped_dict=FileDirDict(base_dir=tmpdir, append_only=True)
             , p_consistency_checks=-0.1)
 
     with pytest.raises(Exception):
         _ = WriteOnceDict(
-            FileDirDict(tmpdir, append_only=False))
+            wrapped_dict=FileDirDict(base_dir=tmpdir, append_only=False))
 
 
 def test_write_once_dict_default_wrapped_dict_uses_append_only(tmp_path, monkeypatch):
@@ -87,7 +87,7 @@ def test_write_once_dict_default_wrapped_dict_uses_append_only(tmp_path, monkeyp
 
 def test_write_once_dict_keep_current_keeps_probability(tmp_path):
     d = WriteOnceDict(
-        FileDirDict(tmp_path, append_only=True),
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
         p_consistency_checks=0.25,
     )
     d.p_consistency_checks = KEEP_CURRENT
@@ -97,7 +97,7 @@ def test_write_once_dict_keep_current_keeps_probability(tmp_path):
 
 def test_write_once_dict_consistency_counters_increment(tmp_path):
     d = WriteOnceDict(
-        FileDirDict(tmp_path, append_only=True),
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
         p_consistency_checks=1,
     )
     d["k"] = {"a": 1}
@@ -110,7 +110,7 @@ def test_write_once_dict_consistency_counters_increment(tmp_path):
 
 def test_write_once_dict_delete_raises_type_error(tmp_path):
     d = WriteOnceDict(
-        FileDirDict(tmp_path, append_only=True),
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
         p_consistency_checks=0,
     )
     d["k"] = "value"
@@ -121,7 +121,7 @@ def test_write_once_dict_delete_raises_type_error(tmp_path):
 
 def test_write_once_dict_get_subdict_preserves_settings(tmp_path):
     d = WriteOnceDict(
-        FileDirDict(tmp_path, append_only=True),
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
         p_consistency_checks=0.5,
     )
     d[("parent", "child")] = "value"

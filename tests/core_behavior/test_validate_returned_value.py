@@ -47,7 +47,7 @@ def test_localdict_get_item_if_rejects_mismatched_type():
     )
 
     with pytest.raises(TypeError, match="int"):
-        constrained.get_item_if("k", ETAG_IS_THE_SAME, etag)
+        constrained.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
 
 def test_localdict_getitem_accepts_matching_type():
@@ -110,7 +110,7 @@ def test_filedirdict_get_item_if_rejects_mismatched_type(tmp_path):
     )
 
     with pytest.raises(TypeError, match="int"):
-        constrained.get_item_if("k", ETAG_IS_THE_SAME, etag)
+        constrained.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
 
 def test_filedirdict_getitem_accepts_matching_type(tmp_path):

@@ -10,7 +10,7 @@ from moto import mock_aws
 
 from persidict.jokers_and_status_flags import ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 MIN_SLEEP = 0.02
 
@@ -19,11 +19,11 @@ MIN_SLEEP = 0.02
 @mock_aws
 def test_discard_item_if_etag_equal_returns_true_when_deleted(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if condition is satisfied when key is deleted."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)
+    result = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert result.condition_was_satisfied
     assert "key1" not in d
@@ -33,14 +33,14 @@ def test_discard_item_if_etag_equal_returns_true_when_deleted(tmpdir, DictToTest
 @mock_aws
 def test_discard_item_if_etag_equal_returns_false_when_etag_differs(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if condition is not satisfied when etag mismatches."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "original"
     old_etag = d.etag("key1")
 
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, old_etag)
+    result = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=old_etag)
 
     assert not result.condition_was_satisfied
     assert "key1" in d
@@ -51,9 +51,9 @@ def test_discard_item_if_etag_equal_returns_false_when_etag_differs(tmpdir, Dict
 @mock_aws
 def test_discard_item_if_etag_equal_returns_false_for_missing_key(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if condition is not satisfied for missing keys (no exception)."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, "some_etag")
+    result = d.discard_item_if("nonexistent", condition=ETAG_IS_THE_SAME, expected_etag="some_etag")
 
     assert not result.condition_was_satisfied
 
@@ -62,10 +62,10 @@ def test_discard_item_if_etag_equal_returns_false_for_missing_key(tmpdir, DictTo
 @mock_aws
 def test_discard_item_if_etag_equal_with_unknown_etag(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if condition is not satisfied with ITEM_NOT_AVAILABLE for existing key."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+    result = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert "key1" in d
@@ -75,14 +75,14 @@ def test_discard_item_if_etag_equal_with_unknown_etag(tmpdir, DictToTest, kwargs
 @mock_aws
 def test_discard_item_if_etag_different_returns_true_when_deleted(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if condition is satisfied when key is deleted."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "original"
     old_etag = d.etag("key1")
 
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.discard_item_if("key1", ETAG_HAS_CHANGED, old_etag)
+    result = d.discard_item_if("key1", condition=ETAG_HAS_CHANGED, expected_etag=old_etag)
 
     assert result.condition_was_satisfied
     assert "key1" not in d
@@ -92,11 +92,11 @@ def test_discard_item_if_etag_different_returns_true_when_deleted(tmpdir, DictTo
 @mock_aws
 def test_discard_item_if_etag_different_returns_false_when_etag_matches(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if condition is not satisfied when etag matches."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result = d.discard_item_if("key1", ETAG_HAS_CHANGED, current_etag)
+    result = d.discard_item_if("key1", condition=ETAG_HAS_CHANGED, expected_etag=current_etag)
 
     assert not result.condition_was_satisfied
     assert "key1" in d
@@ -107,9 +107,9 @@ def test_discard_item_if_etag_different_returns_false_when_etag_matches(tmpdir, 
 @mock_aws
 def test_discard_item_if_etag_different_for_missing_key(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if on missing key: 'some_etag' != ITEM_NOT_AVAILABLE => satisfied."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.discard_item_if("nonexistent", ETAG_HAS_CHANGED, "some_etag")
+    result = d.discard_item_if("nonexistent", condition=ETAG_HAS_CHANGED, expected_etag="some_etag")
 
     # "some_etag" != ITEM_NOT_AVAILABLE, so ETAG_HAS_CHANGED is satisfied
     assert result.condition_was_satisfied
@@ -120,11 +120,11 @@ def test_discard_item_if_etag_different_for_missing_key(tmpdir, DictToTest, kwar
 @mock_aws
 def test_discard_item_if_etag_different_with_unknown_etag(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if ETAG_HAS_CHANGED behavior with ITEM_NOT_AVAILABLE."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
 
     # ITEM_NOT_AVAILABLE differs from actual etag, so discard should succeed
-    result = d.discard_item_if("key1", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
+    result = d.discard_item_if("key1", condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert result.condition_was_satisfied
     assert "key1" not in d
@@ -134,12 +134,12 @@ def test_discard_item_if_etag_different_with_unknown_etag(tmpdir, DictToTest, kw
 @mock_aws
 def test_discard_item_if_etag_equal_with_tuple_keys(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if_etag works with hierarchical tuple keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     key = ("prefix", "subkey", "leaf")
     d[key] = "value"
     etag = d.etag(key)
 
-    result = d.discard_item_if(key, ETAG_IS_THE_SAME, etag)
+    result = d.discard_item_if(key, condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert result.condition_was_satisfied
     assert key not in d
@@ -149,7 +149,7 @@ def test_discard_item_if_etag_equal_with_tuple_keys(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_discard_item_if_etag_different_with_tuple_keys(tmpdir, DictToTest, kwargs):
     """Verify discard_item_if_etag works with hierarchical tuple keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     key = ("prefix", "subkey", "leaf")
     d[key] = "original"
     old_etag = d.etag(key)
@@ -157,7 +157,7 @@ def test_discard_item_if_etag_different_with_tuple_keys(tmpdir, DictToTest, kwar
     time.sleep(1.1)
     d[key] = "modified"
 
-    result = d.discard_item_if(key, ETAG_HAS_CHANGED, old_etag)
+    result = d.discard_item_if(key, condition=ETAG_HAS_CHANGED, expected_etag=old_etag)
 
     assert result.condition_was_satisfied
     assert key not in d
@@ -167,11 +167,11 @@ def test_discard_item_if_etag_different_with_tuple_keys(tmpdir, DictToTest, kwar
 @mock_aws
 def test_discard_return_type_is_bool(tmpdir, DictToTest, kwargs):
     """Verify discard methods always return ConditionalOperationResult."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result_success = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)
+    result_success = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
     assert result_success.condition_was_satisfied
 
     d["key2"] = "value"
@@ -179,10 +179,10 @@ def test_discard_return_type_is_bool(tmpdir, DictToTest, kwargs):
     time.sleep(1.1)
     d["key2"] = "modified"
 
-    result_changed = d.discard_item_if("key2", ETAG_IS_THE_SAME, old_etag)
+    result_changed = d.discard_item_if("key2", condition=ETAG_IS_THE_SAME, expected_etag=old_etag)
     assert not result_changed.condition_was_satisfied
 
-    result_missing = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, "etag")
+    result_missing = d.discard_item_if("nonexistent", condition=ETAG_IS_THE_SAME, expected_etag="etag")
     assert not result_missing.condition_was_satisfied
 
 
@@ -190,11 +190,11 @@ def test_discard_return_type_is_bool(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_discard_item_if_etag_equal_idempotent_for_missing(tmpdir, DictToTest, kwargs):
     """Verify discard on missing key with various expected etags."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result1 = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, "etag1")
-    result2 = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, "etag2")
-    result3 = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+    result1 = d.discard_item_if("nonexistent", condition=ETAG_IS_THE_SAME, expected_etag="etag1")
+    result2 = d.discard_item_if("nonexistent", condition=ETAG_IS_THE_SAME, expected_etag="etag2")
+    result3 = d.discard_item_if("nonexistent", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     # "etag1" != ITEM_NOT_AVAILABLE -> not satisfied
     assert not result1.condition_was_satisfied

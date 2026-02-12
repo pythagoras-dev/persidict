@@ -9,6 +9,7 @@ import pytest
 from moto import mock_aws
 
 from persidict import BasicS3Dict, FileDirDict, LocalDict, S3Dict_FileDirCached
+from tests.data_for_mutable_tests import make_test_dict
 from persidict.jokers_and_status_flags import (
     ANY_ETAG,
     ETAG_HAS_CHANGED,
@@ -31,7 +32,7 @@ append_only_tests = [
 @mock_aws
 def test_delitem_raises_type_error(tmpdir, DictToTest, kwargs):
     """__delitem__ on an append-only dict raises TypeError."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v"
     with pytest.raises(TypeError):
         del d["k"]
@@ -42,7 +43,7 @@ def test_delitem_raises_type_error(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_clear_raises_type_error(tmpdir, DictToTest, kwargs):
     """clear() on an append-only dict raises TypeError."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v"
     with pytest.raises(TypeError):
         d.clear()
@@ -53,7 +54,7 @@ def test_clear_raises_type_error(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_discard_raises_type_error(tmpdir, DictToTest, kwargs):
     """discard() on an append-only dict raises TypeError."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v"
     with pytest.raises(TypeError):
         d.discard("k")
@@ -66,7 +67,7 @@ def test_discard_raises_type_error(tmpdir, DictToTest, kwargs):
 def test_discard_item_if_raises_type_error(tmpdir, DictToTest, kwargs, condition):
     """discard_item_if() on an append-only dict raises TypeError
     when the condition would be satisfied."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v"
     etag = d.etag("k")
 
@@ -77,5 +78,5 @@ def test_discard_item_if_raises_type_error(tmpdir, DictToTest, kwargs, condition
     }
 
     with pytest.raises(TypeError):
-        d.discard_item_if("k", condition, expected_etag_map[condition])
+        d.discard_item_if("k", condition=condition, expected_etag=expected_etag_map[condition])
     assert "k" in d

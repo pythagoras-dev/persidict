@@ -1,13 +1,13 @@
 import pytest
 from moto import mock_aws
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_basics(tmpdir, DictToTest, kwargs):
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     dict_to_test.clear()
     model_dict = dict()
     assert len(dict_to_test) == len(model_dict) == 0

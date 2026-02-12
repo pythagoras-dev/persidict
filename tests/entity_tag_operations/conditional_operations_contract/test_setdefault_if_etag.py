@@ -12,7 +12,7 @@ from persidict.jokers_and_status_flags import (
     ItemNotAvailableFlag,
 )
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
@@ -20,9 +20,9 @@ from tests.data_for_mutable_tests import mutable_tests
 def test_setdefault_if_inserts_when_absent_and_condition_satisfied(
         tmpdir, DictToTest, kwargs):
     """Verify setdefault_if inserts when key is missing and condition passes."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.setdefault_if("key1", "value", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+    result = d.setdefault_if("key1", default_value="value", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert result.condition_was_satisfied
     assert result.actual_etag is ITEM_NOT_AVAILABLE
@@ -35,11 +35,11 @@ def test_setdefault_if_inserts_when_absent_and_condition_satisfied(
 def test_setdefault_if_noop_when_key_exists_even_if_condition_satisfied(
         tmpdir, DictToTest, kwargs):
     """Verify setdefault_if does not overwrite existing keys."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "original"
     etag = d.etag("key1")
 
-    result = d.setdefault_if("key1", "new_value", ETAG_IS_THE_SAME, etag)
+    result = d.setdefault_if("key1", default_value="new_value", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert result.condition_was_satisfied
     assert result.resulting_etag == etag
@@ -51,9 +51,9 @@ def test_setdefault_if_noop_when_key_exists_even_if_condition_satisfied(
 def test_setdefault_if_missing_key_condition_not_satisfied(
         tmpdir, DictToTest, kwargs):
     """Verify setdefault_if does not insert when condition fails."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    result = d.setdefault_if("key1", "value", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
+    result = d.setdefault_if("key1", default_value="value", condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
@@ -66,9 +66,9 @@ def test_setdefault_if_missing_key_condition_not_satisfied(
 @mock_aws
 def test_setdefault_if_rejects_jokers(tmpdir, DictToTest, kwargs, joker):
     """Verify setdefault_if rejects joker values."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     with pytest.raises(TypeError):
-        d.setdefault_if("key1", joker, ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+        d.setdefault_if("key1", default_value=joker, condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert "key1" not in d

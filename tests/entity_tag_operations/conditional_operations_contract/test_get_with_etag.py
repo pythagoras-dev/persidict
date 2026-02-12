@@ -9,14 +9,14 @@ from persidict.jokers_and_status_flags import (
     ConditionalOperationResult,
 )
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_get_with_etag_returns_value_and_etag(tmpdir, DictToTest, kwargs):
     """Value and ETag are returned for an existing key."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "hello"
     expected_etag = d.etag("key1")
 
@@ -32,7 +32,7 @@ def test_get_with_etag_returns_value_and_etag(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_with_etag_missing_key(tmpdir, DictToTest, kwargs):
     """Missing key yields ITEM_NOT_AVAILABLE in all relevant fields."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.get_with_etag("nonexistent")
 
@@ -45,7 +45,7 @@ def test_get_with_etag_missing_key(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_with_etag_condition_fields(tmpdir, DictToTest, kwargs):
     """Condition metadata reflects an unconditional read."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = 42
 
     result = d.get_with_etag("k")
@@ -58,7 +58,7 @@ def test_get_with_etag_condition_fields(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_with_etag_reflects_latest_value(tmpdir, DictToTest, kwargs):
     """After an update, get_with_etag returns the new value and a new ETag."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v1"
     r1 = d.get_with_etag("k")
 
@@ -74,11 +74,11 @@ def test_get_with_etag_reflects_latest_value(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_with_etag_etag_usable_for_cas(tmpdir, DictToTest, kwargs):
     """The ETag from get_with_etag can drive a successful set_item_if."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["counter"] = 10
 
     r = d.get_with_etag("counter")
-    write = d.set_item_if("counter", r.new_value + 1, ETAG_IS_THE_SAME, r.actual_etag)
+    write = d.set_item_if("counter", value=r.new_value + 1, condition=ETAG_IS_THE_SAME, expected_etag=r.actual_etag)
 
     assert write.condition_was_satisfied
     assert d["counter"] == 11
@@ -88,7 +88,7 @@ def test_get_with_etag_etag_usable_for_cas(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_with_etag_tuple_key(tmpdir, DictToTest, kwargs):
     """Hierarchical tuple keys work correctly."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     key = ("section", "subsection", "leaf")
     d[key] = {"nested": True}
 
@@ -102,7 +102,7 @@ def test_get_with_etag_tuple_key(tmpdir, DictToTest, kwargs):
 @mock_aws
 def test_get_with_etag_complex_value(tmpdir, DictToTest, kwargs):
     """Complex values are correctly deserialized."""
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     value = {"list": [1, 2, 3], "nested": {"a": True, "b": None}}
     d["k"] = value
 

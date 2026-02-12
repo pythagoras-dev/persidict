@@ -38,15 +38,15 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     - Optimized append-only performance when append_only=True
     """
     
-    def __init__(self, bucket_name: str = "my_bucket",
+    def __init__(self, *,
+                 bucket_name: str = "my_bucket",
                  region: str = None,
                  root_prefix: str = "",
                  base_dir: str = S3DICT_NEW_DEFAULT_BASE_DIR,
                  serialization_format: str = "pkl",
                  digest_len: int = 8,
                  append_only: bool = False,
-                 base_class_for_values: Optional[type] = None,
-                 *args, **kwargs):
+                 base_class_for_values: Optional[type] = None):
         """Initialize an S3-backed persistent dictionary with local caching.
 
         Args:
@@ -58,8 +58,6 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             digest_len: Number of base32 MD5 hash characters for collision prevention.
             append_only: If True, prevents modification/deletion of existing items.
             base_class_for_values: Optional base class that all stored values must inherit from.
-            *args: Additional positional arguments.
-            **kwargs: Additional keyword arguments.
         """
         super().__init__(append_only=append_only,
                          base_class_for_values=base_class_for_values,
@@ -238,62 +236,65 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Get item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.get_item_if(
-            key, condition, expected_etag,
+            key, condition=condition, expected_etag=expected_etag,
             retrieve_value=retrieve_value)
 
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.set_item_if(
-            key, value, condition, expected_etag,
+            key, value=value, condition=condition, expected_etag=expected_etag,
             retrieve_value=retrieve_value)
 
     def setdefault_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to cached dict."""
         return self._cached_dict.setdefault_if(
-            key, default_value, condition, expected_etag,
-            retrieve_value=retrieve_value)
+            key, default_value=default_value, condition=condition,
+            expected_etag=expected_etag, retrieve_value=retrieve_value)
 
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Discard item only if ETag satisfies a condition; delegate to cached dict."""
-        return self._cached_dict.discard_item_if(key, condition, expected_etag)
+        return self._cached_dict.discard_item_if(
+            key, condition=condition, expected_etag=expected_etag)
 
     def transform_item(
             self,
             key: NonEmptyPersiDictKey,
-            transformer: TransformingFunction,
             *,
+            transformer: TransformingFunction,
             n_retries: int | None = 6
     ) -> OperationResult:
         """Transform item; delegate to cached dict."""
-        return self._cached_dict.transform_item(key, transformer, n_retries=n_retries)
+        return self._cached_dict.transform_item(
+            key, transformer=transformer, n_retries=n_retries)
 
     def discard(self, key: NonEmptyPersiDictKey) -> bool:
         """Delete an item without raising an exception if it doesn't exist.

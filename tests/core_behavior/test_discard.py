@@ -3,13 +3,13 @@ import random
 import pytest
 from moto import mock_aws
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_discard(tmpdir, DictToTest, kwargs, rundom=None):
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
 
     good_keys = []

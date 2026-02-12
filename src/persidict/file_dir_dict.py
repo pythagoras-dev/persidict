@@ -119,6 +119,7 @@ class FileDirDict(PersiDict[ValueType]):
     digest_len:int
 
     def __init__(self
+                 , *
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
                  , serialization_format: str = "pkl"
                  , append_only:bool = False

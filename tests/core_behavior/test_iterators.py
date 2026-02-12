@@ -2,14 +2,14 @@ import pytest
 from moto import mock_aws
 
 from persidict import SafeStrTuple, EmptyDict
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_iterators(tmpdir, DictToTest, kwargs):
     """Test if iterators work correctly."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     dict_to_test.clear()
     model_dict = dict()
     assert len(dict_to_test) == len(model_dict) == 0
@@ -40,7 +40,7 @@ def test_generic_iter_all_result_types(tmpdir, DictToTest, kwargs):
     Covers the singleton {"timestamps"} case (no public method exposes it)
     alongside all other combinations, verifying tuple structure for each.
     """
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
     n_items = 3
     for i in range(n_items):
@@ -115,7 +115,7 @@ def test_generic_iter_field_values_consistent_across_result_types(tmpdir, DictTo
     must produce matching keys, values, and timestamps regardless of which
     fields are requested together.
     """
-    d = DictToTest(base_dir=tmpdir, **kwargs)
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d.clear()
     expected = {"a": 10, "b": 20, "c": 30}
     for k, v in expected.items():

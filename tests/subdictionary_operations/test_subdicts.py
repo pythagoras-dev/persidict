@@ -1,14 +1,14 @@
 import pytest
 from moto import mock_aws
 
-from tests.data_for_mutable_tests import mutable_tests
+from tests.data_for_mutable_tests import mutable_tests, make_test_dict
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_subdicts(tmpdir, DictToTest, kwargs):
     """Test if get_subdict() works correctly."""
-    dict_to_test = DictToTest(base_dir=tmpdir, **kwargs)
+    dict_to_test = make_test_dict(DictToTest, tmpdir, **kwargs)
     dict_to_test.clear()
 
     fdd = dict_to_test

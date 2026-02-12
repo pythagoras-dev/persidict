@@ -75,7 +75,7 @@ class WriteOnceDict(PersiDict[ValueType]):
     _consistency_checks_attempted: int
     _consistency_checks_passed: int
 
-    def __init__(self,
+    def __init__(self, *,
                  wrapped_dict: PersiDict[ValueType] | None = None,
                  p_consistency_checks: float | None = None):
         """Initialize a WriteOnceDict.
@@ -193,10 +193,10 @@ class WriteOnceDict(PersiDict[ValueType]):
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
+            *,
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Not supported for write-once dictionaries.
@@ -332,5 +332,5 @@ class WriteOnceDict(PersiDict[ValueType]):
                 p_consistency_checks probability.
         """
         subdict = self._wrapped_dict.get_subdict(prefix_key)
-        result = WriteOnceDict(subdict, self.p_consistency_checks)
+        result = WriteOnceDict(wrapped_dict=subdict, p_consistency_checks=self.p_consistency_checks)
         return result
