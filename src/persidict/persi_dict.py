@@ -1313,7 +1313,30 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return ETagValue(f"{self.timestamp(key):.6f}")
 
 
-    def oldest_keys(self, max_n: int|None=None) -> list[NonEmptySafeStrTuple]:
+    def _sorted_keys(self, max_n: int | None, *, newest_first: bool
+                      ) -> list[NonEmptySafeStrTuple]:
+        """Return keys sorted by timestamp.
+
+        Args:
+            max_n: Maximum number of keys to return. If None, return all.
+                Values <= 0 yield an empty list.
+            newest_first: If True, sort newest first; otherwise oldest first.
+
+        Returns:
+            Keys sorted by timestamp in the requested order.
+        """
+        if max_n is not None and max_n <= 0:
+            return []
+        heap_fn = heapq.nlargest if newest_first else heapq.nsmallest
+        if max_n is None:
+            pairs = list(self.keys_and_timestamps())
+            pairs.sort(key=lambda x: x[1], reverse=newest_first)
+            return [key for key, _ in pairs]
+        return [key for key, _ in heap_fn(
+            max_n, self.keys_and_timestamps(), key=lambda x: x[1])]
+
+    def oldest_keys(self, max_n: int | None = None
+                    ) -> list[NonEmptySafeStrTuple]:
         """Return up to max_n oldest keys in the dictionary.
 
         This method is absent in the original Python dict API.
@@ -1326,20 +1349,23 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Returns:
             The oldest keys, oldest first.
         """
-        if max_n is None:
-            # If we need all keys, sort them all by timestamp
-            key_timestamp_pairs = list(self.keys_and_timestamps())
-            key_timestamp_pairs.sort(key=lambda x: x[1])
-            return [key for key,_ in key_timestamp_pairs]
-        elif max_n <= 0:
-            return []
-        else:
-            # Use heapq.nsmallest for efficient partial sorting without loading all keys into memory
-            smallest_pairs = heapq.nsmallest(max_n,
-                                             self.keys_and_timestamps(),
-                                             key=lambda x: x[1])
-            return [key for key,_ in smallest_pairs]
+        return self._sorted_keys(max_n, newest_first=False)
 
+    def newest_keys(self, max_n: int | None = None
+                    ) -> list[NonEmptySafeStrTuple]:
+        """Return up to max_n newest keys in the dictionary.
+
+        This method is absent in the original Python dict API.
+
+        Args:
+            max_n: Maximum number of keys to return. If None,
+                return all keys sorted by age (newest first). Values <= 0
+                yield an empty list. Defaults to None.
+
+        Returns:
+            The newest keys, newest first.
+        """
+        return self._sorted_keys(max_n, newest_first=True)
 
     def oldest_values(self, max_n: int | None = None) -> list[ValueType]:
         """Return up to max_n oldest values in the dictionary.
@@ -1355,35 +1381,6 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             Values corresponding to the oldest keys.
         """
         return [self[k] for k in self.oldest_keys(max_n)]
-
-
-    def newest_keys(self, max_n=None)  -> list[NonEmptySafeStrTuple]:
-        """Return up to max_n newest keys in the dictionary.
-
-        This method is absent in the original Python dict API.
-
-        Args:
-            max_n: Maximum number of keys to return. If None,
-                return all keys sorted by age (newest first). Values <= 0
-                yield an empty list. Defaults to None.
-
-        Returns:
-            The newest keys, newest first.
-        """
-        if max_n is None:
-            # If we need all keys, sort them all by timestamp in reverse order
-            key_timestamp_pairs = list(self.keys_and_timestamps())
-            key_timestamp_pairs.sort(key=lambda x: x[1], reverse=True)
-            return [key for key,_ in key_timestamp_pairs]
-        elif max_n <= 0:
-            return []
-        else:
-            # Use heapq.nlargest for efficient partial sorting without loading all keys into memory
-            largest_pairs = heapq.nlargest(max_n,
-                                           self.keys_and_timestamps(),
-                                           key=lambda item: item[1])
-            return [key for key,_ in largest_pairs]
-
 
     def newest_values(self, max_n: int | None = None) -> list[ValueType]:
         """Return up to max_n newest values in the dictionary.

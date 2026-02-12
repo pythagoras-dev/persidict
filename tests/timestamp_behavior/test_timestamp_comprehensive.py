@@ -191,8 +191,8 @@ def test_single_item_edge_cases(tmpdir):
         d.clear()
 
 @mock_aws
-def test_zero_max_n_edge_cases(tmpdir):
-    """Test edge cases with max_n=0."""
+def test_non_positive_max_n_edge_cases(tmpdir):
+    """Test that max_n=0 and negative max_n both yield empty lists."""
     for d in [
         FileDirDict(base_dir=tmpdir.mkdir("LOCAL")),
         S3Dict(base_dir=tmpdir.mkdir("AWS"), bucket_name="mybucket")
@@ -201,12 +201,13 @@ def test_zero_max_n_edge_cases(tmpdir):
         for v in "abc":
             d[v] = f"value_{v}"
             min_sleep(d)
-        
-        # Test all functions with max_n=0
-        assert d.oldest_keys(0) == []
-        assert d.newest_keys(0) == []
-        assert d.oldest_values(0) == []
-        assert d.newest_values(0) == []
+
+        # Test all functions with max_n=0 and negative max_n
+        for n in [0, -1, -100]:
+            assert d.oldest_keys(n) == []
+            assert d.newest_keys(n) == []
+            assert d.oldest_values(n) == []
+            assert d.newest_values(n) == []
 
         d.clear()
 
