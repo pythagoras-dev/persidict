@@ -348,13 +348,13 @@ skipped).
    ETagValue
        Type for ETag strings (NewType over ``str``)
 
-   get_item_if(key, *, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
+   get_item_if(key, *, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED) -> ConditionalOperationResult
        Conditional read
 
-   set_item_if(key, *, value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
+   set_item_if(key, *, value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED) -> ConditionalOperationResult
        Conditional write (supports KEEP_CURRENT and DELETE_CURRENT)
 
-   setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
+   setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED) -> ConditionalOperationResult
        Insert-if-absent
 
    discard_item_if(key, *, condition, expected_etag) -> ConditionalOperationResult
@@ -712,25 +712,25 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 6923
-     - 11244
-     - 18167
+     - 6927
+     - 11429
+     - 18356
    * - Source Lines Of Code (SLOC)
      - 3106
-     - 7177
-     - 10283
+     - 7293
+     - 10399
    * - Classes
      - 32
      - 8
      - 40
    * - Functions / Methods
      - 282
-     - 640
-     - 922
+     - 648
+     - 930
    * - Files
      - 16
-     - 108
-     - 124
+     - 109
+     - 125
 
 .. MIXINFORGE_STATS_END
 
