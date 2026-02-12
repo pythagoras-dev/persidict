@@ -295,14 +295,14 @@ class BasicS3Dict(PersiDict[ValueType]):
         finally:
             body.close()
 
-    def _get_object_with_etag(self, key: NonEmptySafeStrTuple) -> tuple[Any, ETagValue]:
-        """Get an object's value and ETag from S3 in a single request.
+    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
+        """Return the value and ETag for a key in a single S3 request.
 
         Args:
             key: Normalized dictionary key.
 
         Returns:
-            tuple[Any, ETagValue]: The deserialized value and ETag.
+            tuple[ValueType, ETagValue]: The deserialized value and ETag.
 
         Raises:
             KeyError: If the key does not exist in S3.
@@ -319,10 +319,6 @@ class BasicS3Dict(PersiDict[ValueType]):
                 raise KeyError(
                     f"Key {key} not found in S3 bucket {self.bucket_name}")
             raise
-
-    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
-        """Return the value and ETag for a key in a single S3 request."""
-        return self._get_object_with_etag(key)
 
     def _result_for_missing_key(
             self,
@@ -402,7 +398,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         if retrieve_value is ALWAYS_RETRIEVE:
             try:
-                value, actual_etag = self._get_object_with_etag(key)
+                value, actual_etag = self._get_value_and_etag(key)
             except KeyError:
                 return self._result_for_missing_key(condition, expected_etag)
 

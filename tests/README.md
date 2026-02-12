@@ -34,6 +34,7 @@ feature-oriented so it is quick to scan.
   - tests/core_behavior/test_typing.py
   - tests/core_behavior/test_jokers.py
   - tests/core_behavior/test_validate_returned_value.py
+  - tests/core_behavior/test_get_value_and_etag_base.py
 
 - Key handling and safe tuples:
   - tests/key_handling/test_safe_chars.py

@@ -282,23 +282,42 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         except (KeyError, FileNotFoundError):
             return ITEM_NOT_AVAILABLE
 
-    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
+    def _get_value_and_etag(
+            self, key: NonEmptySafeStrTuple,
+            _max_retries: int = 3,
+            ) -> tuple[ValueType, ETagValue]:
         """Return the value and ETag for a key.
+
+        Uses a read-with-validation pattern (check+get+check) to detect
+        concurrent modifications. If the ETag changes between the pre-read
+        check and the post-read check, the read is retried up to
+        ``_max_retries`` times. If retries are exhausted, falls back to the
+        last read value with the post-read etag.
 
         Subclasses can override to fetch both in a single backend pass.
 
         Args:
             key: Normalized dictionary key.
+            _max_retries: Maximum number of attempts (default 3).
 
         Returns:
             tuple[ValueType, ETagValue]: The value and its current ETag.
 
         Raises:
             KeyError: If the key does not exist.
+            ValueError: If _max_retries is less than 1.
         """
-        value = self[key]
-        actual_etag = self.etag(key)
-        return value, actual_etag
+        if _max_retries < 1:
+            raise ValueError("_max_retries must be at least 1")
+        for _ in range(_max_retries):
+            etag_before = self.etag(key)
+            value = self[key]
+            etag_after = self.etag(key)
+            if etag_before == etag_after:
+                return value, etag_after
+        # Retries exhausted — key is being continuously modified.
+        # Fall back to the last read with the post-read etag (conservative).
+        return value, etag_after
 
     # --- ConditionalOperationResult factory methods ---
 
@@ -661,14 +680,18 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 raise ValueError("n_retries must be a non-negative int or None")
 
         retries = 0
+        current_value = None
+        actual_etag = None
+        need_read = True
         while True:
-            read_res = self.get_item_if(
-                key,
-                condition=ANY_ETAG,
-                expected_etag=ITEM_NOT_AVAILABLE,
-                retrieve_value=ALWAYS_RETRIEVE)
-            current_value = read_res.new_value
-            actual_etag = read_res.actual_etag
+            if need_read:
+                read_res = self.get_item_if(
+                    key,
+                    condition=ANY_ETAG,
+                    expected_etag=ITEM_NOT_AVAILABLE,
+                    retrieve_value=ALWAYS_RETRIEVE)
+                current_value = read_res.new_value
+                actual_etag = read_res.actual_etag
 
             new_value = transformer(current_value)
 
@@ -686,17 +709,25 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                     return OperationResult(
                         resulting_etag=ITEM_NOT_AVAILABLE,
                         new_value=ITEM_NOT_AVAILABLE)
+                # discard_item_if has no retrieve_value param,
+                # so we must re-read on the next iteration.
+                need_read = True
             else:
                 write_res = self.set_item_if(
                     key,
                     value=new_value,
                     condition=ETAG_IS_THE_SAME,
                     expected_etag=actual_etag,
-                    retrieve_value=NEVER_RETRIEVE)
+                    retrieve_value=ALWAYS_RETRIEVE)
                 if write_res.condition_was_satisfied:
                     return OperationResult(
                         resulting_etag=write_res.resulting_etag,
                         new_value=new_value)
+                # Conflict: set_item_if already fetched the current
+                # value+etag, so skip the read at the top of the loop.
+                current_value = write_res.new_value
+                actual_etag = write_res.actual_etag
+                need_read = False
 
             if n_retries is not None and retries >= n_retries:
                 raise TransformConflictError(key, retries + 1)
