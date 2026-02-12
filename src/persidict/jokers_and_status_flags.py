@@ -268,3 +268,8 @@ class ConditionalOperationResult:
     actual_etag: ETagIfExists
     resulting_etag: ETagIfExists
     new_value: ValueInResult
+
+    @property
+    def value_was_mutated(self) -> bool:
+        """Whether the operation changed the stored value."""
+        return self.resulting_etag != self.actual_etag

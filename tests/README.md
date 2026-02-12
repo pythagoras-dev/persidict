@@ -68,6 +68,7 @@ feature-oriented so it is quick to scan.
   - tests/entity_tag_operations/test_etag.py
   - tests/entity_tag_operations/conditional_operations_contract/
   - tests/entity_tag_operations/conditional_operations_contract/test_get_with_etag.py
+  - tests/entity_tag_operations/conditional_operations_contract/test_value_was_mutated.py
   - tests/entity_tag_operations/conditional_operations_mutable/
 
 - Variants (cached/append-only/write-once/multi-dict):
