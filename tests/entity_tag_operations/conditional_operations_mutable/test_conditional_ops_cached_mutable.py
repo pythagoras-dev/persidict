@@ -9,6 +9,7 @@ from persidict.jokers_and_status_flags import (
     ETAG_HAS_CHANGED,
     ITEM_NOT_AVAILABLE,
     KEEP_CURRENT,
+    ALWAYS_RETRIEVE,
     NEVER_RETRIEVE,
     VALUE_NOT_RETRIEVED,
 )
@@ -185,7 +186,8 @@ def test_get_item_if_etag_equal_refreshes_caches(cached_env):
     main["k"] = "v1"
     etag = main.etag("k")
 
-    result = wrapper.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    result = wrapper.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag,
+                                retrieve_value=ALWAYS_RETRIEVE)
     assert result.condition_was_satisfied
     assert result.new_value == "v1"
     assert result.resulting_etag == etag

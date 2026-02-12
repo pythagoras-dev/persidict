@@ -16,8 +16,7 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       ETagValue,
                                       ETagConditionFlag,
                                       ETAG_HAS_CHANGED,
-                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
-                                      IF_ETAG_CHANGED,
+                                      RetrieveValueFlag, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
                                       ValueNotRetrievedFlag,
                                       VALUE_NOT_RETRIEVED,
@@ -283,7 +282,7 @@ class MutableDictCached(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Return value only if the ETag satisfies a condition.
 
@@ -322,7 +321,7 @@ class MutableDictCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; update caches when a value is returned."""
         key = NonEmptySafeStrTuple(key)
@@ -342,7 +341,7 @@ class MutableDictCached(PersiDict[ValueType]):
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)

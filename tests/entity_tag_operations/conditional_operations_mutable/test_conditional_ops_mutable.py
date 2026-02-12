@@ -12,6 +12,7 @@ from persidict.jokers_and_status_flags import (
     KEEP_CURRENT,
     ETAG_IS_THE_SAME,
     ETAG_HAS_CHANGED,
+    ALWAYS_RETRIEVE,
     ConditionalOperationResult,
 )
 
@@ -97,7 +98,8 @@ def test_get_item_if_etag_equal_respects_etag(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        result = d.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+        result = d.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag,
+                               retrieve_value=ALWAYS_RETRIEVE)
         assert result.condition_was_satisfied
         assert result.new_value == "v1"
         assert result.resulting_etag == d.etag("k")

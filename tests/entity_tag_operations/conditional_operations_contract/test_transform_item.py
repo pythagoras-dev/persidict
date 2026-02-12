@@ -12,7 +12,7 @@ from persidict import LocalDict, TransformConflictError
 from persidict.jokers_and_status_flags import (
     ITEM_NOT_AVAILABLE,
     KEEP_CURRENT, DELETE_CURRENT,
-    ALWAYS_RETRIEVE,
+    IF_ETAG_CHANGED,
     ConditionalOperationResult,
     VALUE_NOT_RETRIEVED,
 )
@@ -151,7 +151,7 @@ def test_transform_conflict_retries_then_raises(monkeypatch):
     d["key"] = "value"
 
     def always_conflict_set_item_if(key, value, condition, expected_etag, *,
-                                    retrieve_value=ALWAYS_RETRIEVE):
+                                    retrieve_value=IF_ETAG_CHANGED):
         return ConditionalOperationResult(
             condition_was_satisfied=False,
             requested_condition=condition,

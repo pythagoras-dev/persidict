@@ -12,7 +12,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
 from .jokers_and_status_flags import (ETagConditionFlag, ETagIfExists,
                                       Joker,
-                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
+                                      RetrieveValueFlag, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE,
                                       ConditionalOperationResult,
                                       OperationResult)
@@ -64,7 +64,7 @@ class EmptyDict(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
         self._validate_retrieve_value(retrieve_value)
@@ -87,7 +87,7 @@ class EmptyDict(PersiDict[ValueType]):
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
         self._validate_retrieve_value(retrieve_value)
@@ -101,7 +101,7 @@ class EmptyDict(PersiDict[ValueType]):
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
         if isinstance(default_value, Joker):

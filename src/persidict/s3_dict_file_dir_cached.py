@@ -12,7 +12,7 @@ from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (ETagConditionFlag, ETagValue,
                                       ETagIfExists,
                                       Joker,
-                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
+                                      RetrieveValueFlag, IF_ETAG_CHANGED,
                                       ConditionalOperationResult,
                                       OperationResult,
                                       TransformingFunction)
@@ -239,7 +239,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Get item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.get_item_if(
@@ -253,7 +253,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.set_item_if(
@@ -267,7 +267,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to cached dict."""
         return self._cached_dict.setdefault_if(

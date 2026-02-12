@@ -339,7 +339,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             *,
             expected_etag: ETagIfExists = ITEM_NOT_AVAILABLE,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE,
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED,
             return_existing_value: bool = True
     ) -> ConditionalOperationResult:
         """Build result for a failed conditional write/delete."""
@@ -378,7 +378,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Retrieve the value for a key only if an ETag condition is satisfied.
 
@@ -389,9 +389,9 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: Dictionary key.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
-            retrieve_value: Controls value retrieval. ALWAYS_RETRIEVE
-                (default) always fetches the value. IF_ETAG_CHANGED uses
-                S3 IfNoneMatch to skip the fetch when the ETag matches.
+            retrieve_value: Controls value retrieval. IF_ETAG_CHANGED
+                (default) uses S3 IfNoneMatch to skip the fetch when the
+                ETag matches. ALWAYS_RETRIEVE always fetches the value.
                 NEVER_RETRIEVE does a HEAD only and returns
                 VALUE_NOT_RETRIEVED.
 
@@ -623,7 +623,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
 
@@ -639,9 +639,10 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             retrieve_value: Controls value retrieval on condition failure.
-                ALWAYS_RETRIEVE (default) fetches the existing value.
-                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
-                fetches only if expected_etag != actual_etag.
+                IF_ETAG_CHANGED (default) fetches only if
+                expected_etag != actual_etag. ALWAYS_RETRIEVE fetches
+                the existing value. NEVER_RETRIEVE returns
+                VALUE_NOT_RETRIEVED.
 
         Returns:
             ConditionalOperationResult with the outcome.
@@ -996,7 +997,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Insert default_value if key is absent; conditioned on ETag check.
 
@@ -1012,9 +1013,10 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             retrieve_value: Controls value retrieval when the key exists.
-                ALWAYS_RETRIEVE (default) fetches the existing value.
-                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
-                fetches only if expected_etag != actual_etag.
+                IF_ETAG_CHANGED (default) fetches only if
+                expected_etag != actual_etag. ALWAYS_RETRIEVE fetches
+                the existing value. NEVER_RETRIEVE returns
+                VALUE_NOT_RETRIEVED.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.

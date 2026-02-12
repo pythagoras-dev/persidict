@@ -11,6 +11,7 @@ from moto import mock_aws
 from persidict import LocalDict
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+    ALWAYS_RETRIEVE,
     ConditionalOperationResult,
     ITEM_NOT_AVAILABLE
 )
@@ -266,7 +267,8 @@ def test_conditional_ops_with_complex_nested_value(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Verify we can do conditional get
-    result = d.get_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    result = d.get_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag,
+                           retrieve_value=ALWAYS_RETRIEVE)
     assert result.condition_was_satisfied
     value = result.new_value
     assert value == complex_value
@@ -370,7 +372,8 @@ def test_get_item_if_etag_preserves_value_type(tmpdir, DictToTest, kwargs):
         d[key] = test_value
         etag = d.etag(key)
 
-        result = d.get_item_if(key, condition=ETAG_IS_THE_SAME, expected_etag=etag)
+        result = d.get_item_if(key, condition=ETAG_IS_THE_SAME, expected_etag=etag,
+                               retrieve_value=ALWAYS_RETRIEVE)
         assert result.condition_was_satisfied
         retrieved_value = result.new_value
         assert retrieved_value == test_value

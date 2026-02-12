@@ -382,7 +382,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             the ETag in actual_etag (and resulting_etag).
         """
         return self.get_item_if(
-            key, condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE)
+            key, condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE,
+            retrieve_value=ALWAYS_RETRIEVE)
 
     def get_item_if(
             self,
@@ -390,7 +391,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Retrieve the value for a key only if an ETag condition is satisfied.
 
@@ -406,10 +407,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            retrieve_value: Controls value retrieval. ALWAYS_RETRIEVE
-                (default) always fetches the value. IF_ETAG_CHANGED skips
-                the fetch when expected_etag == actual_etag, returning
-                VALUE_NOT_RETRIEVED instead. NEVER_RETRIEVE always returns
+            retrieve_value: Controls value retrieval. IF_ETAG_CHANGED
+                (default) skips the fetch when expected_etag == actual_etag,
+                returning VALUE_NOT_RETRIEVED instead. ALWAYS_RETRIEVE
+                always fetches the value. NEVER_RETRIEVE always returns
                 VALUE_NOT_RETRIEVED when the key exists.
 
         Returns:
@@ -454,7 +455,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             value: ValueType | Joker,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
 
@@ -472,9 +473,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             retrieve_value: Controls value retrieval on condition failure.
-                ALWAYS_RETRIEVE (default) fetches the existing value.
-                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
-                fetches only if expected_etag != actual_etag.
+                IF_ETAG_CHANGED (default) fetches only if
+                expected_etag != actual_etag. ALWAYS_RETRIEVE fetches
+                the existing value. NEVER_RETRIEVE returns
+                VALUE_NOT_RETRIEVED.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.
@@ -519,7 +521,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             default_value: ValueType,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
-            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
+            retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
     ) -> ConditionalOperationResult:
         """Insert default_value if key is absent; conditioned on ETag check.
 
@@ -539,9 +541,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             retrieve_value: Controls value retrieval when the key exists.
-                ALWAYS_RETRIEVE (default) fetches the existing value.
-                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
-                fetches only if expected_etag != actual_etag.
+                IF_ETAG_CHANGED (default) fetches only if
+                expected_etag != actual_etag. ALWAYS_RETRIEVE fetches
+                the existing value. NEVER_RETRIEVE returns
+                VALUE_NOT_RETRIEVED.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.

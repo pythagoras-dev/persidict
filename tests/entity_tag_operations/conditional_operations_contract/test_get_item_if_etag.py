@@ -5,7 +5,8 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED
+    ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+    ALWAYS_RETRIEVE,
 )
 
 from tests.data_for_mutable_tests import mutable_tests, make_test_dict
@@ -65,7 +66,8 @@ def test_get_item_if_etag_returns_value_when_matches(tmpdir, DictToTest, kwargs)
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=current_etag)
+    result = d.get_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=current_etag,
+                           retrieve_value=ALWAYS_RETRIEVE)
 
     assert result.condition_was_satisfied
     value = result.new_value
@@ -128,7 +130,8 @@ def test_get_item_if_etag_with_tuple_keys_not_changed(tmpdir, DictToTest, kwargs
     d[key] = "value"
     current_etag = d.etag(key)
 
-    result = d.get_item_if(key, condition=ETAG_IS_THE_SAME, expected_etag=current_etag)
+    result = d.get_item_if(key, condition=ETAG_IS_THE_SAME, expected_etag=current_etag,
+                           retrieve_value=ALWAYS_RETRIEVE)
 
     assert result.condition_was_satisfied
     value = result.new_value
@@ -144,7 +147,8 @@ def test_get_item_if_etag_returns_correct_complex_values(tmpdir, DictToTest, kwa
     d["key1"] = complex_value
     current_etag = d.etag("key1")
 
-    result = d.get_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=current_etag)
+    result = d.get_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=current_etag,
+                           retrieve_value=ALWAYS_RETRIEVE)
 
     assert result.condition_was_satisfied
     value = result.new_value

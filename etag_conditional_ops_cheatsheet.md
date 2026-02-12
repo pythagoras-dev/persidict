@@ -93,7 +93,7 @@ Returned by `transform_item` (unconditional).
 
 ## API Methods
 
-### `get_item_if(key, *, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE)`
+### `get_item_if(key, *, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
 
 Read-only. Never mutates. `condition_was_satisfied` tells you whether the condition held.
 
@@ -105,7 +105,7 @@ else:
     # r.new_value is VALUE_NOT_RETRIEVED -> use your cached copy
 ```
 
-### `set_item_if(key, *, value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE)`
+### `set_item_if(key, *, value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
 
 Conditional write. `value` can be a real value, `KEEP_CURRENT`, or `DELETE_CURRENT`. On condition failure: no mutation.
 
@@ -117,7 +117,7 @@ if not r2.condition_was_satisfied:
     pass  # conflict — retry
 ```
 
-### `setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE)`
+### `setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
 
 Insert-if-absent, guarded by condition. If key exists, returns existing value without mutation regardless of condition.
 `default_value` must be a real value (not `KEEP_CURRENT` or `DELETE_CURRENT`).

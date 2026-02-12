@@ -11,6 +11,7 @@ from persidict.jokers_and_status_flags import (
     ETAG_HAS_CHANGED,
     ETAG_IS_THE_SAME,
     ITEM_NOT_AVAILABLE,
+    ALWAYS_RETRIEVE,
 )
 
 
@@ -368,7 +369,8 @@ def test_setdefault_if_existing_key_preserves_caches(cached_env):
     etag = wrapper.etag(("sd2",))
 
     res = wrapper.setdefault_if(
-        ("sd2",), default_value="ignored", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+        ("sd2",), default_value="ignored", condition=ETAG_IS_THE_SAME, expected_etag=etag,
+        retrieve_value=ALWAYS_RETRIEVE)
 
     assert res.condition_was_satisfied
     assert res.new_value == "original"
