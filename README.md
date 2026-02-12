@@ -163,7 +163,7 @@ insert-if-absent pattern uses `ITEM_NOT_AVAILABLE` with `ETAG_IS_THE_SAME`.
 from persidict import FileDirDict, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME
 
 d = FileDirDict(base_dir="./data")
-r = d.setdefault_if("token", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+r = d.setdefault_if("token", "v1", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 ```
 
 ## Comparison With Python Built-in Dictionaries
@@ -299,10 +299,10 @@ Common methods and flags:
 
 | Item | Kind | Notes |
 | :--- | :--- | :--- |
-| `get_item_if(key, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Conditional read. |
-| `set_item_if(key, value, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
-| `setdefault_if(key, default_value, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Insert-if-absent. |
-| `discard_item_if(key, expected_etag, condition)` | Method | Conditional delete. |
+| `get_item_if(key, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Conditional read. |
+| `set_item_if(key, value, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
+| `setdefault_if(key, default_value, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Insert-if-absent. |
+| `discard_item_if(key, condition, expected_etag)` | Method | Conditional delete. |
 | `transform_item(key, transformer, *, n_retries=6)` | Method | Retry loop for read-modify-write. |
 | `ETagValue` | Type | NewType over `str`. |
 | `ITEM_NOT_AVAILABLE` | Sentinel | Missing key marker. |
@@ -316,9 +316,9 @@ from persidict import FileDirDict, ANY_ETAG, ETAG_IS_THE_SAME, ITEM_NOT_AVAILABL
 d = FileDirDict(base_dir="./data")
 
 while True:
-    r = d.get_item_if("count", ITEM_NOT_AVAILABLE, ANY_ETAG)
+    r = d.get_item_if("count", ANY_ETAG, ITEM_NOT_AVAILABLE)
     new_value = 1 if r.new_value is ITEM_NOT_AVAILABLE else r.new_value + 1
-    r2 = d.set_item_if("count", new_value, r.actual_etag, ETAG_IS_THE_SAME)
+    r2 = d.set_item_if("count", new_value, ETAG_IS_THE_SAME, r.actual_etag)
     if r2.condition_was_satisfied:
         break
 ```
@@ -354,10 +354,10 @@ pip install persidict[dev]
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6934 | 11108 | 18042 |
-| Source Lines Of Code (SLOC) | 3103 | 7092 | 10195 |
+| Lines Of Code (LOC) | 6923 | 11244 | 18167 |
+| Source Lines Of Code (SLOC) | 3106 | 7177 | 10283 |
 | Classes | 32 | 8 | 40 |
-| Functions / Methods | 282 | 633 | 915 |
+| Functions / Methods | 282 | 640 | 922 |
 | Files | 16 | 108 | 124 |
 <!-- MIXINFORGE_STATS_END -->
 
