@@ -86,7 +86,7 @@ def test_set_item_if_successful_write_shows_mutated(tmpdir, DictToTest, kwargs):
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.set_item_if("k", "v2", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", "v2", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is True
@@ -99,7 +99,7 @@ def test_set_item_if_failed_condition_shows_not_mutated(tmpdir, DictToTest, kwar
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["k"] = "v1"
 
-    result = d.set_item_if("k", "v2", "wrong_etag", ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", "v2", ETAG_IS_THE_SAME, "wrong_etag")
 
     assert not result.condition_was_satisfied
     assert result.value_was_mutated is False
@@ -113,7 +113,7 @@ def test_keep_current_shows_not_mutated(tmpdir, DictToTest, kwargs):
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.set_item_if("k", KEEP_CURRENT, etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", KEEP_CURRENT, ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is False
@@ -127,7 +127,7 @@ def test_delete_current_shows_mutated(tmpdir, DictToTest, kwargs):
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.set_item_if("k", DELETE_CURRENT, etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", DELETE_CURRENT, ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is True
@@ -142,7 +142,7 @@ def test_get_item_if_shows_not_mutated(tmpdir, DictToTest, kwargs):
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.get_item_if("k", etag, ETAG_IS_THE_SAME)
+    result = d.get_item_if("k", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is False
@@ -168,7 +168,7 @@ def test_discard_item_if_successful_shows_mutated(tmpdir, DictToTest, kwargs):
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.discard_item_if("k", etag, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("k", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is True
@@ -180,7 +180,7 @@ def test_setdefault_if_on_missing_key_shows_mutated(tmpdir, DictToTest, kwargs):
     """setdefault_if creating a new key reports value_was_mutated as True."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.setdefault_if("k", "default", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.setdefault_if("k", "default", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is True
@@ -195,7 +195,7 @@ def test_setdefault_if_on_existing_key_shows_not_mutated(tmpdir, DictToTest, kwa
     d["k"] = "existing"
     etag = d.etag("k")
 
-    result = d.setdefault_if("k", "default", etag, ETAG_IS_THE_SAME)
+    result = d.setdefault_if("k", "default", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is False

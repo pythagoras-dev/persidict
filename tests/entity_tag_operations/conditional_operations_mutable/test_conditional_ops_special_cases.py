@@ -19,29 +19,29 @@ from persidict.write_once_dict import WriteOnceDict
 def test_empty_dict_conditional_operations():
     d = EmptyDict()
     # get_item_if on empty dict: key absent, actual_etag=ITEM_NOT_AVAILABLE
-    res = d.get_item_if("k", "e", ETAG_HAS_CHANGED)
+    res = d.get_item_if("k", ETAG_HAS_CHANGED, "e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
-    res = d.get_item_if("k", "e", ETAG_IS_THE_SAME)
+    res = d.get_item_if("k", ETAG_IS_THE_SAME, "e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
     # set_item_if on empty dict: key absent, actual_etag=ITEM_NOT_AVAILABLE
-    res = d.set_item_if("k", "v", "e", ETAG_IS_THE_SAME)
+    res = d.set_item_if("k", "v", ETAG_IS_THE_SAME, "e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
-    res = d.set_item_if("k", "v", "e", ETAG_HAS_CHANGED)
+    res = d.set_item_if("k", "v", ETAG_HAS_CHANGED, "e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
     # discard_item_if on empty dict: key absent
-    res = d.discard_item_if("k", "e", ETAG_IS_THE_SAME)
+    res = d.discard_item_if("k", ETAG_IS_THE_SAME, "e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
-    res = d.discard_item_if("k", "e", ETAG_HAS_CHANGED)
+    res = d.discard_item_if("k", ETAG_HAS_CHANGED, "e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
@@ -59,9 +59,9 @@ def test_append_only_set_item_if_etag_equal_validates_etag(append_only_env):
     wrapper["k"] = "v1"
     current_etag = wrapper.etag("k")
 
-    res = wrapper.set_item_if("k", KEEP_CURRENT, "bogus", ETAG_IS_THE_SAME)
+    res = wrapper.set_item_if("k", KEEP_CURRENT, ETAG_IS_THE_SAME, "bogus")
     assert not res.condition_was_satisfied
-    res = wrapper.set_item_if("k", KEEP_CURRENT, current_etag, ETAG_IS_THE_SAME)
+    res = wrapper.set_item_if("k", KEEP_CURRENT, ETAG_IS_THE_SAME, current_etag)
     assert res.condition_was_satisfied
     assert wrapper["k"] == "v1"
 
@@ -71,7 +71,7 @@ def test_append_only_set_item_if_etag_different_mismatch_raises(append_only_env)
     wrapper["k"] = "v1"
 
     with pytest.raises(KeyError):
-        wrapper.set_item_if("k", "v2", "bogus", ETAG_HAS_CHANGED)
+        wrapper.set_item_if("k", "v2", ETAG_HAS_CHANGED, "bogus")
 
 
 def test_append_only_set_item_if_etag_different_keep_current_mismatch_noop(append_only_env):
@@ -79,7 +79,7 @@ def test_append_only_set_item_if_etag_different_keep_current_mismatch_noop(appen
     wrapper["k"] = "v1"
     current_etag = wrapper.etag("k")
 
-    res = wrapper.set_item_if("k", KEEP_CURRENT, "bogus", ETAG_HAS_CHANGED)
+    res = wrapper.set_item_if("k", KEEP_CURRENT, ETAG_HAS_CHANGED, "bogus")
     assert res.condition_was_satisfied
     assert wrapper["k"] == "v1"
     assert wrapper.etag("k") == current_etag
@@ -88,8 +88,8 @@ def test_append_only_set_item_if_etag_different_keep_current_mismatch_noop(appen
 @pytest.mark.parametrize(
     "method_name,args",
     [
-        ("discard_item_if", ("e", ETAG_IS_THE_SAME)),
-        ("discard_item_if", ("e", ETAG_HAS_CHANGED)),
+        ("discard_item_if", (ETAG_IS_THE_SAME, "e")),
+        ("discard_item_if", (ETAG_HAS_CHANGED, "e")),
     ],
 )
 def test_append_only_delete_and_discard_not_supported(append_only_env, method_name, args):
@@ -105,9 +105,9 @@ def test_file_dir_append_only_conditional_set_raises(tmp_path):
     etag = d.etag("k")
 
     with pytest.raises(KeyError):
-        d.set_item_if("k", "v2", etag, ETAG_IS_THE_SAME)
+        d.set_item_if("k", "v2", ETAG_IS_THE_SAME, etag)
     with pytest.raises(KeyError):
-        d.set_item_if("k", "v2", "bogus", ETAG_HAS_CHANGED)
+        d.set_item_if("k", "v2", ETAG_HAS_CHANGED, "bogus")
 
 
 def test_write_once_conditional_ops_not_supported(tmp_path):
@@ -115,11 +115,11 @@ def test_write_once_conditional_ops_not_supported(tmp_path):
     d = WriteOnceDict(wrapped_dict=wrapped, p_consistency_checks=0.0)
 
     with pytest.raises(NotImplementedError):
-        d.set_item_if("k", "v", "e", ETAG_IS_THE_SAME)
+        d.set_item_if("k", "v", ETAG_IS_THE_SAME, "e")
     with pytest.raises(NotImplementedError):
-        d.set_item_if("k", "v", "e", ETAG_HAS_CHANGED)
+        d.set_item_if("k", "v", ETAG_HAS_CHANGED, "e")
 
     d["k"] = "v1"
     etag = d.etag("k")
-    res = d.get_item_if("k", etag, ETAG_HAS_CHANGED)
+    res = d.get_item_if("k", ETAG_HAS_CHANGED, etag)
     assert not res.condition_was_satisfied

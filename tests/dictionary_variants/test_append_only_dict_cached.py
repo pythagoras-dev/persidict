@@ -59,7 +59,7 @@ def test_get_item_if_etag_different_populates_cache(append_only_env):
     main[("x",)] = "v1"
 
     # First call with ITEM_NOT_AVAILABLE returns value and etag, and must cache it
-    res = wrapper.get_item_if(("x",), ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+    res = wrapper.get_item_if(("x",), ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
     assert res.condition_was_satisfied
     v = res.new_value
     etag = res.resulting_etag
@@ -68,7 +68,7 @@ def test_get_item_if_etag_different_populates_cache(append_only_env):
     assert ("x",) in cache and cache[("x",)] == "v1"
 
     # Second call with the same etag should report not changed and keep cache
-    res2 = wrapper.get_item_if(("x",), etag, ETAG_HAS_CHANGED)
+    res2 = wrapper.get_item_if(("x",), ETAG_HAS_CHANGED, etag)
     assert not res2.condition_was_satisfied
     assert cache[("x",)] == "v1"
 
@@ -90,7 +90,7 @@ def test_set_item_if_failed_condition_populates_cache(append_only_env):
     main[("k",)] = "v1"
     assert ("k",) not in cache
 
-    res = wrapper.set_item_if(("k",), KEEP_CURRENT, "bogus", ETAG_IS_THE_SAME)
+    res = wrapper.set_item_if(("k",), KEEP_CURRENT, ETAG_IS_THE_SAME, "bogus")
 
     assert not res.condition_was_satisfied
     assert res.new_value == "v1"
@@ -220,7 +220,7 @@ def test_get_item_if_etag_different_absent_key_does_not_cache(append_only_env):
     key = ("nope",)
     assert key not in main and key not in cache
 
-    result = wrapper.get_item_if(key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+    result = wrapper.get_item_if(key, ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
     # Cache should remain untouched
@@ -317,7 +317,7 @@ def test_setdefault_if_insert_populates_cache(append_only_env):
     main, cache, wrapper = append_only_env
 
     res = wrapper.setdefault_if(
-        ("sdi",), "default_val", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+        ("sdi",), "default_val", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert res.condition_was_satisfied
     assert ("sdi",) in main and ("sdi",) in cache
@@ -331,7 +331,7 @@ def test_setdefault_if_existing_key_populates_cache(append_only_env):
     assert ("sde",) not in cache
 
     res = wrapper.setdefault_if(
-        ("sde",), "ignored", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+        ("sde",), "ignored", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert res.new_value == "original"
     assert cache[("sde",)] == "original"
@@ -342,7 +342,7 @@ def test_setdefault_if_absent_condition_fails_no_cache_pollution(append_only_env
     main, cache, wrapper = append_only_env
 
     res = wrapper.setdefault_if(
-        ("sdx",), "val", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+        ("sdx",), "val", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
 
     assert not res.condition_was_satisfied
     assert ("sdx",) not in main

@@ -194,8 +194,8 @@ class WriteOnceDict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:

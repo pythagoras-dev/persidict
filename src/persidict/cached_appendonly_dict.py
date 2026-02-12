@@ -205,15 +205,15 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Return value only if its ETag satisfies a condition; cache on success."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.get_item_if(
-            key, expected_etag, condition,
+            key, condition, expected_etag,
             retrieve_value=retrieve_value)
         # Cache the value if it was retrieved and not already cached
         if (res.new_value is not ITEM_NOT_AVAILABLE
@@ -249,15 +249,15 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Append-only: delegates to main dict; caches a returned value when available."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.set_item_if(
-            key, value, expected_etag, condition,
+            key, value, condition, expected_etag,
             retrieve_value=retrieve_value)
         if (res.new_value is not ITEM_NOT_AVAILABLE
                 and res.new_value is not VALUE_NOT_RETRIEVED
@@ -270,15 +270,15 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             default_value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.setdefault_if(
-            key, default_value, expected_etag, condition,
+            key, default_value, condition, expected_etag,
             retrieve_value=retrieve_value)
         if (res.new_value is not ITEM_NOT_AVAILABLE
                 and res.new_value is not VALUE_NOT_RETRIEVED
@@ -289,8 +289,8 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")

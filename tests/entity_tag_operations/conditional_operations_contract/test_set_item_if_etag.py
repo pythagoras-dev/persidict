@@ -21,7 +21,7 @@ def test_set_item_if_etag_equal_succeeds_when_etag_matches(tmpdir, DictToTest, k
     d["key1"] = "original"
     etag = d.etag("key1")
 
-    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.resulting_etag != etag  # New etag returned
@@ -40,7 +40,7 @@ def test_set_item_if_etag_equal_fails_when_etag_differs(tmpdir, DictToTest, kwar
     d["key1"] = "modified"
     current_etag = d.etag("key1")
 
-    result = d.set_item_if("key1", "should_not_set", old_etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "should_not_set", ETAG_IS_THE_SAME, old_etag)
 
     assert not result.condition_was_satisfied
     assert d["key1"] == "modified"  # Original value preserved
@@ -53,7 +53,7 @@ def test_set_item_if_etag_equal_missing_key_raises_keyerror(tmpdir, DictToTest, 
     """Verify set_item_if returns ITEM_NOT_AVAILABLE for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.set_item_if("nonexistent", "value", "some_etag", ETAG_IS_THE_SAME)
+    result = d.set_item_if("nonexistent", "value", ETAG_IS_THE_SAME, "some_etag")
     assert result.actual_etag is ITEM_NOT_AVAILABLE
     assert not result.condition_was_satisfied
 
@@ -65,7 +65,7 @@ def test_set_item_if_etag_equal_with_unknown_etag_returns_changed(tmpdir, DictTo
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "original"
 
-    result = d.set_item_if("key1", "new_value", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "new_value", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert d["key1"] == "original"  # Value unchanged
@@ -77,7 +77,7 @@ def test_set_item_if_etag_equal_with_unknown_etag_missing_key_raises(tmpdir, Dic
     """Verify set_item_if with ITEM_NOT_AVAILABLE on missing key evaluates condition."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.set_item_if("nonexistent", "value", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.set_item_if("nonexistent", "value", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
     # ITEM_NOT_AVAILABLE == ITEM_NOT_AVAILABLE => condition satisfied, value is set
     assert result.condition_was_satisfied
     assert result.actual_etag is ITEM_NOT_AVAILABLE
@@ -94,7 +94,7 @@ def test_set_item_if_etag_different_succeeds_when_etag_differs(tmpdir, DictToTes
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.set_item_if("key1", "updated_again", old_etag, ETAG_HAS_CHANGED)
+    result = d.set_item_if("key1", "updated_again", ETAG_HAS_CHANGED, old_etag)
 
     assert result.condition_was_satisfied
     assert d["key1"] == "updated_again"
@@ -108,7 +108,7 @@ def test_set_item_if_etag_different_fails_when_etag_matches(tmpdir, DictToTest, 
     d["key1"] = "original"
     current_etag = d.etag("key1")
 
-    result = d.set_item_if("key1", "should_not_set", current_etag, ETAG_HAS_CHANGED)
+    result = d.set_item_if("key1", "should_not_set", ETAG_HAS_CHANGED, current_etag)
 
     assert not result.condition_was_satisfied
     assert d["key1"] == "original"
@@ -120,7 +120,7 @@ def test_set_item_if_etag_different_missing_key_raises_keyerror(tmpdir, DictToTe
     """Verify set_item_if returns ITEM_NOT_AVAILABLE for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.set_item_if("nonexistent", "value", "some_etag", ETAG_HAS_CHANGED)
+    result = d.set_item_if("nonexistent", "value", ETAG_HAS_CHANGED, "some_etag")
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
@@ -133,7 +133,7 @@ def test_set_item_if_etag_equal_with_tuple_keys(tmpdir, DictToTest, kwargs):
     d[key] = "original"
     etag = d.etag(key)
 
-    result = d.set_item_if(key, "updated", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if(key, "updated", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert d[key] == "updated"
@@ -151,7 +151,7 @@ def test_set_item_if_etag_different_with_tuple_keys(tmpdir, DictToTest, kwargs):
     time.sleep(1.1)
     d[key] = "modified"
 
-    result = d.set_item_if(key, "updated_again", old_etag, ETAG_HAS_CHANGED)
+    result = d.set_item_if(key, "updated_again", ETAG_HAS_CHANGED, old_etag)
 
     assert result.condition_was_satisfied
     assert d[key] == "updated_again"
@@ -166,7 +166,7 @@ def test_set_item_if_etag_equal_returns_new_etag_different_from_old(tmpdir, Dict
     old_etag = d.etag("key1")
 
     time.sleep(1.1)  # Ensure timestamp changes
-    result = d.set_item_if("key1", "updated", old_etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, old_etag)
 
     assert result.condition_was_satisfied
     new_etag = result.resulting_etag
@@ -182,7 +182,7 @@ def test_set_item_if_etag_equal_with_same_value(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.set_item_if("key1", "value", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "value", ETAG_IS_THE_SAME, etag)
 
     # Should still succeed (value is written regardless)
     assert result.condition_was_satisfied

@@ -36,7 +36,7 @@ def test_s3_append_only_insert_if_absent_succeeds():
         append_only=True,
     )
 
-    result = d.set_item_if("k", "v1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", "v1", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert result.condition_was_satisfied
     assert d["k"] == "v1"
@@ -53,7 +53,7 @@ def test_s3_append_only_insert_if_absent_rejects_duplicate():
     )
     d["k"] = "original"
 
-    result = d.set_item_if("k", "replacement", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", "replacement", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert d["k"] == "original"
@@ -72,7 +72,7 @@ def test_s3_append_only_overwrite_with_matching_etag_blocked():
     etag = d.etag("k")
 
     with pytest.raises(KeyError):
-        d.set_item_if("k", "v2", etag, ETAG_IS_THE_SAME)
+        d.set_item_if("k", "v2", ETAG_IS_THE_SAME, etag)
 
     assert d["k"] == "v1"
 
@@ -89,7 +89,7 @@ def test_s3_append_only_keep_current_allowed_on_existing():
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.set_item_if("k", KEEP_CURRENT, etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("k", KEEP_CURRENT, ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert d["k"] == "v1"

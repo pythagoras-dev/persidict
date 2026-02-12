@@ -43,7 +43,7 @@ def _conditional_write_with_pause(
         return original_save(file_name, value)
 
     d._save_to_file = slow_save
-    result_queue.put(d.set_item_if(key, "conditional", etag, ETAG_IS_THE_SAME))
+    result_queue.put(d.set_item_if(key, "conditional", ETAG_IS_THE_SAME, etag))
 
 def _unconditional_write(
     base_dir: str,

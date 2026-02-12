@@ -77,5 +77,5 @@ def test_discard_item_if_raises_type_error(tmpdir, DictToTest, kwargs, condition
     }
 
     with pytest.raises(TypeError):
-        d.discard_item_if("k", expected_etag_map[condition], condition)
+        d.discard_item_if("k", condition, expected_etag_map[condition])
     assert "k" in d

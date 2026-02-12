@@ -150,7 +150,7 @@ def test_transform_conflict_retries_then_raises(monkeypatch):
     d = LocalDict(serialization_format="pkl")
     d["key"] = "value"
 
-    def always_conflict_set_item_if(key, value, expected_etag, condition, *,
+    def always_conflict_set_item_if(key, value, condition, expected_etag, *,
                                     retrieve_value=ALWAYS_RETRIEVE):
         return ConditionalOperationResult(
             condition_was_satisfied=False,

@@ -21,7 +21,7 @@ def test_delete_item_if_etag_equal_succeeds_when_etag_matches(tmpdir, DictToTest
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert "key1" not in d
@@ -38,7 +38,7 @@ def test_delete_item_if_etag_equal_fails_when_etag_differs(tmpdir, DictToTest, k
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.discard_item_if("key1", old_etag, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, old_etag)
 
     assert not result.condition_was_satisfied
     assert "key1" in d
@@ -51,7 +51,7 @@ def test_delete_item_if_etag_equal_missing_key_raises_keyerror(tmpdir, DictToTes
     """Verify discard_item_if returns ITEM_NOT_AVAILABLE for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.discard_item_if("nonexistent", "some_etag", ETAG_IS_THE_SAME)
+    result = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, "some_etag")
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
@@ -62,7 +62,7 @@ def test_delete_item_if_etag_equal_with_unknown_etag_returns_changed(tmpdir, Dic
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.discard_item_if("key1", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert "key1" in d  # Key not deleted
@@ -74,7 +74,7 @@ def test_delete_item_if_etag_equal_with_unknown_etag_missing_key_raises(tmpdir, 
     """Verify discard_item_if with ITEM_NOT_AVAILABLE on missing key evaluates condition."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.discard_item_if("nonexistent", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("nonexistent", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
     # ITEM_NOT_AVAILABLE == ITEM_NOT_AVAILABLE => condition satisfied, but key already absent
     assert result.condition_was_satisfied
     assert result.actual_etag is ITEM_NOT_AVAILABLE
@@ -91,7 +91,7 @@ def test_delete_item_if_etag_different_succeeds_when_etag_differs(tmpdir, DictTo
     time.sleep(1.1)  # Ensure timestamp changes
     d["key1"] = "modified"
 
-    result = d.discard_item_if("key1", old_etag, ETAG_HAS_CHANGED)
+    result = d.discard_item_if("key1", ETAG_HAS_CHANGED, old_etag)
 
     assert result.condition_was_satisfied
     assert "key1" not in d
@@ -105,7 +105,7 @@ def test_delete_item_if_etag_different_fails_when_etag_matches(tmpdir, DictToTes
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result = d.discard_item_if("key1", current_etag, ETAG_HAS_CHANGED)
+    result = d.discard_item_if("key1", ETAG_HAS_CHANGED, current_etag)
 
     assert not result.condition_was_satisfied
     assert "key1" in d
@@ -118,7 +118,7 @@ def test_delete_item_if_etag_different_missing_key_raises_keyerror(tmpdir, DictT
     """Verify discard_item_if returns ITEM_NOT_AVAILABLE for missing keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.discard_item_if("nonexistent", "some_etag", ETAG_HAS_CHANGED)
+    result = d.discard_item_if("nonexistent", ETAG_HAS_CHANGED, "some_etag")
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 
@@ -131,7 +131,7 @@ def test_delete_item_if_etag_equal_with_tuple_keys(tmpdir, DictToTest, kwargs):
     d[key] = "value"
     etag = d.etag(key)
 
-    result = d.discard_item_if(key, etag, ETAG_IS_THE_SAME)
+    result = d.discard_item_if(key, ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert key not in d
@@ -149,7 +149,7 @@ def test_delete_item_if_etag_different_with_tuple_keys(tmpdir, DictToTest, kwarg
     time.sleep(1.1)
     d[key] = "modified"
 
-    result = d.discard_item_if(key, old_etag, ETAG_HAS_CHANGED)
+    result = d.discard_item_if(key, ETAG_HAS_CHANGED, old_etag)
 
     assert result.condition_was_satisfied
     assert key not in d
@@ -164,12 +164,12 @@ def test_delete_item_if_etag_equal_verifies_etag_before_delete(tmpdir, DictToTes
     correct_etag = d.etag("key1")
     wrong_etag = "definitely_wrong_etag_value"
 
-    result = d.discard_item_if("key1", wrong_etag, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, wrong_etag)
 
     assert not result.condition_was_satisfied
     assert "key1" in d
     # Now try with correct etag
-    result2 = d.discard_item_if("key1", correct_etag, ETAG_IS_THE_SAME)
+    result2 = d.discard_item_if("key1", ETAG_IS_THE_SAME, correct_etag)
     assert result2.condition_was_satisfied
     assert "key1" not in d
 
@@ -182,7 +182,7 @@ def test_delete_item_if_etag_different_with_unknown_etag(tmpdir, DictToTest, kwa
     d["key1"] = "value"
 
     # ITEM_NOT_AVAILABLE differs from actual etag (S3 always has etags)
-    result = d.discard_item_if("key1", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+    result = d.discard_item_if("key1", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
 
     # Should succeed since ITEM_NOT_AVAILABLE != actual_etag
     assert result.condition_was_satisfied

@@ -146,13 +146,13 @@ def test_get_item_if_etag_different_semantics(cached_env):
     wrapper["key"] = {"a": 1}
     etag1 = wrapper.etag("key")
     # Ask with current etag: must return sentinel and not modify caches
-    res = wrapper.get_item_if("key", etag1, ETAG_HAS_CHANGED)
+    res = wrapper.get_item_if("key", ETAG_HAS_CHANGED, etag1)
     assert not res.condition_was_satisfied
     # Update value -> new etag; call with old etag should return new value and update caches
     wrapper["key"] = {"a": 2}
     etag2 = wrapper.etag("key")
     assert etag2 != etag1
-    res2 = wrapper.get_item_if("key", etag1, ETAG_HAS_CHANGED)
+    res2 = wrapper.get_item_if("key", ETAG_HAS_CHANGED, etag1)
     assert res2.condition_was_satisfied
     assert res2.new_value == {"a": 2}
     assert res2.resulting_etag == etag2
@@ -353,7 +353,7 @@ def test_setdefault_if_insert_updates_caches(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     res = wrapper.setdefault_if(
-        ("sd",), "default_val", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+        ("sd",), "default_val", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert res.condition_was_satisfied
     assert wrapper[("sd",)] == "default_val"
@@ -368,7 +368,7 @@ def test_setdefault_if_existing_key_preserves_caches(cached_env):
     etag = wrapper.etag(("sd2",))
 
     res = wrapper.setdefault_if(
-        ("sd2",), "ignored", etag, ETAG_IS_THE_SAME)
+        ("sd2",), "ignored", ETAG_IS_THE_SAME, etag)
 
     assert res.condition_was_satisfied
     assert res.new_value == "original"
@@ -382,7 +382,7 @@ def test_setdefault_if_absent_condition_fails_no_cache_pollution(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
 
     res = wrapper.setdefault_if(
-        ("sd3",), "val", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+        ("sd3",), "val", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
 
     assert not res.condition_was_satisfied
     assert ("sd3",) not in main

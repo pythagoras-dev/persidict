@@ -251,13 +251,13 @@ class MutableDictCached(PersiDict[ValueType]):
         has_cached_data = key in self._data_cache
         if cached_etag is not ITEM_NOT_AVAILABLE and not has_cached_data:
             res = self.get_item_if(
-                key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+                key, ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
             if res.new_value is ITEM_NOT_AVAILABLE:
                 raise KeyError(f"Key {key} not found")
             return res.new_value
 
         res = self.get_item_if(
-            key, cached_etag, ETAG_HAS_CHANGED,
+            key, ETAG_HAS_CHANGED, cached_etag,
             retrieve_value=IF_ETAG_CHANGED)
 
         if res.new_value is ITEM_NOT_AVAILABLE:
@@ -270,7 +270,7 @@ class MutableDictCached(PersiDict[ValueType]):
             except KeyError:
                 # Shouldn't happen (we checked above), but handle gracefully
                 res2 = self.get_item_if(
-                    key, ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+                    key, ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
                 if res2.new_value is ITEM_NOT_AVAILABLE:
                     raise KeyError(f"Key {key} not found")
                 return res2.new_value
@@ -280,8 +280,8 @@ class MutableDictCached(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -291,7 +291,7 @@ class MutableDictCached(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.get_item_if(
-            key, expected_etag, condition,
+            key, condition, expected_etag,
             retrieve_value=retrieve_value)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
@@ -319,15 +319,15 @@ class MutableDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; update caches when a value is returned."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.set_item_if(
-            key, value, expected_etag, condition,
+            key, value, condition, expected_etag,
             retrieve_value=retrieve_value)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
@@ -339,15 +339,15 @@ class MutableDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             default_value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.setdefault_if(
-            key, default_value, expected_etag, condition,
+            key, default_value, condition, expected_etag,
             retrieve_value=retrieve_value)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
@@ -357,12 +357,12 @@ class MutableDictCached(PersiDict[ValueType]):
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Discard item only if ETag satisfies a condition; update caches."""
         key = NonEmptySafeStrTuple(key)
-        res = self._main_dict.discard_item_if(key, expected_etag, condition)
+        res = self._main_dict.discard_item_if(key, condition, expected_etag)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
             actual_etag=res.actual_etag)

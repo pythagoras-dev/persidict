@@ -77,7 +77,7 @@ def test_get_item_if_etag_returns_value_when_changed(tmpdir, DictToTest, kwargs)
     time.sleep(MIN_SLEEP)
     d["key1"] = "value2"
 
-    result = d.get_item_if("key1", old_etag, ETAG_HAS_CHANGED)
+    result = d.get_item_if("key1", ETAG_HAS_CHANGED, old_etag)
 
     assert result.condition_was_satisfied
     value = result.new_value
@@ -94,7 +94,7 @@ def test_get_item_if_etag_returns_flag_when_unchanged(tmpdir, DictToTest, kwargs
     d["key1"] = "value1"
     current_etag = d.etag("key1")
 
-    result = d.get_item_if("key1", current_etag, ETAG_HAS_CHANGED)
+    result = d.get_item_if("key1", ETAG_HAS_CHANGED, current_etag)
 
     assert not result.condition_was_satisfied
 
@@ -105,7 +105,7 @@ def test_get_item_if_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
     """Verify get_item_if returns result with ITEM_NOT_AVAILABLE for nonexistent keys."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.get_item_if("nonexistent", "some_etag", ETAG_HAS_CHANGED)
+    result = d.get_item_if("nonexistent", ETAG_HAS_CHANGED, "some_etag")
     assert result.actual_etag is ITEM_NOT_AVAILABLE
 
 

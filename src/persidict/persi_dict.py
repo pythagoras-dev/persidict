@@ -385,13 +385,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             ConditionalOperationResult with the value in new_value and
             the ETag in actual_etag (and resulting_etag).
         """
-        return self.get_item_if(key, ITEM_NOT_AVAILABLE, ANY_ETAG)
+        return self.get_item_if(key, ANY_ETAG, ITEM_NOT_AVAILABLE)
 
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -406,9 +406,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         Args:
             key: Dictionary key.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             retrieve_value: Controls value retrieval. ALWAYS_RETRIEVE
                 (default) always fetches the value. IF_ETAG_CHANGED skips
                 the fetch when expected_etag == actual_etag, returning
@@ -454,8 +454,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -471,9 +471,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Args:
             key: Dictionary key.
             value: Value to store.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             retrieve_value: Controls value retrieval on condition failure.
                 ALWAYS_RETRIEVE (default) fetches the existing value.
                 NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
@@ -519,8 +519,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self,
             key: NonEmptyPersiDictKey,
             default_value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -538,9 +538,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Dictionary key.
             default_value: Value to insert if the key is absent and the
                 condition is satisfied.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             retrieve_value: Controls value retrieval when the key exists.
                 ALWAYS_RETRIEVE (default) fetches the existing value.
                 NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
@@ -577,8 +577,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Discard a key only if an ETag condition is satisfied.
 
@@ -592,9 +592,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         Args:
             key: Dictionary key.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.
@@ -663,8 +663,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         while True:
             read_res = self.get_item_if(
                 key,
-                ITEM_NOT_AVAILABLE,
                 ANY_ETAG,
+                ITEM_NOT_AVAILABLE,
                 retrieve_value=ALWAYS_RETRIEVE)
             current_value = read_res.new_value
             actual_etag = read_res.actual_etag
@@ -678,7 +678,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
             if new_value is DELETE_CURRENT:
                 delete_res = self.discard_item_if(
-                    key, actual_etag, ETAG_IS_THE_SAME)
+                    key, ETAG_IS_THE_SAME, actual_etag)
                 if delete_res.condition_was_satisfied:
                     return OperationResult(
                         resulting_etag=ITEM_NOT_AVAILABLE,
@@ -687,8 +687,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 write_res = self.set_item_if(
                     key,
                     new_value,
-                    actual_etag,
                     ETAG_IS_THE_SAME,
+                    actual_etag,
                     retrieve_value=NEVER_RETRIEVE)
                 if write_res.condition_was_satisfied:
                     return OperationResult(

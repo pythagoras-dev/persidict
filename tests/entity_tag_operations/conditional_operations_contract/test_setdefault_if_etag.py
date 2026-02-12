@@ -22,7 +22,7 @@ def test_setdefault_if_inserts_when_absent_and_condition_satisfied(
     """Verify setdefault_if inserts when key is missing and condition passes."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.setdefault_if("key1", "value", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+    result = d.setdefault_if("key1", "value", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert result.condition_was_satisfied
     assert result.actual_etag is ITEM_NOT_AVAILABLE
@@ -39,7 +39,7 @@ def test_setdefault_if_noop_when_key_exists_even_if_condition_satisfied(
     d["key1"] = "original"
     etag = d.etag("key1")
 
-    result = d.setdefault_if("key1", "new_value", etag, ETAG_IS_THE_SAME)
+    result = d.setdefault_if("key1", "new_value", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert result.resulting_etag == etag
@@ -53,7 +53,7 @@ def test_setdefault_if_missing_key_condition_not_satisfied(
     """Verify setdefault_if does not insert when condition fails."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.setdefault_if("key1", "value", ITEM_NOT_AVAILABLE, ETAG_HAS_CHANGED)
+    result = d.setdefault_if("key1", "value", ETAG_HAS_CHANGED, ITEM_NOT_AVAILABLE)
 
     assert not result.condition_was_satisfied
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
@@ -69,6 +69,6 @@ def test_setdefault_if_rejects_jokers(tmpdir, DictToTest, kwargs, joker):
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
     with pytest.raises(TypeError):
-        d.setdefault_if("key1", joker, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
+        d.setdefault_if("key1", joker, ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
 
     assert "key1" not in d

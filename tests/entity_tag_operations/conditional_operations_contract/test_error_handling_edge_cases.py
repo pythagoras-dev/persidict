@@ -92,7 +92,7 @@ def test_conditional_ops_with_empty_string_value(tmpdir, DictToTest, kwargs):
     d["key1"] = ""
     etag = d.etag("key1")
 
-    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert d["key1"] == "updated"
@@ -108,7 +108,7 @@ def test_conditional_ops_with_none_value(tmpdir, DictToTest, kwargs):
 
     assert d["key1"] is None
 
-    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert d["key1"] == "updated"
@@ -133,7 +133,7 @@ def test_etag_equality_comparison_not_identity(tmpdir, DictToTest, kwargs):
     assert etag1 == etag2
 
     # The conditional operation should work with either
-    result = d.set_item_if("key1", "updated", etag2, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, etag2)
     assert result.condition_was_satisfied
 
 
@@ -154,7 +154,7 @@ def test_concurrent_modification_detection_simulation(tmpdir, DictToTest, kwargs
     d["key1"] = "modified_by_other"
 
     # Our conditional operation should detect the change
-    result = d.set_item_if("key1", "our_value", stale_etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "our_value", ETAG_IS_THE_SAME, stale_etag)
 
     assert not result.condition_was_satisfied
     assert d["key1"] == "modified_by_other"
@@ -172,7 +172,7 @@ def test_set_item_if_failed_condition_missing_key_returns_item_not_available(mon
 
     monkeypatch.setattr(d, "_get_value_and_etag", _get_value_and_etag_racy)
 
-    result = d.set_item_if("key1", "updated", "wrong_etag", ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, "wrong_etag")
 
     assert not result.condition_was_satisfied
     assert result.actual_etag is ITEM_NOT_AVAILABLE
@@ -188,7 +188,7 @@ def test_return_type_set_item_if_etag_equal_success(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.set_item_if("key1", "updated", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert isinstance(result.resulting_etag, str)
@@ -201,7 +201,7 @@ def test_return_type_set_item_if_etag_equal_failure(tmpdir, DictToTest, kwargs):
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.set_item_if("key1", "updated", "wrong_etag", ETAG_IS_THE_SAME)
+    result = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, "wrong_etag")
 
     assert not result.condition_was_satisfied
     assert isinstance(result, ConditionalOperationResult)
@@ -215,7 +215,7 @@ def test_return_type_delete_item_if_etag_equal_success(tmpdir, DictToTest, kwarg
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
 
@@ -227,7 +227,7 @@ def test_return_type_delete_item_if_etag_equal_failure(tmpdir, DictToTest, kwarg
     d = DictToTest(base_dir=tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.discard_item_if("key1", "wrong_etag", ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, "wrong_etag")
 
     assert not result.condition_was_satisfied
 
@@ -240,8 +240,8 @@ def test_return_type_discard_is_bool(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result_success = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
-    result_missing = d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)  # Now missing
+    result_success = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)
+    result_missing = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)  # Now missing
 
     assert isinstance(result_success, ConditionalOperationResult)
     assert isinstance(result_missing, ConditionalOperationResult)
@@ -266,7 +266,7 @@ def test_conditional_ops_with_complex_nested_value(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Verify we can do conditional get
-    result = d.get_item_if("key1", etag, ETAG_IS_THE_SAME)
+    result = d.get_item_if("key1", ETAG_IS_THE_SAME, etag)
     assert result.condition_was_satisfied
     value = result.new_value
     assert value == complex_value
@@ -300,13 +300,13 @@ def test_conditional_set_then_delete_in_sequence(tmpdir, DictToTest, kwargs):
     etag1 = d.etag("key1")
 
     # Conditional set
-    result_set = d.set_item_if("key1", "updated", etag1, ETAG_IS_THE_SAME)
+    result_set = d.set_item_if("key1", "updated", ETAG_IS_THE_SAME, etag1)
     assert result_set.condition_was_satisfied
     assert d["key1"] == "updated"
     etag2 = result_set.resulting_etag
 
     # Conditional delete with new etag
-    result = d.discard_item_if("key1", etag2, ETAG_IS_THE_SAME)
+    result = d.discard_item_if("key1", ETAG_IS_THE_SAME, etag2)
     assert result.condition_was_satisfied
     assert "key1" not in d
 
@@ -320,7 +320,7 @@ def test_conditional_delete_then_recreate(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Delete
-    d.discard_item_if("key1", etag, ETAG_IS_THE_SAME)
+    d.discard_item_if("key1", ETAG_IS_THE_SAME, etag)
     assert "key1" not in d
 
     # Recreate
@@ -339,8 +339,8 @@ def test_status_flags_are_singleton_instances(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     current_etag = d.etag("key1")
 
-    result1 = d.set_item_if("key1", "new", "wrong_etag", ETAG_IS_THE_SAME)
-    result2 = d.set_item_if("key1", "new", current_etag, ETAG_HAS_CHANGED)
+    result1 = d.set_item_if("key1", "new", ETAG_IS_THE_SAME, "wrong_etag")
+    result2 = d.set_item_if("key1", "new", ETAG_HAS_CHANGED, current_etag)
 
     # Both results should indicate condition not satisfied
     assert not result1.condition_was_satisfied
@@ -370,7 +370,7 @@ def test_get_item_if_etag_preserves_value_type(tmpdir, DictToTest, kwargs):
         d[key] = test_value
         etag = d.etag(key)
 
-        result = d.get_item_if(key, etag, ETAG_IS_THE_SAME)
+        result = d.get_item_if(key, ETAG_IS_THE_SAME, etag)
         assert result.condition_was_satisfied
         retrieved_value = result.new_value
         assert retrieved_value == test_value
@@ -386,7 +386,7 @@ def test_long_key_tuples(tmpdir, DictToTest, kwargs):
     d[key] = "deep_value"
     etag = d.etag(key)
 
-    result = d.set_item_if(key, "updated_deep", etag, ETAG_IS_THE_SAME)
+    result = d.set_item_if(key, "updated_deep", ETAG_IS_THE_SAME, etag)
 
     assert result.condition_was_satisfied
     assert d[key] == "updated_deep"

@@ -245,52 +245,52 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Get item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.get_item_if(
-            key, expected_etag, condition,
+            key, condition, expected_etag,
             retrieve_value=retrieve_value)
 
     def set_item_if(
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.set_item_if(
-            key, value, expected_etag, condition,
+            key, value, condition, expected_etag,
             retrieve_value=retrieve_value)
 
     def setdefault_if(
             self,
             key: NonEmptyPersiDictKey,
             default_value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to cached dict."""
         return self._cached_dict.setdefault_if(
-            key, default_value, expected_etag, condition,
+            key, default_value, condition, expected_etag,
             retrieve_value=retrieve_value)
 
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Discard item only if ETag satisfies a condition; delegate to cached dict."""
-        return self._cached_dict.discard_item_if(key, expected_etag, condition)
+        return self._cached_dict.discard_item_if(key, condition, expected_etag)
 
     def transform_item(
             self,

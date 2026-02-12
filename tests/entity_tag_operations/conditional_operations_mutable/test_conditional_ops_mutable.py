@@ -82,9 +82,9 @@ def test_get_item_if_etag_different_respects_etag(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        assert not d.get_item_if("k", etag, ETAG_HAS_CHANGED).condition_was_satisfied
+        assert not d.get_item_if("k", ETAG_HAS_CHANGED, etag).condition_was_satisfied
 
-        result = d.get_item_if("k", mismatched_etag(spec, etag), ETAG_HAS_CHANGED)
+        result = d.get_item_if("k", ETAG_HAS_CHANGED, mismatched_etag(spec, etag))
         assert result.condition_was_satisfied
         assert result.new_value == "v1"
         assert result.resulting_etag == d.etag("k")
@@ -97,12 +97,12 @@ def test_get_item_if_etag_equal_respects_etag(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        result = d.get_item_if("k", etag, ETAG_IS_THE_SAME)
+        result = d.get_item_if("k", ETAG_IS_THE_SAME, etag)
         assert result.condition_was_satisfied
         assert result.new_value == "v1"
         assert result.resulting_etag == d.etag("k")
 
-        assert not d.get_item_if("k", mismatched_etag(spec, etag), ETAG_IS_THE_SAME).condition_was_satisfied
+        assert not d.get_item_if("k", ETAG_IS_THE_SAME, mismatched_etag(spec, etag)).condition_was_satisfied
 
 
 @pytest.mark.parametrize("spec", MUTABLE_SPECS, ids=[s["name"] for s in MUTABLE_SPECS])
@@ -112,12 +112,12 @@ def test_set_item_if_etag_equal_updates_and_rejects_mismatch(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        res = d.set_item_if("k", "v2", etag, ETAG_IS_THE_SAME)
+        res = d.set_item_if("k", "v2", ETAG_IS_THE_SAME, etag)
         assert res.condition_was_satisfied
         assert d["k"] == "v2"
         assert res.resulting_etag == d.etag("k")
 
-        res_mismatch = d.set_item_if("k", "v3", mismatched_etag(spec, etag), ETAG_IS_THE_SAME)
+        res_mismatch = d.set_item_if("k", "v3", ETAG_IS_THE_SAME, mismatched_etag(spec, etag))
         assert not res_mismatch.condition_was_satisfied
         assert d["k"] == "v2"
 
@@ -129,11 +129,11 @@ def test_set_item_if_etag_different_updates_and_rejects_match(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        res_match = d.set_item_if("k", "v2", etag, ETAG_HAS_CHANGED)
+        res_match = d.set_item_if("k", "v2", ETAG_HAS_CHANGED, etag)
         assert not res_match.condition_was_satisfied
         assert d["k"] == "v1"
 
-        res = d.set_item_if("k", "v3", mismatched_etag(spec, etag), ETAG_HAS_CHANGED)
+        res = d.set_item_if("k", "v3", ETAG_HAS_CHANGED, mismatched_etag(spec, etag))
         assert res.condition_was_satisfied
         assert d["k"] == "v3"
 
@@ -145,10 +145,10 @@ def test_delete_item_if_etag_equal_respects_etag(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        assert not d.discard_item_if("k", mismatched_etag(spec, etag), ETAG_IS_THE_SAME).condition_was_satisfied
+        assert not d.discard_item_if("k", ETAG_IS_THE_SAME, mismatched_etag(spec, etag)).condition_was_satisfied
         assert "k" in d
 
-        assert d.discard_item_if("k", etag, ETAG_IS_THE_SAME).condition_was_satisfied
+        assert d.discard_item_if("k", ETAG_IS_THE_SAME, etag).condition_was_satisfied
         assert "k" not in d
 
 
@@ -159,10 +159,10 @@ def test_delete_item_if_etag_different_respects_etag(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        assert not d.discard_item_if("k", etag, ETAG_HAS_CHANGED).condition_was_satisfied
+        assert not d.discard_item_if("k", ETAG_HAS_CHANGED, etag).condition_was_satisfied
         assert "k" in d
 
-        assert d.discard_item_if("k", mismatched_etag(spec, etag), ETAG_HAS_CHANGED).condition_was_satisfied
+        assert d.discard_item_if("k", ETAG_HAS_CHANGED, mismatched_etag(spec, etag)).condition_was_satisfied
         assert "k" not in d
 
 
@@ -170,12 +170,12 @@ def test_delete_item_if_etag_different_respects_etag(tmp_path, spec):
 def test_discard_item_if_etag_equal_respects_etag(tmp_path, spec):
     with maybe_mock_aws(spec["uses_s3"]):
         d = build_dict(spec, tmp_path)
-        assert not d.discard_item_if("missing", "etag", ETAG_IS_THE_SAME).condition_was_satisfied
+        assert not d.discard_item_if("missing", ETAG_IS_THE_SAME, "etag").condition_was_satisfied
 
         d["k"] = "v1"
         etag = d.etag("k")
-        assert not d.discard_item_if("k", mismatched_etag(spec, etag), ETAG_IS_THE_SAME).condition_was_satisfied
-        assert d.discard_item_if("k", etag, ETAG_IS_THE_SAME).condition_was_satisfied
+        assert not d.discard_item_if("k", ETAG_IS_THE_SAME, mismatched_etag(spec, etag)).condition_was_satisfied
+        assert d.discard_item_if("k", ETAG_IS_THE_SAME, etag).condition_was_satisfied
         assert "k" not in d
 
 
@@ -184,12 +184,12 @@ def test_discard_item_if_etag_different_respects_etag(tmp_path, spec):
     with maybe_mock_aws(spec["uses_s3"]):
         d = build_dict(spec, tmp_path)
         # "etag" != ITEM_NOT_AVAILABLE => condition satisfied for missing key
-        assert d.discard_item_if("missing", "etag", ETAG_HAS_CHANGED).condition_was_satisfied
+        assert d.discard_item_if("missing", ETAG_HAS_CHANGED, "etag").condition_was_satisfied
 
         d["k"] = "v1"
         etag = d.etag("k")
-        assert not d.discard_item_if("k", etag, ETAG_HAS_CHANGED).condition_was_satisfied
-        assert d.discard_item_if("k", mismatched_etag(spec, etag), ETAG_HAS_CHANGED).condition_was_satisfied
+        assert not d.discard_item_if("k", ETAG_HAS_CHANGED, etag).condition_was_satisfied
+        assert d.discard_item_if("k", ETAG_HAS_CHANGED, mismatched_etag(spec, etag)).condition_was_satisfied
         assert "k" not in d
 
 
@@ -200,10 +200,10 @@ def test_set_item_if_etag_equal_jokers(tmp_path, spec):
         d["k"] = "v1"
         etag = d.etag("k")
 
-        assert d.set_item_if("k", KEEP_CURRENT, etag, ETAG_IS_THE_SAME).condition_was_satisfied
+        assert d.set_item_if("k", KEEP_CURRENT, ETAG_IS_THE_SAME, etag).condition_was_satisfied
         current_etag = d.etag("k")
 
-        assert d.set_item_if("k", DELETE_CURRENT, current_etag, ETAG_IS_THE_SAME).condition_was_satisfied
+        assert d.set_item_if("k", DELETE_CURRENT, ETAG_IS_THE_SAME, current_etag).condition_was_satisfied
         assert "k" not in d
 
 
@@ -211,12 +211,12 @@ def test_set_item_if_etag_equal_jokers(tmp_path, spec):
 @pytest.mark.parametrize(
     "method_name,args",
     [
-        ("get_item_if", ("e", ETAG_HAS_CHANGED)),
-        ("get_item_if", ("e", ETAG_IS_THE_SAME)),
-        ("set_item_if", ("v", "e", ETAG_IS_THE_SAME)),
-        ("set_item_if", ("v", "e", ETAG_HAS_CHANGED)),
-        ("discard_item_if", ("e", ETAG_IS_THE_SAME)),
-        ("discard_item_if", ("e", ETAG_HAS_CHANGED)),
+        ("get_item_if", (ETAG_HAS_CHANGED, "e")),
+        ("get_item_if", (ETAG_IS_THE_SAME, "e")),
+        ("set_item_if", ("v", ETAG_IS_THE_SAME, "e")),
+        ("set_item_if", ("v", ETAG_HAS_CHANGED, "e")),
+        ("discard_item_if", (ETAG_IS_THE_SAME, "e")),
+        ("discard_item_if", (ETAG_HAS_CHANGED, "e")),
     ],
 )
 def test_conditional_ops_missing_key_returns_item_not_available(tmp_path, spec, method_name, args):

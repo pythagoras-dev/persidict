@@ -78,7 +78,7 @@ def test_get_with_etag_etag_usable_for_cas(tmpdir, DictToTest, kwargs):
     d["counter"] = 10
 
     r = d.get_with_etag("counter")
-    write = d.set_item_if("counter", r.new_value + 1, r.actual_etag, ETAG_IS_THE_SAME)
+    write = d.set_item_if("counter", r.new_value + 1, ETAG_IS_THE_SAME, r.actual_etag)
 
     assert write.condition_was_satisfied
     assert d["counter"] == 11

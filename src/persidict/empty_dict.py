@@ -50,8 +50,8 @@ class EmptyDict(PersiDict[ValueType]):
 
     def _absent_key_result(
             self,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Evaluate a conditional operation against an always-absent key."""
         satisfied = self._check_condition(
@@ -61,15 +61,15 @@ class EmptyDict(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
         self._validate_retrieve_value(retrieve_value)
         NonEmptySafeStrTuple(key)
-        return self._absent_key_result(expected_etag, condition)
+        return self._absent_key_result(condition, expected_etag)
 
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -84,22 +84,22 @@ class EmptyDict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
         self._validate_retrieve_value(retrieve_value)
         self._validate_setitem_args(key, value)
-        return self._absent_key_result(expected_etag, condition)
+        return self._absent_key_result(condition, expected_etag)
 
     def setdefault_if(
             self,
             key: NonEmptyPersiDictKey,
             default_value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -108,17 +108,17 @@ class EmptyDict(PersiDict[ValueType]):
             raise TypeError("default_value must be a regular value, not a Joker command")
         self._validate_retrieve_value(retrieve_value)
         NonEmptySafeStrTuple(key)
-        return self._absent_key_result(expected_etag, condition)
+        return self._absent_key_result(condition, expected_etag)
 
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated normally."""
         NonEmptySafeStrTuple(key)
-        return self._absent_key_result(expected_etag, condition)
+        return self._absent_key_result(condition, expected_etag)
 
     def transform_item(self, key, transformer, *, n_retries: int | None = 6) -> OperationResult:
         """No-op: returns ITEM_NOT_AVAILABLE without calling the transformer."""

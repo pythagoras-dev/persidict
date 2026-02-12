@@ -58,11 +58,11 @@ def test_empty_dict_conditional_ops_reject_invalid_keys(bad_key):
     empty_dict = EmptyDict()
 
     with pytest.raises((TypeError, ValueError)):
-        empty_dict.get_item_if(bad_key, "etag", ETAG_IS_THE_SAME)
+        empty_dict.get_item_if(bad_key, ETAG_IS_THE_SAME, "etag")
     with pytest.raises((TypeError, ValueError)):
-        empty_dict.setdefault_if(bad_key, "v", "etag", ETAG_IS_THE_SAME)
+        empty_dict.setdefault_if(bad_key, "v", ETAG_IS_THE_SAME, "etag")
     with pytest.raises((TypeError, ValueError)):
-        empty_dict.discard_item_if(bad_key, "etag", ETAG_IS_THE_SAME)
+        empty_dict.discard_item_if(bad_key, ETAG_IS_THE_SAME, "etag")
 
 
 def test_empty_dict_delete_operations():

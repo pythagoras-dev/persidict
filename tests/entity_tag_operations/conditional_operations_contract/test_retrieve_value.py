@@ -35,7 +35,7 @@ def test_get_item_if_rejects_invalid_retrieve_value(
     d["k"] = "v"
     etag = d.etag("k")
     with pytest.raises(TypeError, match="retrieve_value must be"):
-        d.get_item_if("k", etag, ETAG_IS_THE_SAME, retrieve_value=bad_value)
+        d.get_item_if("k", ETAG_IS_THE_SAME, etag, retrieve_value=bad_value)
 
 
 @pytest.mark.parametrize("bad_value", [True, False, "always", None])
@@ -48,7 +48,7 @@ def test_set_item_if_rejects_invalid_retrieve_value(
     d["k"] = "v"
     etag = d.etag("k")
     with pytest.raises(TypeError, match="retrieve_value must be"):
-        d.set_item_if("k", "new", etag, ETAG_IS_THE_SAME,
+        d.set_item_if("k", "new", ETAG_IS_THE_SAME, etag,
                        retrieve_value=bad_value)
 
 
@@ -60,7 +60,7 @@ def test_setdefault_if_rejects_invalid_retrieve_value(
     """setdefault_if raises TypeError for non-RetrieveValueFlag values."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
     with pytest.raises(TypeError, match="retrieve_value must be"):
-        d.setdefault_if("k", "v", ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME,
+        d.setdefault_if("k", "v", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE,
                          retrieve_value=bad_value)
 
 
@@ -76,7 +76,7 @@ def test_get_item_if_never_retrieve_returns_value_not_retrieved(
     d["k"] = "hello"
     etag = d.etag("k")
 
-    result = d.get_item_if("k", etag, ETAG_IS_THE_SAME,
+    result = d.get_item_if("k", ETAG_IS_THE_SAME, etag,
                             retrieve_value=NEVER_RETRIEVE)
 
     assert result.condition_was_satisfied
@@ -91,7 +91,7 @@ def test_get_item_if_never_retrieve_absent_key(
     """NEVER_RETRIEVE: absent key → ITEM_NOT_AVAILABLE."""
     d = DictToTest(base_dir=tmpdir, **kwargs)
 
-    result = d.get_item_if("missing", "fake_etag", ETAG_HAS_CHANGED,
+    result = d.get_item_if("missing", ETAG_HAS_CHANGED, "fake_etag",
                             retrieve_value=NEVER_RETRIEVE)
 
     assert result.actual_etag is ITEM_NOT_AVAILABLE
@@ -107,7 +107,7 @@ def test_set_item_if_never_retrieve_on_failure(
     etag = d.etag("k")
 
     # Condition: ETAG_HAS_CHANGED with current etag → not satisfied
-    result = d.set_item_if("k", "new", etag, ETAG_HAS_CHANGED,
+    result = d.set_item_if("k", "new", ETAG_HAS_CHANGED, etag,
                             retrieve_value=NEVER_RETRIEVE)
 
     assert not result.condition_was_satisfied
@@ -124,7 +124,7 @@ def test_set_item_if_never_retrieve_on_success(
     d["k"] = "original"
     etag = d.etag("k")
 
-    result = d.set_item_if("k", "updated", etag, ETAG_IS_THE_SAME,
+    result = d.set_item_if("k", "updated", ETAG_IS_THE_SAME, etag,
                             retrieve_value=NEVER_RETRIEVE)
 
     assert result.condition_was_satisfied
@@ -141,7 +141,7 @@ def test_setdefault_if_never_retrieve_key_exists(
     d["k"] = "existing"
     etag = d.etag("k")
 
-    result = d.setdefault_if("k", "default", etag, ETAG_IS_THE_SAME,
+    result = d.setdefault_if("k", "default", ETAG_IS_THE_SAME, etag,
                               retrieve_value=NEVER_RETRIEVE)
 
     assert result.new_value is VALUE_NOT_RETRIEVED
@@ -160,7 +160,7 @@ def test_get_item_if_if_etag_changed_skips_when_same(
     d["k"] = "hello"
     etag = d.etag("k")
 
-    result = d.get_item_if("k", etag, ETAG_IS_THE_SAME,
+    result = d.get_item_if("k", ETAG_IS_THE_SAME, etag,
                             retrieve_value=IF_ETAG_CHANGED)
 
     assert result.condition_was_satisfied
@@ -180,7 +180,7 @@ def test_get_item_if_if_etag_changed_fetches_when_different(
     time.sleep(1.1)
     d["k"] = "modified"
 
-    result = d.get_item_if("k", old_etag, ETAG_HAS_CHANGED,
+    result = d.get_item_if("k", ETAG_HAS_CHANGED, old_etag,
                             retrieve_value=IF_ETAG_CHANGED)
 
     assert result.condition_was_satisfied
@@ -199,7 +199,7 @@ def test_set_item_if_if_etag_changed_skips_when_same(
 
     # Condition: ETAG_HAS_CHANGED with current etag → not satisfied
     # retrieve_value: IF_ETAG_CHANGED, but expected == actual → skip
-    result = d.set_item_if("k", "new", etag, ETAG_HAS_CHANGED,
+    result = d.set_item_if("k", "new", ETAG_HAS_CHANGED, etag,
                             retrieve_value=IF_ETAG_CHANGED)
 
     assert not result.condition_was_satisfied
@@ -221,7 +221,7 @@ def test_set_item_if_if_etag_changed_fetches_when_different(
 
     # Condition: ETAG_IS_THE_SAME with old etag → not satisfied
     # retrieve_value: IF_ETAG_CHANGED, expected != actual → fetch
-    result = d.set_item_if("k", "should_not_set", old_etag, ETAG_IS_THE_SAME,
+    result = d.set_item_if("k", "should_not_set", ETAG_IS_THE_SAME, old_etag,
                             retrieve_value=IF_ETAG_CHANGED)
 
     assert not result.condition_was_satisfied
@@ -238,7 +238,7 @@ def test_setdefault_if_if_etag_changed_key_exists_same_etag(
     d["k"] = "existing"
     etag = d.etag("k")
 
-    result = d.setdefault_if("k", "default", etag, ETAG_IS_THE_SAME,
+    result = d.setdefault_if("k", "default", ETAG_IS_THE_SAME, etag,
                               retrieve_value=IF_ETAG_CHANGED)
 
     assert result.condition_was_satisfied
@@ -255,7 +255,7 @@ def test_setdefault_if_if_etag_changed_key_exists_different_etag(
     d["k"] = "existing"
     real_etag = d.etag("k")
 
-    result = d.setdefault_if("k", "default", "stale_etag", ETAG_HAS_CHANGED,
+    result = d.setdefault_if("k", "default", ETAG_HAS_CHANGED, "stale_etag",
                               retrieve_value=IF_ETAG_CHANGED)
 
     assert result.condition_was_satisfied

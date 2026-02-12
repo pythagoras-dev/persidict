@@ -385,8 +385,8 @@ class BasicS3Dict(PersiDict[ValueType]):
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -397,8 +397,8 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         Args:
             key: Dictionary key.
-            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             retrieve_value: Controls value retrieval. ALWAYS_RETRIEVE
                 (default) always fetches the value. IF_ETAG_CHANGED uses
                 S3 IfNoneMatch to skip the fetch when the ETag matches.
@@ -630,8 +630,8 @@ class BasicS3Dict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             value: ValueType | Joker,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -646,8 +646,8 @@ class BasicS3Dict(PersiDict[ValueType]):
         Args:
             key: Dictionary key.
             value: Value to store.
-            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             retrieve_value: Controls value retrieval on condition failure.
                 ALWAYS_RETRIEVE (default) fetches the existing value.
                 NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
@@ -694,17 +694,17 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         if _fast_eligible:
             return self._set_item_if_fast_path(
-                key, value, expected_etag, condition, retrieve_value)
+                key, value, condition, expected_etag, retrieve_value)
 
         return self._set_item_if_fallback(
-            key, value, expected_etag, condition, retrieve_value)
+            key, value, condition, expected_etag, retrieve_value)
 
     def _set_item_if_fast_path(
             self,
             key: NonEmptySafeStrTuple,
             value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag
     ) -> ConditionalOperationResult:
         """Optimistic S3 conditional write in a single round-trip.
@@ -750,8 +750,8 @@ class BasicS3Dict(PersiDict[ValueType]):
             self,
             key: NonEmptySafeStrTuple,
             value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag
     ) -> ConditionalOperationResult:
         """Check-then-act path for conditions other than the fast path.
@@ -900,8 +900,8 @@ class BasicS3Dict(PersiDict[ValueType]):
     def discard_item_if(
             self,
             key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Discard a key only if an ETag condition is satisfied.
 
@@ -910,8 +910,8 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         Args:
             key: Dictionary key.
-            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
+            expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
 
         Returns:
             ConditionalOperationResult with the outcome.
@@ -927,16 +927,16 @@ class BasicS3Dict(PersiDict[ValueType]):
                 self._probe_conditional_delete()
             if type(self)._conditional_delete_supported:
                 return self._discard_item_if_fast_path(
-                    key, expected_etag, condition)
+                    key, condition, expected_etag)
 
         return self._discard_item_if_fallback(
-            key, expected_etag, condition)
+            key, condition, expected_etag)
 
     def _discard_item_if_fast_path(
             self,
             key: NonEmptySafeStrTuple,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Optimistic S3 conditional delete for ETAG_IS_THE_SAME.
 
@@ -963,8 +963,8 @@ class BasicS3Dict(PersiDict[ValueType]):
     def _discard_item_if_fallback(
             self,
             key: NonEmptySafeStrTuple,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag
+            condition: ETagConditionFlag,
+            expected_etag: ETagIfExists
     ) -> ConditionalOperationResult:
         """Check-then-delete path for conditions other than the fast path.
 
@@ -1002,8 +1002,8 @@ class BasicS3Dict(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             default_value: ValueType,
-            expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
+            expected_etag: ETagIfExists,
             *,
             retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
@@ -1017,9 +1017,9 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: Dictionary key.
             default_value: Value to insert if the key is absent and the
                 condition is satisfied.
+            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             retrieve_value: Controls value retrieval when the key exists.
                 ALWAYS_RETRIEVE (default) fetches the existing value.
                 NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
