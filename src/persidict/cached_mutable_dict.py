@@ -61,8 +61,8 @@ class MutableDictCached(PersiDict[ValueType]):
         Raises:
             TypeError: If any of main_dict, data_cache, or etag_cache is not a
                 PersiDict instance.
-            ValueError: If either cache is append-only (append_only=True) or
-                if main_dict does not fully support ETag operations.
+            ValueError: If any of main_dict, data_cache, or etag_cache is
+                append-only (append_only=True).
 
         Notes:
             The adapter inherits base settings (base_class_for_values,

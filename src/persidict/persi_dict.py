@@ -1108,7 +1108,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             other: Another dictionary-like object to compare against.
 
         Returns:
-            True if the dictionaries kave the same key/value pairs, False otherwise.
+            True if the dictionaries have the same key/value pairs, False otherwise.
         """
         if self is other:
             return True

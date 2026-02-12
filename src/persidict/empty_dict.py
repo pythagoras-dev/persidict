@@ -1,4 +1,4 @@
-"""EmptyDict: EmptyDict implementation that discards writes, always appears empty.
+"""Persistent dictionary that discards writes and always appears empty.
 
 This module provides EmptyDict, a persistent dictionary that behaves like
 /dev/null - accepting all writes but discarding them, and always appearing
@@ -117,7 +117,7 @@ class EmptyDict(PersiDict[ValueType]):
         return self._absent_key_result(expected_etag, condition)
 
     def transform_item(self, key, transformer, *, n_retries: int | None = 6) -> OperationResult:
-        """Transform always receives ITEM_NOT_AVAILABLE, result is discarded."""
+        """No-op: returns ITEM_NOT_AVAILABLE without calling the transformer."""
         return OperationResult(
             resulting_etag=ITEM_NOT_AVAILABLE,
             new_value=ITEM_NOT_AVAILABLE)

@@ -1,4 +1,4 @@
-"""Version information for the mixinforge package."""
+"""Version information for the persidict package."""
 
 from importlib import metadata as _md
 
