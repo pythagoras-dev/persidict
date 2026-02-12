@@ -331,9 +331,9 @@ skipped).
 
    # Compare-and-swap loop.
    while True:
-       r = d.get_item_if("counter", ANY_ETAG, ITEM_NOT_AVAILABLE)
+       r = d.get_item_if("counter", condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE)
        new_value = 1 if r.new_value is ITEM_NOT_AVAILABLE else r.new_value + 1
-       r2 = d.set_item_if("counter", new_value, ETAG_IS_THE_SAME, r.actual_etag)
+       r2 = d.set_item_if("counter", value=new_value, condition=ETAG_IS_THE_SAME, expected_etag=r.actual_etag)
        if r2.condition_was_satisfied:
            break
 
@@ -348,19 +348,19 @@ skipped).
    ETagValue
        Type for ETag strings (NewType over ``str``)
 
-   get_item_if(key, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
+   get_item_if(key, *, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
        Conditional read
 
-   set_item_if(key, value, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
+   set_item_if(key, *, value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
        Conditional write (supports KEEP_CURRENT and DELETE_CURRENT)
 
-   setdefault_if(key, default_value, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
+   setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE) -> ConditionalOperationResult
        Insert-if-absent
 
-   discard_item_if(key, condition, expected_etag) -> ConditionalOperationResult
+   discard_item_if(key, *, condition, expected_etag) -> ConditionalOperationResult
        Conditional delete
 
-   transform_item(key, transformer, *, n_retries=6) -> OperationResult
+   transform_item(key, *, transformer, n_retries=6) -> OperationResult
        Retry loop for read-modify-write
 
    etag(key) -> ETagValue

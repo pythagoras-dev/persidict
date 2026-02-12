@@ -163,7 +163,7 @@ insert-if-absent pattern uses `ITEM_NOT_AVAILABLE` with `ETAG_IS_THE_SAME`.
 from persidict import FileDirDict, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME
 
 d = FileDirDict(base_dir="./data")
-r = d.setdefault_if("token", "v1", ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE)
+r = d.setdefault_if("token", default_value="v1", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 ```
 
 ## Comparison With Python Built-in Dictionaries
@@ -299,11 +299,11 @@ Common methods and flags:
 
 | Item | Kind | Notes |
 | :--- | :--- | :--- |
-| `get_item_if(key, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Conditional read. |
-| `set_item_if(key, value, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
-| `setdefault_if(key, default_value, condition, expected_etag, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Insert-if-absent. |
-| `discard_item_if(key, condition, expected_etag)` | Method | Conditional delete. |
-| `transform_item(key, transformer, *, n_retries=6)` | Method | Retry loop for read-modify-write. |
+| `get_item_if(key, *, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE)` | Method | Conditional read. |
+| `set_item_if(key, *, value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
+| `setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=ALWAYS_RETRIEVE)` | Method | Insert-if-absent. |
+| `discard_item_if(key, *, condition, expected_etag)` | Method | Conditional delete. |
+| `transform_item(key, *, transformer, n_retries=6)` | Method | Retry loop for read-modify-write. |
 | `ETagValue` | Type | NewType over `str`. |
 | `ITEM_NOT_AVAILABLE` | Sentinel | Missing key marker. |
 | `VALUE_NOT_RETRIEVED` | Sentinel | Value exists but was not fetched. |
@@ -316,9 +316,9 @@ from persidict import FileDirDict, ANY_ETAG, ETAG_IS_THE_SAME, ITEM_NOT_AVAILABL
 d = FileDirDict(base_dir="./data")
 
 while True:
-    r = d.get_item_if("count", ANY_ETAG, ITEM_NOT_AVAILABLE)
+    r = d.get_item_if("count", condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE)
     new_value = 1 if r.new_value is ITEM_NOT_AVAILABLE else r.new_value + 1
-    r2 = d.set_item_if("count", new_value, ETAG_IS_THE_SAME, r.actual_etag)
+    r2 = d.set_item_if("count", value=new_value, condition=ETAG_IS_THE_SAME, expected_etag=r.actual_etag)
     if r2.condition_was_satisfied:
         break
 ```
