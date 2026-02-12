@@ -299,9 +299,9 @@ Common methods and flags:
 
 | Item | Kind | Notes |
 | :--- | :--- | :--- |
-| `get_item_if(key, expected_etag, condition, *, always_retrieve_value=True)` | Method | Conditional read. |
-| `set_item_if(key, value, expected_etag, condition, *, always_retrieve_value=True)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
-| `setdefault_if(key, default_value, expected_etag, condition, *, always_retrieve_value=True)` | Method | Insert-if-absent. |
+| `get_item_if(key, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Conditional read. |
+| `set_item_if(key, value, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Supports `KEEP_CURRENT` and `DELETE_CURRENT`. |
+| `setdefault_if(key, default_value, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)` | Method | Insert-if-absent. |
 | `discard_item_if(key, expected_etag, condition)` | Method | Conditional delete. |
 | `transform_item(key, transformer, *, n_retries=6)` | Method | Retry loop for read-modify-write. |
 | `ETagValue` | Type | NewType over `str`. |
@@ -354,11 +354,11 @@ pip install persidict[dev]
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 6667 | 10319 | 16986 |
-| Source Lines Of Code (SLOC) | 2956 | 6591 | 9547 |
-| Classes | 28 | 8 | 36 |
-| Functions / Methods | 278 | 582 | 860 |
-| Files | 16 | 103 | 119 |
+| Lines Of Code (LOC) | 6934 | 11108 | 18042 |
+| Source Lines Of Code (SLOC) | 3103 | 7092 | 10195 |
+| Classes | 32 | 8 | 40 |
+| Functions / Methods | 282 | 633 | 915 |
+| Files | 16 | 108 | 124 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## Contributing
