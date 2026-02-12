@@ -21,8 +21,7 @@ from mixinforge import sort_dict_by_keys
 
 from .jokers_and_status_flags import (
     Joker,
-    KEEP_CURRENT,
-    DELETE_CURRENT,
+    EXECUTION_IS_COMPLETE,
     ETagValue,
 )
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
@@ -667,14 +666,9 @@ class FileDirDict(PersiDict[ValueType]):
         """
 
         key = NonEmptySafeStrTuple(key)
-        if value is KEEP_CURRENT:
-            return None
-        if value is DELETE_CURRENT:
-            self._validate_setitem_args(key, value)
-            self.discard(key)
+        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
 
-        key = self._validate_setitem_args(key, value)
         filename = self._build_full_path(key, create_subdirs=True)
         self._save_to_file(filename, value)
 
