@@ -53,6 +53,7 @@ Please provide a clear description, steps to reproduce, and your Python version.
     *   Adhere to PEP 8 guidelines.
     *   Write clear, Google-style docstrings for public functions and classes.
     *   Add type hints where appropriate.
+    *   Use keyword-only parameters for new public methods and constructors — see [Section 9 of design_principles.md](https://github.com/pythagoras-dev/persidict/blob/master/design_principles.md#9-keyword-only-parameters-by-default).
 4. **Check Tests:** Make sure the test suite passes.
 5. **Check Linting:** Make sure the code is free of linting errors.
 6. **Write Commit Messages:** Follow the conventions below.
