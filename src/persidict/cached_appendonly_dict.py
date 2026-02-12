@@ -139,8 +139,8 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         """Internal iterator dispatcher delegated to the main dict.
 
         Args:
-            result_type: A set describing what to iterate, as used by
-                PersiDict internals (e.g., {"keys"}, {"items"}, etc.).
+            result_type: Non-empty subset of {"keys", "values",
+                "timestamps"} specifying which fields to yield.
 
         Returns:
             An iterator over the requested view, produced by the main dict.

@@ -1132,14 +1132,16 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def __eq__(self, other: Any) -> bool:
         """Compare dictionaries for equality.
 
-        If other is a PersiDict instance, compares parameters for equality.
-        Otherwise, attempts to compare as a mapping by comparing all keys and values.
+        When other has the exact same type and matching constructor parameters,
+        returns True immediately (fast path). Otherwise falls through to
+        element-wise comparison of all keys and values.
 
         Args:
-            other: Another dictionary-like object to compare against.
+            other: Another Mapping to compare against.
 
         Returns:
-            True if the dictionaries have the same key/value pairs, False otherwise.
+            True if the dictionaries have the same key/value pairs, False
+            otherwise. Returns NotImplemented if other is not a Mapping.
         """
         if self is other:
             return True
@@ -1307,8 +1309,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         in streaming time, without loading all keys into memory or using len().
 
         Returns:
-            SafeStrTuple | None: A random key if the dictionary is not empty;
-                None if the dictionary is empty.
+            NonEmptySafeStrTuple | None: A random key if the dictionary is
+                not empty; None if the dictionary is empty.
         """
         iterator = iter(self.keys())
         try:
