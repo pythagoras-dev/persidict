@@ -3,7 +3,6 @@ import pytest
 
 from persidict import BasicS3Dict, S3Dict_FileDirCached
 from persidict.jokers_and_status_flags import (
-    ETAG_HAS_CHANGED,
     ETAG_IS_THE_SAME,
     ITEM_NOT_AVAILABLE,
     KEEP_CURRENT,
