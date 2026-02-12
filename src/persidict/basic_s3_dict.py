@@ -16,8 +16,6 @@ import io
 import boto3
 from botocore.exceptions import ClientError
 
-from mixinforge import sort_dict_by_keys
-
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
@@ -196,16 +194,10 @@ class BasicS3Dict(PersiDict[ValueType]):
             including S3-specific parameters (region, bucket_name, root_prefix)
             sorted by key names.
         """
-        params = {
-            "region": self.region,
-            "bucket_name": self.bucket_name,
-            "root_prefix": self.root_prefix,
-            "serialization_format": self.serialization_format,
-            "append_only": self.append_only,
-            "base_class_for_values": self.base_class_for_values,
-        }
-        sorted_params = sort_dict_by_keys(params)
-        return sorted_params
+        return self._extend_parent_params(
+            region=self.region,
+            bucket_name=self.bucket_name,
+            root_prefix=self.root_prefix)
 
 
 

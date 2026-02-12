@@ -194,16 +194,7 @@ class LocalDict(PersiDict[ValueType]):
             dict: A dictionary of parameters (sorted by key) suitable for
             passing to the constructor.
         """
-        params = dict(
-            backend=self._backend,
-            append_only=self.append_only,
-            base_class_for_values=self.base_class_for_values,
-            serialization_format=self.serialization_format,
-        )
-        # PersiDict.get_params sorts keys; we can reuse it by temporarily
-        # creating the dict in the same form and letting the parent handle sort.
-        # But parent doesn't know about backend. We'll sort locally.
-        return dict(sorted(params.items(), key=lambda kv: kv[0]))
+        return self._extend_parent_params(backend=self._backend)
 
     # No base_url/base_dir override: keep defaults (None)
 

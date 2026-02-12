@@ -195,8 +195,7 @@ class EmptyDict(PersiDict[ValueType]):
 
     def get_params(self) -> dict[str, Any]:
         """Return parameters for this EmptyDict."""
-        params = super().get_params()
-        return params
+        return self._extend_parent_params()
 
 
     def get_subdict(self, prefix_key: PersiDictKey) -> 'EmptyDict[ValueType]':
