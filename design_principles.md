@@ -66,6 +66,22 @@ Caching strategies can be tuned for different access patterns:
 - Append‑only caching: `AppendOnlyDictCached` can cache more aggressively because immutable data never changes, yielding substantial speedups.
 - Lazy loading: Data is fetched from persistent storage only when accessed, reducing memory footprint and startup time.
 
+## 9. Keyword‑only parameters by default
+
+Method signatures follow a consistent convention for positional vs. keyword‑only
+parameters. This keeps call sites readable and prevents positional misuse as
+the API grows.
+
+| Category | Rule | Examples |
+|:---|:---|:---|
+| Python dunder protocol methods | Positional (cannot change) | `__getitem__`, `__setitem__`, `__delitem__`, `__contains__` |
+| Standard `dict` API | Positional for consistency with `dict` | `setdefault`, `get`, `pop` |
+| All constructors | Every parameter after `self` is keyword‑only (bare `*`) | `FileDirDict(*, base_dir=…)` |
+| Conditional operations | `key` stays positional; everything else is keyword‑only | `set_item_if(key, *, value, condition, expected_etag, retrieve_value)` |
+| `transform_item` | `key` stays positional; `transformer` and `n_retries` are keyword‑only | `transform_item(key, *, transformer, n_retries=6)` |
+| Sorted‑key helpers | `max_n` is keyword‑only | `oldest_keys(*, max_n=None)` |
+| Single‑parameter methods | No change needed (only one param besides `self`) | `etag`, `timestamp`, `discard`, `get_subdict` |
+
 ## Trade‑offs and limitations
 
 These choices come with explicit trade‑offs:
