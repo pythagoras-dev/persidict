@@ -320,6 +320,36 @@ class LocalDict(PersiDict[ValueType]):
                     return None, None
         return backend_node, key[-1]
 
+    def _lookup_leaf(
+            self
+            , key: NonEmptySafeStrTuple
+            ) -> tuple[dict[str, tuple[Any, float]], str]:
+        """Resolve a key to its values bucket and leaf name, or raise KeyError.
+
+        Navigates to the parent node for *key* and looks up the leaf in the
+        bucket for the current serialization_format. Raises KeyError if the
+        path or leaf does not exist.
+
+        Args:
+            key: A normalised, non-empty safe-string key.
+
+        Returns:
+            A (bucket, leaf) pair where *bucket* is the mutable dict mapping
+            leaf names to (value, timestamp, write_counter) tuples, and *leaf*
+            is the final key segment.
+
+        Raises:
+            KeyError: If the key does not exist.
+        """
+        parent_node, leaf = self._navigate_to_parent(
+            key, create_if_missing=False)
+        if parent_node is None:
+            raise KeyError(f"Key {key} not found")
+        bucket = parent_node.values.get(self.serialization_format, {})
+        if leaf not in bucket:
+            raise KeyError(f"Key {key} not found")
+        return bucket, leaf
+
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
         """Return True if the key exists in the current serialization_format namespace.
 
@@ -351,12 +381,7 @@ class LocalDict(PersiDict[ValueType]):
                 not match it.
         """
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
-        if parent_node is None:
-            raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.serialization_format, {})
-        if leaf not in bucket:
-            raise KeyError(f"Key {key} not found")
+        bucket, leaf = self._lookup_leaf(key)
         value = deepcopy(bucket[leaf][0])
         self._validate_returned_value(value)
         return value
@@ -364,12 +389,7 @@ class LocalDict(PersiDict[ValueType]):
     def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
         """Return the value and ETag for a key in a single lookup."""
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
-        if parent_node is None:
-            raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.serialization_format, {})
-        if leaf not in bucket:
-            raise KeyError(f"Key {key} not found")
+        bucket, leaf = self._lookup_leaf(key)
         value = deepcopy(bucket[leaf][0])
         self._validate_returned_value(value)
         etag = ETagValue(str(bucket[leaf][2]))
@@ -412,12 +432,7 @@ class LocalDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
-        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
-        if parent_node is None:
-            raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.serialization_format, {})
-        if leaf not in bucket:
-            raise KeyError(f"Key {key} not found")
+        bucket, leaf = self._lookup_leaf(key)
         del bucket[leaf]
         # Throttled pruning: run only once per prune_interval destructive ops
         self._maybe_prune()
@@ -476,12 +491,7 @@ class LocalDict(PersiDict[ValueType]):
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
-        if parent_node is None:
-            raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.serialization_format, {})
-        if leaf not in bucket:
-            raise KeyError(f"Key {key} not found")
+        bucket, leaf = self._lookup_leaf(key)
         return bucket[leaf][1]
 
     def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
@@ -503,12 +513,7 @@ class LocalDict(PersiDict[ValueType]):
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
-        parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
-        if parent_node is None:
-            raise KeyError(f"Key {key} not found")
-        bucket = parent_node.values.get(self.serialization_format, {})
-        if leaf not in bucket:
-            raise KeyError(f"Key {key} not found")
+        bucket, leaf = self._lookup_leaf(key)
         return ETagValue(str(bucket[leaf][2]))
 
     def get_subdict(self, prefix_key: Iterable[str] | SafeStrTuple) -> 'LocalDict[ValueType]':
