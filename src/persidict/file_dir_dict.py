@@ -577,17 +577,37 @@ class FileDirDict(PersiDict[ValueType]):
         self._validate_returned_value(result)
         return result
 
-    def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
-        """Return the value and ETag for a key with a single stat+read."""
+    def _get_value_and_etag(
+            self, key: NonEmptySafeStrTuple,
+            _max_retries: int = 3,
+            ) -> tuple[ValueType, ETagValue]:
+        """Return the value and ETag for a key.
+
+        Uses stat-read-stat to ensure the returned ETag corresponds to the
+        returned value: if the file was modified during the read, the pre-
+        and post-read stats will differ and the operation is retried.
+        """
+        if _max_retries < 1:
+            raise ValueError("_max_retries must be at least 1")
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
-        try:
-            stat_result = self._with_retry(os.stat, filename)
-        except FileNotFoundError as exc:
-            raise KeyError(f"File {filename} does not exist") from exc
-        result = self._read_from_file(filename)
+        for _ in range(_max_retries):
+            try:
+                stat_before = self._with_retry(os.stat, filename)
+            except FileNotFoundError as exc:
+                raise KeyError(f"File {filename} does not exist") from exc
+            result = self._read_from_file(filename)
+            try:
+                stat_after = self._with_retry(os.stat, filename)
+            except FileNotFoundError as exc:
+                raise KeyError(f"File {filename} does not exist") from exc
+            if self._etag_from_stat(stat_before) == self._etag_from_stat(stat_after):
+                self._validate_returned_value(result)
+                return result, self._etag_from_stat(stat_after)
+        # Retries exhausted — file is being continuously modified.
+        # Fall back to the last read with the post-read etag (conservative).
         self._validate_returned_value(result)
-        return result, self._etag_from_stat(stat_result)
+        return result, self._etag_from_stat(stat_after)
 
 
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
