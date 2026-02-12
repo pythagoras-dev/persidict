@@ -78,9 +78,11 @@ rules:
   - name: entity_tag_operations
     paths:
       - src/persidict/jokers_and_status_flags.py
+      - src/persidict/persi_dict.py
     tests:
       - tests/entity_tag_operations/test_etag.py
       - tests/entity_tag_operations/conditional_operations_contract/
+      - tests/entity_tag_operations/conditional_operations_contract/test_get_with_etag.py
       - tests/entity_tag_operations/conditional_operations_mutable/
 
   - name: subdicts

@@ -360,6 +360,31 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             resulting_etag=ITEM_NOT_AVAILABLE,
             new_value=ITEM_NOT_AVAILABLE)
 
+    def get_with_etag(
+            self,
+            key: NonEmptyPersiDictKey
+    ) -> ConditionalOperationResult:
+        """Retrieve the value and its ETag for a key in a single operation.
+
+        Convenience wrapper around get_item_if that fetches the current
+        value and ETag without requiring condition parameters. On backends
+        that support it (e.g., S3), both are obtained in a single network
+        round-trip.
+
+        The result uses the same ConditionalOperationResult type as the
+        conditional _if methods, with condition_was_satisfied always True
+        and requested_condition set to ANY_ETAG. When the key is absent,
+        new_value and actual_etag are both ITEM_NOT_AVAILABLE.
+
+        Args:
+            key: Dictionary key.
+
+        Returns:
+            ConditionalOperationResult with the value in new_value and
+            the ETag in actual_etag (and resulting_etag).
+        """
+        return self.get_item_if(key, ITEM_NOT_AVAILABLE, ANY_ETAG)
+
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
