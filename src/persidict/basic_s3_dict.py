@@ -31,6 +31,9 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       ETagIfExists, ConditionalOperationResult)
 
 
+_MAX_SETDEFAULT_RETRIES = 5
+
+
 def _s3_error_status_code(e: ClientError) -> tuple[int | None, str | None]:
     """Return HTTP status and S3 error code if present on a ClientError."""
     response = getattr(e, "response", {}) or {}
@@ -487,19 +490,30 @@ class BasicS3Dict(PersiDict[ValueType]):
                 raise exc from None
         obj_name = self._build_full_objectname(key)
 
-        try:
-            self.s3_client.put_object(
-                Bucket=self.bucket_name,
-                Key=obj_name,
-                Body=serialized_data,
-                ContentType=content_type,
-                IfNoneMatch="*"
-            )
-            return default
-        except ClientError as e:
-            if conditional_request_failed(e):
-                return self[key]
-            raise
+        for _ in range(_MAX_SETDEFAULT_RETRIES):
+            try:
+                self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=obj_name,
+                    Body=serialized_data,
+                    ContentType=content_type,
+                    IfNoneMatch="*"
+                )
+                return default
+            except ClientError as e:
+                if conditional_request_failed(e):
+                    try:
+                        return self[key]
+                    except KeyError:
+                        # Key was deleted between our failed put and
+                        # our read — retry the whole operation.
+                        continue
+                raise
+
+        raise RuntimeError(
+            f"setdefault failed after {_MAX_SETDEFAULT_RETRIES}"
+            f" retries due to concurrent modifications on key {key}"
+        )
 
 
     def _serialize_value_for_s3(self, value: Any) -> tuple[bytes, str]:
@@ -926,8 +940,16 @@ class BasicS3Dict(PersiDict[ValueType]):
                 actual_etag = self._actual_etag(key)
                 if actual_etag is ITEM_NOT_AVAILABLE:
                     return self._result_item_not_available(condition, satisfied)
-                existing_value = (self[key] if always_retrieve_value
-                                  else VALUE_NOT_RETRIEVED)
+                if always_retrieve_value:
+                    try:
+                        existing_value = self[key]
+                    except KeyError:
+                        # Key deleted between etag check and read —
+                        # report as absent.
+                        return self._result_item_not_available(
+                            condition, satisfied)
+                else:
+                    existing_value = VALUE_NOT_RETRIEVED
                 return self._result_unchanged(
                     condition, satisfied, actual_etag, existing_value)
             raise

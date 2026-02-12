@@ -59,6 +59,7 @@ rules:
       - src/persidict/s3_dict_file_dir_cached.py
     tests:
       - tests/simple_storage_service/test_basic_s3_setdefault.py
+      - tests/simple_storage_service/test_basic_s3_setdefault_race.py
       - tests/simple_storage_service/test_basic_s3_iteration_and_metadata.py
       - tests/simple_storage_service/test_root_prefix_behavior.py
       - tests/simple_storage_service/test_s3_append_only_etag.py

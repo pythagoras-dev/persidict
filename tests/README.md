@@ -58,6 +58,7 @@ feature-oriented so it is quick to scan.
 
 - Simple Storage Service (S3-backed dicts):
   - tests/simple_storage_service/test_basic_s3_setdefault.py
+  - tests/simple_storage_service/test_basic_s3_setdefault_race.py
   - tests/simple_storage_service/test_basic_s3_iteration_and_metadata.py
   - tests/simple_storage_service/test_root_prefix_behavior.py
   - tests/simple_storage_service/test_s3_append_only_etag.py
