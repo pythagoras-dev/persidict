@@ -450,10 +450,6 @@ class FileDirDict(PersiDict[ValueType]):
     def _read_from_file(self,file_name:str) -> Any:
         """Read a value from a file with retry/backoff for concurrency.
 
-        Validates that the configured serialization_format is compatible with the allowed
-        value types, then attempts to read the file using an exponential backoff
-        to better tolerate concurrent writers.
-
         Args:
             file_name (str): Absolute path of the file to read.
 
@@ -461,14 +457,8 @@ class FileDirDict(PersiDict[ValueType]):
             Any: The deserialized value according to serialization_format.
 
         Raises:
-            ValueError: If serialization_format is incompatible with non-string values.
             Exception: Propagates the last exception if all retries fail.
         """
-
-        if not (self.serialization_format in {"pkl", "json"} or issubclass(
-            self.base_class_for_values, str)):
-            raise ValueError("When base_class_for_values is not str,"
-                + " serialization_format must be pkl or json.")
 
         return self._with_retry(
             self._read_from_file_impl, file_name,
@@ -538,23 +528,13 @@ class FileDirDict(PersiDict[ValueType]):
     def _save_to_file(self, file_name:str, value:Any) -> None:
         """Save a value to a file with retry/backoff.
 
-        Ensures the configured serialization_format is compatible with value types and then
-        writes the value using an exponential backoff to better tolerate
-        concurrent readers/writers.
-
         Args:
             file_name (str): Absolute destination file path.
             value (Any): Value to serialize and save.
 
         Raises:
-            ValueError: If serialization_format is incompatible with non-string values.
             Exception: Propagates the last exception if all retries fail.
         """
-
-        if not (self.serialization_format in {"pkl", "json"} or issubclass(
-            self.base_class_for_values, str)):
-            raise ValueError("When base_class_for_values is not str,"
-                + " serialization_format must be pkl or json.")
 
         self._with_retry(
             self._save_to_file_impl, file_name, value,

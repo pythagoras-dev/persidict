@@ -35,7 +35,7 @@ equality as a strong hint, not an absolute guarantee.
 | Flag | Meaning |
 |---|---|
 | `ITEM_NOT_AVAILABLE` | Key does not exist (in `actual_etag`, `resulting_etag`, or `new_value`) |
-| `VALUE_NOT_RETRIEVED` | Value exists but wasn't fetched (`always_retrieve_value=False`) |
+| `VALUE_NOT_RETRIEVED` | Value exists but wasn't fetched (`retrieve_value=NEVER_RETRIEVE` or `IF_ETAG_CHANGED`) |
 
 ---
 
@@ -93,19 +93,19 @@ Returned by `transform_item` (unconditional).
 
 ## API Methods
 
-### `get_item_if(key, expected_etag, condition, *, always_retrieve_value=True)`
+### `get_item_if(key, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)`
 
 Read-only. Never mutates. `condition_was_satisfied` tells you whether the condition held.
 
 ```python
-r = d.get_item_if(k, cached_etag, ETAG_HAS_CHANGED, always_retrieve_value=False)
+r = d.get_item_if(k, cached_etag, ETAG_HAS_CHANGED, retrieve_value=IF_ETAG_CHANGED)
 if r.condition_was_satisfied:
     # ETag changed -> r.new_value has fresh data
 else:
     # r.new_value is VALUE_NOT_RETRIEVED -> use your cached copy
 ```
 
-### `set_item_if(key, value, expected_etag, condition, *, always_retrieve_value=True)`
+### `set_item_if(key, value, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)`
 
 Conditional write. `value` can be a real value, `KEEP_CURRENT`, or `DELETE_CURRENT`. On condition failure: no mutation.
 
@@ -117,7 +117,7 @@ if not r2.condition_was_satisfied:
     pass  # conflict — retry
 ```
 
-### `setdefault_if(key, default_value, expected_etag, condition, *, always_retrieve_value=True)`
+### `setdefault_if(key, default_value, expected_etag, condition, *, retrieve_value=ALWAYS_RETRIEVE)`
 
 Insert-if-absent, guarded by condition. If key exists, returns existing value without mutation regardless of condition.
 `default_value` must be a real value (not `KEEP_CURRENT` or `DELETE_CURRENT`).
@@ -128,7 +128,7 @@ r = d.setdefault_if(k, initial_value, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 
 ### `discard_item_if(key, expected_etag, condition)`
 
-Conditional delete. No `always_retrieve_value` — on condition failure, `new_value`
+Conditional delete. No `retrieve_value` parameter — on condition failure, `new_value`
 is `VALUE_NOT_RETRIEVED` (unless the key is missing, in which case
 `ITEM_NOT_AVAILABLE`); on success, `new_value` is `ITEM_NOT_AVAILABLE`.
 
@@ -226,7 +226,7 @@ r = d.setdefault_if(k, val, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME)
 
 ### Conditional GET (bandwidth optimization)
 ```python
-r = d.get_item_if(k, cached_etag, ETAG_HAS_CHANGED, always_retrieve_value=False)
+r = d.get_item_if(k, cached_etag, ETAG_HAS_CHANGED, retrieve_value=IF_ETAG_CHANGED)
 if not r.condition_was_satisfied:
     pass  # cache is still valid, r.new_value == VALUE_NOT_RETRIEVED
 ```

@@ -57,9 +57,12 @@ from .empty_dict import EmptyDict
 from .jokers_and_status_flags import (
     Joker, KeepCurrentFlag, DeleteCurrentFlag, ETagValue,
     ETagConditionFlag, AnyETagFlag, ETagIsTheSameFlag, ETagHasChangedFlag,
+    RetrieveValueFlag, AlwaysRetrieveFlag, NeverRetrieveFlag,
+    IfETagChangedRetrieveFlag,
     ItemNotAvailableFlag, ValueNotRetrievedFlag,
     KEEP_CURRENT, DELETE_CURRENT,
     ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+    ALWAYS_RETRIEVE, NEVER_RETRIEVE, IF_ETAG_CHANGED,
     ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
     ETagIfExists, ValueIfExists, ValueInResult, TransformingFunction,
     OperationResult, ConditionalOperationResult,
@@ -108,6 +111,14 @@ __all__ = [
     'ANY_ETAG',
     'ETAG_IS_THE_SAME',
     'ETAG_HAS_CHANGED',
+    # Retrieve value flags
+    'RetrieveValueFlag',
+    'AlwaysRetrieveFlag',
+    'NeverRetrieveFlag',
+    'IfETagChangedRetrieveFlag',
+    'ALWAYS_RETRIEVE',
+    'NEVER_RETRIEVE',
+    'IF_ETAG_CHANGED',
     # Sentinel flags
     'ItemNotAvailableFlag',
     'ValueNotRetrievedFlag',

@@ -33,6 +33,8 @@ from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       CONTINUE_NORMAL_EXECUTION, StatusFlag, EXECUTION_IS_COMPLETE,
                                       ETagValue, ETagConditionFlag,
                                       ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
+                                      NEVER_RETRIEVE, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
                                       ETagIfExists, TransformingFunction,
                                       OperationResult, ConditionalOperationResult)
@@ -391,7 +393,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Retrieve the value for a key only if an ETag condition is satisfied.
 
@@ -407,16 +409,18 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
-            always_retrieve_value: If True (default), new_value always
-                reflects the actual state. If False, VALUE_NOT_RETRIEVED is
-                returned when the key exists and the value is already known
-                to the caller (expected_etag == actual_etag).
+            retrieve_value: Controls value retrieval. ALWAYS_RETRIEVE
+                (default) always fetches the value. IF_ETAG_CHANGED skips
+                the fetch when expected_etag == actual_etag, returning
+                VALUE_NOT_RETRIEVED instead. NEVER_RETRIEVE always returns
+                VALUE_NOT_RETRIEVED when the key exists.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.
         """
+        self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
-        if always_retrieve_value:
+        if retrieve_value is ALWAYS_RETRIEVE:
             try:
                 value, actual_etag = self._get_value_and_etag(key)
             except (KeyError, FileNotFoundError):
@@ -431,7 +435,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
             return self._result_item_not_available(condition, satisfied)
 
-        if expected_etag == actual_etag:
+        if retrieve_value is NEVER_RETRIEVE or expected_etag == actual_etag:
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
             return self._result_unchanged(
                 condition, satisfied, actual_etag, VALUE_NOT_RETRIEVED)
@@ -453,7 +457,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
 
@@ -470,13 +474,15 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
-            always_retrieve_value: If True (default), the existing value is
-                returned when the condition fails and the key exists. If False,
-                VALUE_NOT_RETRIEVED is returned instead.
+            retrieve_value: Controls value retrieval on condition failure.
+                ALWAYS_RETRIEVE (default) fetches the existing value.
+                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
+                fetches only if expected_etag != actual_etag.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.
         """
+        self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
         actual_etag = self._actual_etag(key)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
@@ -484,13 +490,15 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
                 return self._result_item_not_available(condition, False)
-            if always_retrieve_value:
+            if retrieve_value is NEVER_RETRIEVE or (
+                    retrieve_value is IF_ETAG_CHANGED
+                    and expected_etag == actual_etag):
+                existing_value = VALUE_NOT_RETRIEVED
+            else:
                 try:
                     existing_value, actual_etag = self._get_value_and_etag(key)
                 except (KeyError, FileNotFoundError):
                     return self._result_item_not_available(condition, False)
-            else:
-                existing_value = VALUE_NOT_RETRIEVED
             return self._result_unchanged(condition, False, actual_etag, existing_value)
 
         if value is KEEP_CURRENT:
@@ -514,7 +522,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default_value if key is absent; conditioned on ETag check.
 
@@ -533,15 +541,17 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
-            always_retrieve_value: If True (default), the existing value is
-                returned when the key exists. If False, VALUE_NOT_RETRIEVED
-                is returned instead.
+            retrieve_value: Controls value retrieval when the key exists.
+                ALWAYS_RETRIEVE (default) fetches the existing value.
+                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
+                fetches only if expected_etag != actual_etag.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.
         """
         if isinstance(default_value, Joker):
             raise TypeError("default_value must be a regular value, not a Joker command")
+        self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
         actual_etag = self._actual_etag(key)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
@@ -555,7 +565,12 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             else:
                 return self._result_item_not_available(condition, False)
 
-        existing_value = self[key] if always_retrieve_value else VALUE_NOT_RETRIEVED
+        if retrieve_value is NEVER_RETRIEVE or (
+                retrieve_value is IF_ETAG_CHANGED
+                and expected_etag == actual_etag):
+            existing_value = VALUE_NOT_RETRIEVED
+        else:
+            existing_value = self[key]
         return self._result_unchanged(
             condition, satisfied, actual_etag, existing_value)
 
@@ -567,7 +582,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     ) -> ConditionalOperationResult:
         """Discard a key only if an ETag condition is satisfied.
 
-        No always_retrieve_value parameter — new_value is ITEM_NOT_AVAILABLE
+        No retrieve_value parameter — new_value is ITEM_NOT_AVAILABLE
         on delete success or missing key; on condition failure it is
         VALUE_NOT_RETRIEVED.
 
@@ -650,7 +665,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 key,
                 ITEM_NOT_AVAILABLE,
                 ANY_ETAG,
-                always_retrieve_value=True)
+                retrieve_value=ALWAYS_RETRIEVE)
             current_value = read_res.new_value
             actual_etag = read_res.actual_etag
 
@@ -674,7 +689,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                     new_value,
                     actual_etag,
                     ETAG_IS_THE_SAME,
-                    always_retrieve_value=False)
+                    retrieve_value=NEVER_RETRIEVE)
                 if write_res.condition_was_satisfied:
                     return OperationResult(
                         resulting_etag=write_res.resulting_etag,
@@ -721,6 +736,19 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 if not isinstance(value, self.base_class_for_values):
                     raise TypeError(f"Value must be an instance of"
                                     f" {self.base_class_for_values.__name__}")
+
+    @staticmethod
+    def _validate_retrieve_value(
+            retrieve_value: RetrieveValueFlag) -> None:
+        """Validate that retrieve_value is a RetrieveValueFlag instance.
+
+        Raises:
+            TypeError: If retrieve_value is not a RetrieveValueFlag.
+        """
+        if not isinstance(retrieve_value, RetrieveValueFlag):
+            raise TypeError(
+                f"retrieve_value must be ALWAYS_RETRIEVE, NEVER_RETRIEVE,"
+                f" or IF_ETAG_CHANGED, got {type(retrieve_value).__name__}")
 
     def _validate_returned_value(self, value: ValueType) -> None:
         """Validate that a value retrieved from storage matches base_class_for_values.

@@ -26,6 +26,8 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       Joker, ETagValue,
                                       ETagConditionFlag,
                                       ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
+                                      NEVER_RETRIEVE, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
                                       VALUE_NOT_RETRIEVED,
                                       ETagIfExists, ConditionalOperationResult)
@@ -346,22 +348,39 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: NonEmptySafeStrTuple,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True,
+            expected_etag: ETagIfExists = ITEM_NOT_AVAILABLE,
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE,
             return_existing_value: bool = True
     ) -> ConditionalOperationResult:
         """Build result for a failed conditional write/delete."""
-        if return_existing_value and always_retrieve_value:
+        if not return_existing_value or retrieve_value is NEVER_RETRIEVE:
+            new_actual = self._actual_etag(key)
+            if new_actual is ITEM_NOT_AVAILABLE:
+                return self._result_item_not_available(condition, False)
+            return self._result_unchanged(
+                condition, False, new_actual, VALUE_NOT_RETRIEVED)
+
+        if retrieve_value is ALWAYS_RETRIEVE:
             try:
                 new_value, new_actual = self._get_value_and_etag(key)
             except KeyError:
                 return self._result_item_not_available(condition, False)
-            return self._result_unchanged(condition, False, new_actual, new_value)
+            return self._result_unchanged(
+                condition, False, new_actual, new_value)
 
+        # IF_ETAG_CHANGED: fetch only if actual ETag differs from expected
         new_actual = self._actual_etag(key)
         if new_actual is ITEM_NOT_AVAILABLE:
             return self._result_item_not_available(condition, False)
-        new_value = VALUE_NOT_RETRIEVED
-        return self._result_unchanged(condition, False, new_actual, new_value)
+        if expected_etag != new_actual:
+            try:
+                new_value, new_actual = self._get_value_and_etag(key)
+            except KeyError:
+                return self._result_item_not_available(condition, False)
+            return self._result_unchanged(
+                condition, False, new_actual, new_value)
+        return self._result_unchanged(
+            condition, False, new_actual, VALUE_NOT_RETRIEVED)
 
     def get_item_if(
             self,
@@ -369,7 +388,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Retrieve the value for a key only if an ETag condition is satisfied.
 
@@ -380,15 +399,18 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: Dictionary key.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
-            always_retrieve_value: If True (default), new_value always
-                reflects the actual state. If False, VALUE_NOT_RETRIEVED when
-                key exists and expected_etag == actual_etag.
+            retrieve_value: Controls value retrieval. ALWAYS_RETRIEVE
+                (default) always fetches the value. IF_ETAG_CHANGED uses
+                S3 IfNoneMatch to skip the fetch when the ETag matches.
+                NEVER_RETRIEVE does a HEAD only and returns
+                VALUE_NOT_RETRIEVED.
 
         Returns:
             ConditionalOperationResult with the outcome.
         """
+        self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
-        if always_retrieve_value:
+        if retrieve_value is ALWAYS_RETRIEVE:
             try:
                 value, actual_etag = self._get_object_with_etag(key)
             except KeyError:
@@ -396,6 +418,14 @@ class BasicS3Dict(PersiDict[ValueType]):
 
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
             return self._result_unchanged(condition, satisfied, actual_etag, value)
+
+        if retrieve_value is NEVER_RETRIEVE:
+            actual_etag = self._actual_etag(key)
+            if actual_etag is ITEM_NOT_AVAILABLE:
+                return self._result_for_missing_key(condition, expected_etag)
+            satisfied = self._check_condition(condition, expected_etag, actual_etag)
+            return self._result_unchanged(
+                condition, satisfied, actual_etag, VALUE_NOT_RETRIEVED)
 
         obj_name = self._build_full_objectname(key)
         use_if_none_match = not isinstance(expected_etag, ItemNotAvailableFlag)
@@ -603,7 +633,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Store a value only if an ETag condition is satisfied.
 
@@ -618,12 +648,15 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: Value to store.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
-            always_retrieve_value: If True (default), the existing value is
-                returned on condition failure when key exists.
+            retrieve_value: Controls value retrieval on condition failure.
+                ALWAYS_RETRIEVE (default) fetches the existing value.
+                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
+                fetches only if expected_etag != actual_etag.
 
         Returns:
             ConditionalOperationResult with the outcome.
         """
+        self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
         if self.append_only and value is DELETE_CURRENT:
             raise KeyError("Can't modify an immutable key-value pair")
@@ -657,10 +690,10 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         if _fast_eligible:
             return self._set_item_if_fast_path(
-                key, value, expected_etag, condition, always_retrieve_value)
+                key, value, expected_etag, condition, retrieve_value)
 
         return self._set_item_if_fallback(
-            key, value, expected_etag, condition, always_retrieve_value)
+            key, value, expected_etag, condition, retrieve_value)
 
     def _set_item_if_fast_path(
             self,
@@ -668,7 +701,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: ValueType,
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
-            always_retrieve_value: bool
+            retrieve_value: RetrieveValueFlag
     ) -> ConditionalOperationResult:
         """Optimistic S3 conditional write in a single round-trip.
 
@@ -705,7 +738,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                 raise
             return self._conditional_failure_result(
                 key, condition,
-                always_retrieve_value=always_retrieve_value,
+                expected_etag=expected_etag,
+                retrieve_value=retrieve_value,
                 return_existing_value=True)
 
     def _set_item_if_fallback(
@@ -714,7 +748,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: ValueType,
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
-            always_retrieve_value: bool
+            retrieve_value: RetrieveValueFlag
     ) -> ConditionalOperationResult:
         """Check-then-act path for conditions other than the fast path.
 
@@ -731,8 +765,12 @@ class BasicS3Dict(PersiDict[ValueType]):
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
                 return self._result_item_not_available(condition, False)
-            existing_value = (self[key] if always_retrieve_value
-                              else VALUE_NOT_RETRIEVED)
+            if retrieve_value is NEVER_RETRIEVE or (
+                    retrieve_value is IF_ETAG_CHANGED
+                    and expected_etag == actual_etag):
+                existing_value = VALUE_NOT_RETRIEVED
+            else:
+                existing_value = self[key]
             return self._result_unchanged(
                 condition, False, actual_etag, existing_value)
 
@@ -757,7 +795,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                     if not_found_error(e) or conditional_request_failed(e):
                         return self._conditional_failure_result(
                             key, condition,
-                            always_retrieve_value=False,
+                            retrieve_value=NEVER_RETRIEVE,
                             return_existing_value=False)
                     raise
             else:
@@ -779,7 +817,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                 if conditional_request_failed(e):
                     return self._conditional_failure_result(
                         key, condition,
-                        always_retrieve_value=always_retrieve_value,
+                        expected_etag=expected_etag,
+                        retrieve_value=retrieve_value,
                         return_existing_value=True)
                 raise
 
@@ -914,7 +953,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 raise
             return self._conditional_failure_result(
                 key, condition,
-                always_retrieve_value=False,
+                retrieve_value=NEVER_RETRIEVE,
                 return_existing_value=False)
 
     def _discard_item_if_fallback(
@@ -951,7 +990,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             if not_found_error(e) or conditional_request_failed(e):
                 return self._conditional_failure_result(
                     key, condition,
-                    always_retrieve_value=False,
+                    retrieve_value=NEVER_RETRIEVE,
                     return_existing_value=False)
             raise
 
@@ -962,7 +1001,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default_value if key is absent; conditioned on ETag check.
 
@@ -977,15 +1016,17 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
-            always_retrieve_value: If True (default), the existing value is
-                returned when the key exists. If False, VALUE_NOT_RETRIEVED
-                is returned instead.
+            retrieve_value: Controls value retrieval when the key exists.
+                ALWAYS_RETRIEVE (default) fetches the existing value.
+                NEVER_RETRIEVE returns VALUE_NOT_RETRIEVED. IF_ETAG_CHANGED
+                fetches only if expected_etag != actual_etag.
 
         Returns:
             ConditionalOperationResult with the outcome of the operation.
         """
         if isinstance(default_value, Joker):
             raise TypeError("default_value must be a regular value, not a Joker command")
+        self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
         self._validate_value(default_value)
 
@@ -993,8 +1034,12 @@ class BasicS3Dict(PersiDict[ValueType]):
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if actual_etag is not ITEM_NOT_AVAILABLE:
-            existing_value = (self[key] if always_retrieve_value
-                              else VALUE_NOT_RETRIEVED)
+            if retrieve_value is NEVER_RETRIEVE or (
+                    retrieve_value is IF_ETAG_CHANGED
+                    and expected_etag == actual_etag):
+                existing_value = VALUE_NOT_RETRIEVED
+            else:
+                existing_value = self[key]
             return self._result_unchanged(
                 condition, satisfied, actual_etag, existing_value)
 
@@ -1014,7 +1059,12 @@ class BasicS3Dict(PersiDict[ValueType]):
                 actual_etag = self._actual_etag(key)
                 if actual_etag is ITEM_NOT_AVAILABLE:
                     return self._result_item_not_available(condition, satisfied)
-                if always_retrieve_value:
+                if retrieve_value is NEVER_RETRIEVE:
+                    existing_value = VALUE_NOT_RETRIEVED
+                else:
+                    # ALWAYS_RETRIEVE and IF_ETAG_CHANGED both fetch here:
+                    # the key went from absent to present, so the ETag
+                    # definitionally changed.
                     try:
                         existing_value = self[key]
                     except KeyError:
@@ -1022,8 +1072,6 @@ class BasicS3Dict(PersiDict[ValueType]):
                         # report as absent.
                         return self._result_item_not_available(
                             condition, satisfied)
-                else:
-                    existing_value = VALUE_NOT_RETRIEVED
                 return self._result_unchanged(
                     condition, satisfied, actual_etag, existing_value)
             raise

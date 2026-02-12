@@ -21,6 +21,7 @@ from .jokers_and_status_flags import (
     Joker,
     ETagConditionFlag,
     ETagIfExists,
+    RetrieveValueFlag, ALWAYS_RETRIEVE,
     ConditionalOperationResult,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
@@ -196,7 +197,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Not supported for write-once dictionaries.
 

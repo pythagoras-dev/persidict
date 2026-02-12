@@ -54,6 +54,7 @@ feature-oriented so it is quick to scan.
   - tests/storage_backends/test_local_dict.py
   - tests/storage_backends/test_local_dict_etag_shared_counter.py
   - tests/storage_backends/test_discard_local_dict.py
+  - tests/storage_backends/test_serialization_format_validation.py
   - tests/storage_backends/test_unc_support.py
 
 - Simple Storage Service (S3-backed dicts):

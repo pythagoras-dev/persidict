@@ -41,7 +41,7 @@ The following table summarizes which operation × backend combinations are atomi
 - **No lost updates (atomic backends):** Under concurrent writers, `set_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must never produce a lost update. If two processes race, exactly one succeeds and the other receives `condition_was_satisfied=False`.
 - **Insert-if-absent (atomic backends):** `setdefault_if` with `ETAG_IS_THE_SAME` + `expected=ITEM_NOT_AVAILABLE` on `BasicS3Dict` must ensure at most one writer inserts the key. All others receive the existing value.
 - **Delete-known-version (atomic backends):** `discard_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must not delete a version that differs from the expected ETag.
-- **Cache coherence:** After a successful conditional write through `MutableDictCached`, the cache must reflect the written value and its resulting ETag. After a failed conditional write, the cache must not reflect the *proposed* value. However, when the operation retrieves the current value from the backend (i.e. `always_retrieve_value=True`), caches may be updated to reflect the *actual* backend state (see R11).
+- **Cache coherence:** After a successful conditional write through `MutableDictCached`, the cache must reflect the written value and its resulting ETag. After a failed conditional write, the cache must not reflect the *proposed* value. However, when the operation retrieves the current value from the backend (i.e. `retrieve_value=ALWAYS_RETRIEVE`), caches may be updated to reflect the *actual* backend state (see R11).
 
 ## Requirements
 
@@ -102,7 +102,7 @@ This lets callers decide what to do next without an extra round-trip.
 
 ### R7. Bandwidth optimization
 
-- `always_retrieve_value=False` allows skipping value retrieval when the caller already has a cached copy and only wants to know if the ETag changed.
+- `retrieve_value=IF_ETAG_CHANGED` allows skipping value retrieval when the caller already has a cached copy and only wants to know if the ETag changed. `retrieve_value=NEVER_RETRIEVE` unconditionally skips value retrieval.
 - `VALUE_NOT_RETRIEVED` sentinel signals that the value exists but was not fetched.
 
 ### R8. Joker values as commands
@@ -136,7 +136,7 @@ Conditional operations are designed to fail gracefully — they return structure
 
 - **Trigger:** The item's current ETag does not satisfy the requested condition. Another process wrote or deleted the item between the caller's read and conditional write.
 - **Applies to:** `set_item_if`, `setdefault_if`, `discard_item_if`, `get_item_if`.
-- **Result fields:** `condition_was_satisfied=False`. `actual_etag` reflects the current state. `resulting_etag == actual_etag` (no mutation). `new_value` is the existing value (if `always_retrieve_value=True`), `VALUE_NOT_RETRIEVED` (if `False`), or `ITEM_NOT_AVAILABLE` (if the key is absent).
+- **Result fields:** `condition_was_satisfied=False`. `actual_etag` reflects the current state. `resulting_etag == actual_etag` (no mutation). `new_value` is the existing value (if `retrieve_value=ALWAYS_RETRIEVE`), `VALUE_NOT_RETRIEVED` (if `NEVER_RETRIEVE` or `IF_ETAG_CHANGED`), or `ITEM_NOT_AVAILABLE` (if the key is absent).
 - **Recovery:** Re-read with `get_item_if` using `ANY_ETAG` to get the fresh value and ETag, then retry the conditional write. This is the standard optimistic-concurrency retry loop.
 
 ### F2. Key disappeared between read and write

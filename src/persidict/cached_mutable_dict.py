@@ -16,6 +16,8 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       ETagValue,
                                       ETagConditionFlag,
                                       ETAG_HAS_CHANGED,
+                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
+                                      IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
                                       ValueNotRetrievedFlag,
                                       VALUE_NOT_RETRIEVED,
@@ -246,7 +248,7 @@ class MutableDictCached(PersiDict[ValueType]):
 
         res = self.get_item_if(
             key, cached_etag, ETAG_HAS_CHANGED,
-            always_retrieve_value=False)
+            retrieve_value=IF_ETAG_CHANGED)
 
         if res.new_value is ITEM_NOT_AVAILABLE:
             raise KeyError(f"Key {key} not found")
@@ -271,7 +273,7 @@ class MutableDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Return value only if the ETag satisfies a condition.
 
@@ -280,7 +282,7 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.get_item_if(
             key, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
             actual_etag=res.actual_etag)
@@ -310,13 +312,13 @@ class MutableDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; update caches when a value is returned."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.set_item_if(
             key, value, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
             actual_etag=res.actual_etag)
@@ -330,13 +332,13 @@ class MutableDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.setdefault_if(
             key, default_value, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
         self._sync_caches_from_result(
             key, new_value=res.new_value, resulting_etag=res.resulting_etag,
             actual_etag=res.actual_etag)

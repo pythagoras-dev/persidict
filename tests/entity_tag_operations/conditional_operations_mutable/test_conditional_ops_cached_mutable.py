@@ -9,6 +9,7 @@ from persidict.jokers_and_status_flags import (
     ETAG_HAS_CHANGED,
     ITEM_NOT_AVAILABLE,
     KEEP_CURRENT,
+    NEVER_RETRIEVE,
     VALUE_NOT_RETRIEVED,
 )
 from persidict.local_dict import LocalDict
@@ -80,7 +81,7 @@ def test_set_item_if_no_value_does_not_update_caches(cached_env):
     etag_cache["k"] = "stale_etag"
 
     res = wrapper.set_item_if(
-        "k", "v2", "bogus", ETAG_IS_THE_SAME, always_retrieve_value=False)
+        "k", "v2", "bogus", ETAG_IS_THE_SAME, retrieve_value=NEVER_RETRIEVE)
 
     assert res.new_value is VALUE_NOT_RETRIEVED
     assert data_cache["k"] == "stale"

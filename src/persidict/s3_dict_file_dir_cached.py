@@ -14,6 +14,7 @@ from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .jokers_and_status_flags import (ETagConditionFlag, ETagValue,
                                       ETagIfExists,
                                       Joker,
+                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
                                       ConditionalOperationResult,
                                       OperationResult,
                                       TransformingFunction)
@@ -247,12 +248,12 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Get item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.get_item_if(
             key, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
 
     def set_item_if(
             self,
@@ -261,12 +262,12 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Set item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.set_item_if(
             key, value, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
 
     def setdefault_if(
             self,
@@ -275,12 +276,12 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to cached dict."""
         return self._cached_dict.setdefault_if(
             key, default_value, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
 
     def discard_item_if(
             self,

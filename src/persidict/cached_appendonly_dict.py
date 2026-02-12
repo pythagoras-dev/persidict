@@ -28,6 +28,7 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       ETagValue,
                                       ETagConditionFlag,
                                       ETagIfExists,
+                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
                                       ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
                                       ConditionalOperationResult)
 
@@ -207,13 +208,13 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Return value only if its ETag satisfies a condition; cache on success."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.get_item_if(
             key, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
         # Cache the value if it was retrieved and not already cached
         if (res.new_value is not ITEM_NOT_AVAILABLE
                 and res.new_value is not VALUE_NOT_RETRIEVED
@@ -251,13 +252,13 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Append-only: delegates to main dict; caches a returned value when available."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.set_item_if(
             key, value, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
         if (res.new_value is not ITEM_NOT_AVAILABLE
                 and res.new_value is not VALUE_NOT_RETRIEVED
                 and not isinstance(res.new_value, Joker)):
@@ -272,13 +273,13 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.setdefault_if(
             key, default_value, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
+            retrieve_value=retrieve_value)
         if (res.new_value is not ITEM_NOT_AVAILABLE
                 and res.new_value is not VALUE_NOT_RETRIEVED
                 and key not in self._data_cache):

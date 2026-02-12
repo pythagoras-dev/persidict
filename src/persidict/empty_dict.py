@@ -12,6 +12,7 @@ from .safe_str_tuple import NonEmptySafeStrTuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
 from .jokers_and_status_flags import (ETagConditionFlag, ETagIfExists,
                                       Joker,
+                                      RetrieveValueFlag, ALWAYS_RETRIEVE,
                                       ITEM_NOT_AVAILABLE,
                                       ConditionalOperationResult,
                                       OperationResult)
@@ -63,9 +64,10 @@ class EmptyDict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
+        self._validate_retrieve_value(retrieve_value)
         NonEmptySafeStrTuple(key)
         return self._absent_key_result(expected_etag, condition)
 
@@ -85,9 +87,10 @@ class EmptyDict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
+        self._validate_retrieve_value(retrieve_value)
         self._validate_setitem_args(key, value)
         return self._absent_key_result(expected_etag, condition)
 
@@ -98,11 +101,12 @@ class EmptyDict(PersiDict[ValueType]):
             expected_etag: ETagIfExists,
             condition: ETagConditionFlag,
             *,
-            always_retrieve_value: bool = True
+            retrieve_value: RetrieveValueFlag = ALWAYS_RETRIEVE
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
         if isinstance(default_value, Joker):
             raise TypeError("default_value must be a regular value, not a Joker command")
+        self._validate_retrieve_value(retrieve_value)
         NonEmptySafeStrTuple(key)
         return self._absent_key_result(expected_etag, condition)
 

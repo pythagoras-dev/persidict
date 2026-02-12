@@ -98,8 +98,8 @@ class ItemNotAvailableFlag(SingletonMixin):
 class ValueNotRetrievedFlag(SingletonMixin):
     """Sentinel indicating the value exists but was not retrieved.
 
-    Returned in ``new_value`` when ``always_retrieve_value=False`` and
-    the value was already known to the caller or retrieval was skipped.
+    Returned in ``new_value`` when ``retrieve_value=NEVER_RETRIEVE`` or
+    when ``retrieve_value=IF_ETAG_CHANGED`` and the ETag has not changed.
 
     Note:
         This is a singleton class; constructing it repeatedly returns the same
@@ -129,6 +129,30 @@ class ETagIsTheSameFlag(ETagConditionFlag):
 
 class ETagHasChangedFlag(ETagConditionFlag):
     """Condition requiring expected and actual etags to differ."""
+    pass
+
+
+class RetrieveValueFlag(SingletonMixin):
+    """Base class for value retrieval strategy flags.
+
+    Subclasses control whether and when the actual value is fetched
+    in conditional operations.
+    """
+    pass
+
+
+class AlwaysRetrieveFlag(RetrieveValueFlag):
+    """Always retrieve the value in conditional operations."""
+    pass
+
+
+class NeverRetrieveFlag(RetrieveValueFlag):
+    """Never retrieve the value; always return VALUE_NOT_RETRIEVED."""
+    pass
+
+
+class IfETagChangedRetrieveFlag(RetrieveValueFlag):
+    """Retrieve the value only if the actual ETag differs from expected."""
     pass
 
 
@@ -215,9 +239,21 @@ _ValueNotRetrieved = ValueNotRetrievedFlag()
 VALUE_NOT_RETRIEVED: Final[ValueNotRetrievedFlag] = ValueNotRetrievedFlag()
 """Sentinel: the value exists but was not retrieved.
 
-Returned when ``always_retrieve_value=False`` and the value was already
-known to the caller or retrieval was skipped.
+Returned when ``retrieve_value=NEVER_RETRIEVE`` or when
+``retrieve_value=IF_ETAG_CHANGED`` and the ETag has not changed.
 """
+
+_AlwaysRetrieve = AlwaysRetrieveFlag()
+ALWAYS_RETRIEVE: Final[AlwaysRetrieveFlag] = AlwaysRetrieveFlag()
+"""Retrieve the value unconditionally in conditional operations."""
+
+_NeverRetrieve = NeverRetrieveFlag()
+NEVER_RETRIEVE: Final[NeverRetrieveFlag] = NeverRetrieveFlag()
+"""Never retrieve the value; always return VALUE_NOT_RETRIEVED."""
+
+_IfETagChangedRetrieve = IfETagChangedRetrieveFlag()
+IF_ETAG_CHANGED: Final[IfETagChangedRetrieveFlag] = IfETagChangedRetrieveFlag()
+"""Retrieve the value only if the actual ETag differs from expected."""
 
 _AnyETag = AnyETagFlag()
 ANY_ETAG: Final[AnyETagFlag] = AnyETagFlag()
