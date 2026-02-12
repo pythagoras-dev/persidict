@@ -47,6 +47,16 @@ class EmptyDict(PersiDict[ValueType]):
         raise KeyError(key)
 
 
+    def _absent_key_result(
+            self,
+            expected_etag: ETagIfExists,
+            condition: ETagConditionFlag
+    ) -> ConditionalOperationResult:
+        """Evaluate a conditional operation against an always-absent key."""
+        satisfied = self._check_condition(
+            condition, expected_etag, ITEM_NOT_AVAILABLE)
+        return self._result_item_not_available(condition, satisfied)
+
     def get_item_if(
             self,
             key: NonEmptyPersiDictKey,
@@ -57,8 +67,7 @@ class EmptyDict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
         NonEmptySafeStrTuple(key)
-        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return self._result_item_not_available(condition, satisfied)
+        return self._absent_key_result(expected_etag, condition)
 
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
@@ -80,8 +89,7 @@ class EmptyDict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated, write discarded on success."""
         self._validate_setitem_args(key, value)
-        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return self._result_item_not_available(condition, satisfied)
+        return self._absent_key_result(expected_etag, condition)
 
     def setdefault_if(
             self,
@@ -96,8 +104,7 @@ class EmptyDict(PersiDict[ValueType]):
         if isinstance(default_value, Joker):
             raise TypeError("default_value must be a regular value, not a Joker command")
         NonEmptySafeStrTuple(key)
-        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return self._result_item_not_available(condition, satisfied)
+        return self._absent_key_result(expected_etag, condition)
 
     def discard_item_if(
             self,
@@ -107,8 +114,7 @@ class EmptyDict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Key is always absent; condition evaluated normally."""
         NonEmptySafeStrTuple(key)
-        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return self._result_item_not_available(condition, satisfied)
+        return self._absent_key_result(expected_etag, condition)
 
     def transform_item(self, key, transformer, *, n_retries: int | None = 6) -> OperationResult:
         """Transform always receives ITEM_NOT_AVAILABLE, result is discarded."""
