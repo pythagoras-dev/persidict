@@ -665,13 +665,17 @@ class BasicS3Dict(PersiDict[ValueType]):
         # Fast path: single-roundtrip S3 conditional put using
         # IfMatch / IfNoneMatch headers.  Eligible when we can fully
         # express the condition in S3 headers without a prior HEAD:
-        #   - ETAG_IS_THE_SAME (any expected_etag)
+        #   - ETAG_IS_THE_SAME (any expected_etag), unless append_only
+        #     (except insert-only: ETAG_IS_THE_SAME + ITEM_NOT_AVAILABLE,
+        #      which maps to IfNoneMatch:* and is safe in append_only)
         #   - ETAG_HAS_CHANGED with a real expected_etag, provided
         #     the backend enforces IfNoneMatch with specific ETags
         #     (ITEM_NOT_AVAILABLE needs actual_etag for IfMatch,
         #      so it must go through the fallback HEAD path)
         _fast_eligible = (
-            not self.append_only
+            (not self.append_only
+             or (condition is ETAG_IS_THE_SAME
+                 and isinstance(expected_etag, ItemNotAvailableFlag)))
             and value is not KEEP_CURRENT
             and value is not DELETE_CURRENT
             and condition is ETAG_IS_THE_SAME
