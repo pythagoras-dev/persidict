@@ -21,7 +21,6 @@ from .jokers_and_status_flags import (
     Joker,
     ETagConditionFlag,
     ETagIfExists,
-    ETagValue,
     ConditionalOperationResult,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
@@ -276,19 +275,6 @@ class WriteOnceDict(PersiDict[ValueType]):
         return self._wrapped_dict[key]
 
 
-    def get_item_if(
-            self,
-            key: NonEmptyPersiDictKey,
-            expected_etag: ETagIfExists,
-            condition: ETagConditionFlag,
-            *,
-            always_retrieve_value: bool = True
-    ) -> ConditionalOperationResult:
-        """Retrieve a value if the condition is satisfied; delegates to wrapped dict."""
-        return self._wrapped_dict.get_item_if(
-            key, expected_etag, condition,
-            always_retrieve_value=always_retrieve_value)
-
     def __len__(self):
         """Return the number of items stored.
 
@@ -298,41 +284,12 @@ class WriteOnceDict(PersiDict[ValueType]):
         return len(self._wrapped_dict)
 
     def _generic_iter(self, result_type: set[str]):
-        """Delegate iteration to the wrapped dict.
-
-        Args:
-            result_type: Type of iterator: 'items' and/or 'keys' and/or 'timestamps'.
-
-        Returns:
-            Any: Iterator from the wrapped dictionary.
-        """
+        """Delegate iteration to the wrapped dict."""
         return self._wrapped_dict._generic_iter(result_type)
 
     def timestamp(self, key: NonEmptyPersiDictKey) -> float:
-        """Return the timestamp for a given key.
-
-        Args:
-            key: Key for which to retrieve the timestamp.
-
-        Returns:
-            float: POSIX timestamp (seconds since epoch) of the item's last
-                modification as tracked by the wrapped dict.
-        """
+        """Delegate timestamp retrieval to the wrapped dict."""
         return self._wrapped_dict.timestamp(key)
-
-    def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
-        """Return the ETag for a given key.
-
-        Delegates to the wrapped dict to ensure ETag consistency
-        with conditional operations (which also delegate to the wrapped dict).
-
-        Args:
-            key: Key for which to retrieve the ETag.
-
-        Returns:
-            ETagValue: The ETag from the wrapped dict.
-        """
-        return self._wrapped_dict.etag(key)
 
     def __getattr__(self, name):
         """Forward attribute access to the wrapped object.
