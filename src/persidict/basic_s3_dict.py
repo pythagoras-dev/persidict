@@ -95,6 +95,11 @@ class BasicS3Dict(PersiDict[ValueType]):
     _conditional_delete_probed: bool = False
     _conditional_delete_supported: bool = True
 
+    _CONTENT_TYPE_MAP: dict[str, str] = {
+        'json': 'application/json',
+        'pkl': 'application/octet-stream',
+    }
+
     def __init__(self, bucket_name: str = "my_bucket",
                  region: str = None,
                  root_prefix: str = "",
@@ -286,13 +291,12 @@ class BasicS3Dict(PersiDict[ValueType]):
             Any: The deserialized value.
         """
         try:
-            if self.serialization_format == 'json':
-                return jsonpickle.loads(body.read().decode('utf-8'))
-            elif self.serialization_format == 'pkl':
-                with io.BytesIO(body.read()) as buffer:
-                    return joblib.load(buffer)
+            raw = body.read()
+            if self.serialization_format == 'pkl':
+                f = io.BytesIO(raw)
             else:
-                return body.read().decode('utf-8')
+                f = io.StringIO(raw.decode('utf-8'))
+            return self._deserialize_from_file(f)
         finally:
             body.close()
 
@@ -502,20 +506,16 @@ class BasicS3Dict(PersiDict[ValueType]):
 
     def _serialize_value_for_s3(self, value: Any) -> tuple[bytes, str]:
         """Serialize a value for S3 storage and return (bytes, content_type)."""
-        if self.serialization_format == 'json':
-            serialized_data = jsonpickle.dumps(value, indent=4).encode('utf-8')
-            content_type = 'application/json'
-        elif self.serialization_format == 'pkl':
+        content_type = self._CONTENT_TYPE_MAP.get(
+            self.serialization_format, 'text/plain')
+        if self.serialization_format == 'pkl':
             with io.BytesIO() as buffer:
-                joblib.dump(value, buffer)
+                self._serialize_to_file(value, buffer)
                 serialized_data = buffer.getvalue()
-            content_type = 'application/octet-stream'
         else:
-            if isinstance(value, str):
-                serialized_data = value.encode('utf-8')
-            else:
-                serialized_data = str(value).encode('utf-8')
-            content_type = 'text/plain'
+            with io.StringIO() as buffer:
+                self._serialize_to_file(value, buffer)
+                serialized_data = buffer.getvalue().encode('utf-8')
         return serialized_data, content_type
 
     @staticmethod

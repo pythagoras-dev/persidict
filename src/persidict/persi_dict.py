@@ -20,6 +20,8 @@ from abc import abstractmethod
 from collections.abc import MutableMapping
 import heapq
 from itertools import zip_longest
+import joblib
+import jsonpickle
 import random
 import time
 from typing import Any, Sequence, Optional, TypeVar, Iterator, Mapping
@@ -711,6 +713,61 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                     f"Value must be an instance of"
                     f" {self.base_class_for_values.__name__},"
                     f" but it is {type(value).__name__} instead.")
+
+
+    def _serialize_to_file(
+            self
+            , value: Any
+            , f: Any
+            , *
+            , pkl_compress: str | None = None
+            ) -> None:
+        """Serialize a value into an open file-like object.
+
+        Dispatches on self.serialization_format to write the value using the
+        appropriate library. The caller is responsible for opening the file in
+        the correct mode ('wb' for pkl, 'w' for json/text) and for any
+        post-write actions (flush, fsync, close).
+
+        Args:
+            value: The Python object to serialize.
+            f: A writable file-like object (binary for pkl, text for others).
+            pkl_compress: Compression algorithm passed to joblib.dump when
+                serialization_format is 'pkl' (e.g. 'lz4', 'zlib').
+                None means joblib's default. Ignored for non-pkl formats.
+        """
+        if self.serialization_format == 'json':
+            f.write(jsonpickle.dumps(value, indent=4))
+        elif self.serialization_format == 'pkl':
+            if pkl_compress is not None:
+                joblib.dump(value, f, compress=pkl_compress)
+            else:
+                joblib.dump(value, f)
+        else:
+            f.write(str(value))
+
+
+    def _deserialize_from_file(self, f: Any) -> Any:
+        """Deserialize a value from an open file-like object.
+
+        Dispatches on self.serialization_format to read the value using the
+        appropriate library. The caller is responsible for opening the file in
+        the correct mode ('rb' for pkl, 'r' for json/text) and for closing it
+        afterward.
+
+        Args:
+            f: A readable file-like object (binary for pkl, text for others).
+
+        Returns:
+            The deserialized Python object.
+        """
+        if self.serialization_format == 'json':
+            return jsonpickle.loads(f.read())
+        elif self.serialization_format == 'pkl':
+            return joblib.load(f)
+        else:
+            return f.read()
+
 
     def _validate_setitem_args(self, key: NonEmptyPersiDictKey, value: ValueType | Joker
                                ) -> NonEmptySafeStrTuple:

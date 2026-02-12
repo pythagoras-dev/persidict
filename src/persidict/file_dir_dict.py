@@ -442,23 +442,10 @@ class FileDirDict(PersiDict[ValueType]):
                 raise
 
             with f:
-                if self.serialization_format == "pkl":
-                    result = joblib.load(f)
-                elif self.serialization_format == "json":
-                    result = jsonpickle.loads(f.read())
-                else:
-                    result = f.read()
-
-            return result
+                return self._deserialize_from_file(f)
         else:
             with open(file_name, file_open_mode) as f:
-                if self.serialization_format == "pkl":
-                    result = joblib.load(f)
-                elif self.serialization_format == "json":
-                    result = jsonpickle.loads(f.read())
-                else:
-                    result = f.read()
-                return result
+                return self._deserialize_from_file(f)
 
 
     def _read_from_file(self,file_name:str) -> Any:
@@ -505,21 +492,11 @@ class FileDirDict(PersiDict[ValueType]):
         fd, temp_path = tempfile.mkstemp(dir=dir_name, prefix=".__tmp__")
 
         try:
-            if self.serialization_format == "pkl":
-                with open(fd, 'wb') as f:
-                    joblib.dump(value, f, compress='lz4')
-                    f.flush()
-                    os.fsync(f.fileno())
-            elif self.serialization_format == "json":
-                with open(fd, 'w') as f:
-                    f.write(jsonpickle.dumps(value, indent=4))
-                    f.flush()
-                    os.fsync(f.fileno())
-            else:
-                with open(fd, 'w') as f:
-                    f.write(value)
-                    f.flush()
-                    os.fsync(f.fileno())
+            file_open_mode = 'wb' if self.serialization_format == 'pkl' else 'w'
+            with open(fd, file_open_mode) as f:
+                self._serialize_to_file(value, f, pkl_compress='lz4')
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(temp_path, file_name)
             try:
                 if os.name == 'posix':
