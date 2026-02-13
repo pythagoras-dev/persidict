@@ -627,7 +627,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return self._result_item_not_available(condition, satisfied)
 
         if satisfied:
-            if not self.discard(key):
+            self._check_delete_policy()
+            try:
+                self._remove_item(key)
+            except KeyError:
                 return self._result_item_not_available(condition, False)
             return self._result_delete_success(condition, actual_etag)
 
@@ -940,6 +943,32 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                                   " and cannot store items directly")
 
 
+    def _check_delete_policy(self) -> None:
+        """Raise TypeError if deletion is not allowed on this dict.
+
+        Raises:
+            TypeError: If append_only is True.
+        """
+        if self.append_only:
+            raise TypeError("append-only dicts do not support deletion")
+
+    def _remove_item(self, key: NonEmptySafeStrTuple) -> None:
+        """Remove a key from the backend storage.
+
+        Performs the raw deletion without policy or existence pre-checks.
+        Subclasses should override this with a direct backend deletion
+        so that ``discard`` and ``discard_item_if`` can bypass the
+        existence check in ``_process_delitem_args``.  The default
+        falls back to ``del self[key]``.
+
+        Args:
+            key: Already-validated NonEmptySafeStrTuple.
+
+        Raises:
+            KeyError: If the key does not exist in the backend.
+        """
+        del self[key]
+
     def _process_delitem_args(self, key: NonEmptyPersiDictKey) -> None:
         """Perform the first steps for deleting an item.
 
@@ -951,8 +980,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 append_only is True.
             KeyError: If the key does not exist.
         """
-        if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
+        self._check_delete_policy()
 
         key = NonEmptySafeStrTuple(key)
 
@@ -1273,14 +1301,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             TypeError: If the dictionary is append-only.
         """
-
-        if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
-
+        self._check_delete_policy()
         key = NonEmptySafeStrTuple(key)
-
         try:
-            del self[key]
+            self._remove_item(key)
             return True
         except KeyError:
             return False

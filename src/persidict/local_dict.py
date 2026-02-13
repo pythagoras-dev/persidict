@@ -419,6 +419,17 @@ class LocalDict(PersiDict[ValueType]):
         self._backend._write_counter[0] += 1
         bucket[leaf] = (deepcopy(value), time.time(), self._backend._write_counter[0])
 
+    def _remove_item(self, key: NonEmptySafeStrTuple) -> None:
+        """Remove *key* from the in-memory tree.
+
+        Raises:
+            KeyError: If the key does not exist.
+        """
+        bucket, leaf = self._lookup_leaf(key)
+        del bucket[leaf]  # raises KeyError if missing
+        # Throttled pruning: run only once per prune_interval destructive ops
+        self._maybe_prune()
+
     def __delitem__(self, key: NonEmptyPersiDictKey) -> None:
         """Delete a stored value for a key.
 
@@ -431,10 +442,7 @@ class LocalDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
-        bucket, leaf = self._lookup_leaf(key)
-        del bucket[leaf]
-        # Throttled pruning: run only once per prune_interval destructive ops
-        self._maybe_prune()
+        self._remove_item(key)
 
     def _generic_iter(self, result_type: set[str]):
         """Underlying implementation for keys/values/items/timestamps iterators.

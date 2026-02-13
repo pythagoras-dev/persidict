@@ -639,6 +639,18 @@ class FileDirDict(PersiDict[ValueType]):
         self._save_to_file(filename, value)
 
 
+    def _remove_item(self, key: NonEmptySafeStrTuple) -> None:
+        """Remove the file for *key* from disk.
+
+        Raises:
+            KeyError: If the file does not exist.
+        """
+        filename = self._build_full_path(key)
+        try:
+            self._with_retry(os.remove, filename)
+        except FileNotFoundError as exc:
+            raise KeyError(f"File {filename} does not exist") from exc
+
     def __delitem__(self, key:NonEmptyPersiDictKey) -> None:
         """Delete the stored value for a key.
 
@@ -652,13 +664,7 @@ class FileDirDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
-        filename = self._build_full_path(key)
-        if not self._with_retry(os.path.isfile, filename):
-            raise KeyError(f"File {filename} does not exist")
-        try:
-            self._with_retry(os.remove, filename)
-        except FileNotFoundError as exc:
-            raise KeyError(f"File {filename} does not exist") from exc
+        self._remove_item(key)
 
 
     def _generic_iter(self, result_type: set[str]):
