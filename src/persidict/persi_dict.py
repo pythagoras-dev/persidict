@@ -1285,10 +1285,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             raise TypeError("append-only dicts do not support deletion")
 
         for k in self.keys():
-            try:
-                del self[k]
-            except KeyError:
-                pass
+            self.discard(k)
 
 
     def pop(self, key: NonEmptyPersiDictKey, *args: Any) -> Any:
