@@ -185,7 +185,6 @@ class ExecutionIsCompleteFlag(StatusFlag):
 
 # --- Singleton constant instances ---
 
-_KeepCurrent = KeepCurrentFlag()
 KEEP_CURRENT: Final[KeepCurrentFlag] = KeepCurrentFlag()
 """Flag indicating that the current value should be kept unchanged.
 
@@ -202,7 +201,6 @@ Example:
 """
 
 
-_DeleteCurrent = DeleteCurrentFlag()
 DELETE_CURRENT: Final[DeleteCurrentFlag] = DeleteCurrentFlag()
 """Flag indicating that the current value should be deleted.
 
@@ -219,15 +217,12 @@ Example:
 """
 
 
-_ContinueNormalExecution = ContinueNormalExecutionFlag()
 CONTINUE_NORMAL_EXECUTION: Final[ContinueNormalExecutionFlag] = ContinueNormalExecutionFlag()
 """Flag indicating that normal execution should continue."""
 
-_ExecutionIsComplete = ExecutionIsCompleteFlag()
 EXECUTION_IS_COMPLETE: Final[ExecutionIsCompleteFlag] = ExecutionIsCompleteFlag()
 """Flag indicating that execution is complete, no further processing is needed."""
 
-_ItemNotAvailable = ItemNotAvailableFlag()
 ITEM_NOT_AVAILABLE: Final[ItemNotAvailableFlag] = ItemNotAvailableFlag()
 """Sentinel: the item is not present in the dict.
 
@@ -235,7 +230,6 @@ Used uniformly for absent keys in all contexts: etag parameters/fields,
 value fields, and transformer input.
 """
 
-_ValueNotRetrieved = ValueNotRetrievedFlag()
 VALUE_NOT_RETRIEVED: Final[ValueNotRetrievedFlag] = ValueNotRetrievedFlag()
 """Sentinel: the value exists but was not retrieved.
 
@@ -243,27 +237,21 @@ Returned when ``retrieve_value=NEVER_RETRIEVE`` or when
 ``retrieve_value=IF_ETAG_CHANGED`` and the ETag has not changed.
 """
 
-_AlwaysRetrieve = AlwaysRetrieveFlag()
 ALWAYS_RETRIEVE: Final[AlwaysRetrieveFlag] = AlwaysRetrieveFlag()
 """Retrieve the value unconditionally in conditional operations."""
 
-_NeverRetrieve = NeverRetrieveFlag()
 NEVER_RETRIEVE: Final[NeverRetrieveFlag] = NeverRetrieveFlag()
 """Never retrieve the value; always return VALUE_NOT_RETRIEVED."""
 
-_IfETagChangedRetrieve = IfETagChangedRetrieveFlag()
 IF_ETAG_CHANGED: Final[IfETagChangedRetrieveFlag] = IfETagChangedRetrieveFlag()
 """Retrieve the value only if the actual ETag differs from expected."""
 
-_AnyETag = AnyETagFlag()
 ANY_ETAG: Final[AnyETagFlag] = AnyETagFlag()
 """Condition: always satisfied regardless of etag values."""
 
-_ETagIsTheSame = ETagIsTheSameFlag()
 ETAG_IS_THE_SAME: Final[ETagIsTheSameFlag] = ETagIsTheSameFlag()
 """Condition: expected and actual etags must match."""
 
-_ETagHasChanged = ETagHasChangedFlag()
 ETAG_HAS_CHANGED: Final[ETagHasChangedFlag] = ETagHasChangedFlag()
 """Condition: expected and actual etags must differ."""
 
