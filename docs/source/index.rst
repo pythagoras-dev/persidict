@@ -712,13 +712,13 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 7211
-     - 12738
-     - 19949
+     - 7212
+     - 12749
+     - 19961
    * - Source Lines Of Code (SLOC)
      - 3233
-     - 8079
-     - 11312
+     - 8087
+     - 11320
    * - Classes
      - 32
      - 8
