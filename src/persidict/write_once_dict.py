@@ -233,10 +233,11 @@ class WriteOnceDict(PersiDict[ValueType]):
         )
 
         if not result.value_was_mutated:
-            self._run_consistency_check(key, value)
+            self._run_consistency_check(key, value, result.new_value)
 
     def _run_consistency_check(
-            self, key: NonEmptyPersiDictKey, new_value: ValueType
+            self, key: NonEmptyPersiDictKey, new_value: ValueType,
+            stored_value: ValueType
     ) -> None:
         """Probabilistically check that new_value matches the stored value.
 
@@ -247,6 +248,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         Args:
             key: The key that already exists.
             new_value: The value that was attempted to be written.
+            stored_value: The value already retrieved from the backend.
 
         Raises:
             ValueError: If the check fires and the values differ.
@@ -254,7 +256,6 @@ class WriteOnceDict(PersiDict[ValueType]):
         if self.p_consistency_checks > 0:
             if random.random() < self.p_consistency_checks:
                 self._consistency_checks_attempted += 1
-                stored_value = self._wrapped_dict[key]
                 signature_old = _get_md5_signature(stored_value)
                 signature_new = _get_md5_signature(new_value)
                 if signature_old != signature_new:
