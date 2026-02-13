@@ -1137,12 +1137,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
 
-        Behaves like the built-in dict.setdefault() method: if the key exists,
-        return its current value; otherwise, set the key to the default value
-        and return that default.
+        Delegates to ``setdefault_if`` for an atomic insert-if-absent on
+        backends that support it. Behaves like the built-in
+        dict.setdefault(): if the key exists, return its current value;
+        otherwise, set the key to the default value and return that default.
 
         Args:
-            key: Key (string, sequence of strings, or SafeStrTuple).
+            key: Dictionary key.
             default: Value to insert if the key is not present. Defaults to None.
 
         Returns:
@@ -1151,14 +1152,18 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT).
         """
-        key = NonEmptySafeStrTuple(key)
         if isinstance(default, Joker):
             raise TypeError("default must be a regular value, not a Joker command")
-        try:
-            return self[key]
-        except KeyError:
-            self[key] = default
+        result = self.setdefault_if(
+            key,
+            default_value=default,
+            condition=ANY_ETAG,
+            expected_etag=ITEM_NOT_AVAILABLE,
+            retrieve_value=ALWAYS_RETRIEVE,
+        )
+        if result.value_was_mutated:
             return default
+        return result.new_value
 
     def __eq__(self, other: Any) -> bool:
         """Compare dictionaries for equality.
