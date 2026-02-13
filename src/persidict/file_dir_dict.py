@@ -610,37 +610,6 @@ class FileDirDict(PersiDict[ValueType]):
         return result, self._etag_from_stat(stat_after)
 
 
-    def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
-        """Insert key with default value if absent; return the current value.
-
-        Best-effort: concurrent writers may still race between the check
-        and write steps.
-
-        Args:
-            key: Key (string, sequence of strings, or SafeStrTuple).
-            default: Value to insert if the key is not present. Defaults to None.
-
-        Returns:
-            Existing value if key is present; otherwise the provided default value.
-
-        Raises:
-            TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT),
-                or if the key is missing and default violates value type constraints.
-        """
-        key = NonEmptySafeStrTuple(key)
-        if isinstance(default, Joker):
-            raise TypeError("default must be a regular value, not a Joker command")
-
-        filename = self._build_full_path(key)
-        if self._with_retry(os.path.isfile, filename):
-            return self[key]
-
-        key = self._validate_setitem_args(key, default)
-        filename = self._build_full_path(key, create_subdirs=True)
-        self._save_to_file(filename, default)
-        return default
-
-
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Store a value for a key on the disk.
 
