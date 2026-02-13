@@ -17,6 +17,8 @@ from typing import Any, Final, Optional
 
 import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
+from mixinforge import sort_dict_by_keys
+
 from .jokers_and_status_flags import (
     Joker,
     EXECUTION_IS_COMPLETE,
@@ -181,9 +183,13 @@ class FileDirDict(PersiDict[ValueType]):
             dict: A mapping of parameter names to values including base_dir
                 merged with the base PersiDict parameters.
         """
-        return self._extend_parent_params(
+        params = super().get_params()
+        additional_params = dict(
             base_dir=self.base_dir,
             digest_len=self.digest_len)
+        params= {**params, **additional_params}
+        sorted_params = sort_dict_by_keys(params)
+        return sorted_params
 
 
     @property

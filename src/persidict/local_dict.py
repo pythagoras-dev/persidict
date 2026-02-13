@@ -12,6 +12,8 @@ import time
 from copy import deepcopy
 from typing import Any, Optional, Iterable
 
+from mixinforge import sort_dict_by_keys
+
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .jokers_and_status_flags import EXECUTION_IS_COMPLETE, ETagValue
@@ -194,7 +196,12 @@ class LocalDict(PersiDict[ValueType]):
             dict: A dictionary of parameters (sorted by key) suitable for
             passing to the constructor.
         """
-        return self._extend_parent_params(backend=self._backend)
+        params = super().get_params()
+        additional_params = dict(
+            backend=self._backend)
+        params = {**params, **additional_params}
+        sorted_params = sort_dict_by_keys(params)
+        return sorted_params
 
     # No base_url/base_dir override: keep defaults (None)
 

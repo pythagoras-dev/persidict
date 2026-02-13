@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Final, Optional
 
+from mixinforge import sort_dict_by_keys
+
 from .basic_s3_dict import BasicS3Dict
 from .file_dir_dict import FileDirDict
 from .cached_appendonly_dict import AppendOnlyDictCached
@@ -118,12 +120,17 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
     
     def get_params(self):
         """Return configuration parameters as a dictionary."""
-        return self._extend_parent_params(
-            region=self._main_dict.region,
-            bucket_name=self._main_dict.bucket_name,
-            root_prefix=self._main_dict.root_prefix,
-            base_dir=self._data_cache.base_dir,
-            digest_len=self._data_cache.digest_len)
+        # Get params from the main dict and local cache
+        params = self._main_dict.get_params()
+        cache_params = self._data_cache.get_params()
+
+        # Add cache-specific params
+        params["base_dir"] = cache_params["base_dir"]
+        params["digest_len"] = cache_params["digest_len"]
+
+        params = sort_dict_by_keys(params)
+
+        return params
     
     @property
     def base_url(self) -> str:
