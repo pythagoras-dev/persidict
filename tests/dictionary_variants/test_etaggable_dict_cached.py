@@ -123,6 +123,25 @@ def test_setitem_and_caches_updated(cached_env):
     assert etag_cache[("a",)] == etag
 
 
+def test_setitem_cached_etag_matches_written_value(cached_env):
+    """Verify that after __setitem__ the cached ETag corresponds to the
+    value stored in data_cache, not to a later concurrent write."""
+    main, data_cache, etag_cache, wrapper = cached_env
+
+    wrapper[("k",)] = "first"
+    etag_after_write = etag_cache[("k",)]
+
+    # Simulate a concurrent out-of-band overwrite in main_dict
+    main[("k",)] = "second"
+    main_etag_after_overwrite = main.etag(("k",))
+
+    # The cached etag must still reflect the value we wrote ("first"),
+    # not the later overwrite
+    assert etag_after_write != main_etag_after_overwrite
+    assert data_cache[("k",)] == "first"
+    assert etag_after_write == etag_cache[("k",)]
+
+
 def test_getitem_read_through_and_cache_population(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
     # Populate main directly (simulating out-of-band write)

@@ -15,8 +15,10 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       Joker,
                                       ETagValue,
                                       ETagConditionFlag,
+                                      ANY_ETAG,
                                       ETAG_HAS_CHANGED,
                                       RetrieveValueFlag, IF_ETAG_CHANGED,
+                                      NEVER_RETRIEVE,
                                       ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
                                       ValueNotRetrievedFlag,
                                       VALUE_NOT_RETRIEVED,
@@ -308,10 +310,13 @@ class MutableDictCached(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return
-        self._main_dict[key] = value
-        self._data_cache[key] = value
-        etag = self._main_dict.etag(key)
-        self._set_cached_etag(key, etag)
+        res = self._main_dict.set_item_if(
+            key, value=value, condition=ANY_ETAG,
+            expected_etag=ITEM_NOT_AVAILABLE,
+            retrieve_value=NEVER_RETRIEVE)
+        self._sync_caches_from_result(
+            key, new_value=value, resulting_etag=res.resulting_etag,
+            actual_etag=res.actual_etag)
 
 
     def set_item_if(
