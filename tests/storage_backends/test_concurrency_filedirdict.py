@@ -37,10 +37,10 @@ def _conditional_write_with_pause(
     d = FileDirDict(base_dir=base_dir)
     original_save = d._save_to_file
 
-    def slow_save(file_name, value):
+    def slow_save(file_name, value, **kwargs):
         ready_event.set()
         proceed_event.wait(5)
-        return original_save(file_name, value)
+        return original_save(file_name, value, **kwargs)
 
     d._save_to_file = slow_save
     result_queue.put(d.set_item_if(key, value="conditional", condition=ETAG_IS_THE_SAME, expected_etag=etag))
