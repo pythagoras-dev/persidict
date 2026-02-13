@@ -70,7 +70,16 @@ class WriteOnceDict(PersiDict[ValueType]):
     and you want to check this assumption (detect divergent values)
     without paying the full cost of always comparing values.
 
+    **API limitation:** ``set_item_if`` is not supported and raises
+    ``NotImplementedError``. Conditional overwrites contradict write-once
+    semantics. Insert-if-absent is available via ``setdefault_if`` on the
+    wrapped dict (and is used internally by ``__setitem__``).
 
+    **Atomicity note:** insert-if-absent semantics in ``__setitem__`` are
+    delegated to the wrapped backend's ``setdefault_if``. Atomicity is only
+    guaranteed when the wrapped backend provides it (e.g. ``BasicS3Dict``
+    uses S3 conditional headers). The default ``PersiDict`` base
+    implementation is *not* atomic.
     """
     _wrapped_dict: PersiDict[ValueType]
     _p_consistency_checks: float | None
@@ -203,6 +212,10 @@ class WriteOnceDict(PersiDict[ValueType]):
     ) -> ConditionalOperationResult:
         """Not supported for write-once dictionaries.
 
+        Conditional overwrites (``set_item_if``) contradict write-once
+        semantics, which only permit insert-if-absent. Use
+        ``setdefault_if`` on the wrapped dict for conditional inserts.
+
         Raises:
             NotImplementedError: Always raised.
         """
@@ -211,8 +224,9 @@ class WriteOnceDict(PersiDict[ValueType]):
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set a value for a key, preserving the first assignment.
 
-        Uses ``setdefault_if`` on the wrapped dict for an atomic
-        insert-if-absent operation. If the key already exists, a
+        Uses ``setdefault_if`` on the wrapped dict for insert-if-absent
+        semantics. Atomicity of the insert depends on the wrapped
+        backend (see class docstring). If the key already exists, a
         probabilistic consistency check may be performed to ensure the
         new value matches the originally stored value. If a check is
         performed and the values differ, a ValueError is raised.
