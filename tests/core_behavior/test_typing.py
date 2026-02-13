@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     assert_type(int_dict.setdefault("missing", 0), int)
     assert_type(int_dict.pop("missing"), int)
     assert_type(int_dict.pop("missing", 0), int)
+    pi_key, pi_val = int_dict.popitem()
+    assert_type(pi_key, NonEmptySafeStrTuple)
+    assert_type(pi_val, int)
     assert_type(int_dict.timestamp("key"), float)
 
     for key in int_dict.keys():
@@ -37,6 +40,9 @@ if TYPE_CHECKING:
     assert_type(str_dict.setdefault("missing", "fallback"), str)
     assert_type(str_dict.pop("missing"), str)
     assert_type(str_dict.pop("missing", "fallback"), str)
+    spi_key, spi_val = str_dict.popitem()
+    assert_type(spi_key, NonEmptySafeStrTuple)
+    assert_type(spi_val, str)
     assert_type(str_dict.timestamp("another_key"), float)
 
     for key in str_dict.keys():

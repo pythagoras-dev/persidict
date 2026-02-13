@@ -1125,6 +1125,14 @@ class BasicS3Dict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         self._process_delitem_args(key)
+        # _process_delitem_args already verified existence via __contains__
+        # (HEAD request), so skip the duplicate HEAD in _remove_item and
+        # call delete_object directly.
+        self._delete_object_ignoring_not_found(key)
+
+    def _delete_object_ignoring_not_found(
+            self, key: NonEmptySafeStrTuple) -> None:
+        """Issue an S3 DeleteObject, silently ignoring 404/NoSuchKey."""
         obj_name = self._build_full_objectname(key)
         try:
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj_name)
@@ -1133,6 +1141,26 @@ class BasicS3Dict(PersiDict[ValueType]):
                 pass
             else:
                 raise
+
+    def _remove_item(self, key: NonEmptySafeStrTuple) -> None:
+        """Remove the S3 object for *key*.
+
+        S3 ``delete_object`` is idempotent (returns 204 even for
+        missing keys), so a HEAD check is performed first to raise
+        ``KeyError`` when the key is absent — matching the contract
+        that ``discard`` relies on.
+
+        Raises:
+            KeyError: If the object does not exist.
+        """
+        obj_name = self._build_full_objectname(key)
+        try:
+            self.s3_client.head_object(Bucket=self.bucket_name, Key=obj_name)
+        except ClientError as e:
+            if not_found_error(e):
+                raise KeyError(key) from e
+            raise
+        self._delete_object_ignoring_not_found(key)
 
     def __len__(self) -> int:
         """Return the number of key-value pairs in the dictionary.

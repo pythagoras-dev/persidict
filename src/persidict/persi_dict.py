@@ -1291,6 +1291,76 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 pass
 
 
+    def pop(self, key: NonEmptyPersiDictKey, *args: Any) -> Any:
+        """Remove a key and return its value.
+
+        Uses ``transform_item`` internally so the read-then-delete
+        sequence is protected by ETag checks and automatic retries,
+        avoiding the TOCTOU race that the inherited MutableMapping.pop
+        would have.
+
+        Args:
+            key: Key (string or sequence of strings) or SafeStrTuple.
+            *args: Optional default value (at most one).
+
+        Returns:
+            The value that was stored, or the default if the key was
+            absent and a default was provided.
+
+        Raises:
+            TypeError: If the dictionary is append-only, or if more
+                than one default argument is given.
+            KeyError: If the key does not exist and no default was given.
+        """
+        if len(args) > 1:
+            raise TypeError(
+                f"pop expected at most 2 arguments, got {1 + len(args)}")
+        self._check_delete_policy()
+
+        captured: list = []
+
+        def _grab_and_delete(current_value: Any) -> Any:
+            captured.clear()
+            captured.append(current_value)
+            if current_value is ITEM_NOT_AVAILABLE:
+                return KEEP_CURRENT
+            return DELETE_CURRENT
+
+        result = self.transform_item(key, transformer=_grab_and_delete)
+
+        if captured and captured[0] is not ITEM_NOT_AVAILABLE:
+            return captured[0]
+
+        if args:
+            return args[0]
+        raise KeyError(NonEmptySafeStrTuple(key))
+
+    def popitem(self) -> tuple[NonEmptySafeStrTuple, ValueType]:
+        """Remove and return an arbitrary (key, value) pair.
+
+        Uses ``pop`` (which delegates to ``transform_item``) so the
+        read-then-delete is protected by ETag checks and automatic
+        retries.  If the chosen key is deleted by another process
+        before ``pop`` completes, the next key is tried until one
+        succeeds or the dictionary is empty.
+
+        Returns:
+            A (key, value) tuple.
+
+        Raises:
+            TypeError: If the dictionary is append-only.
+            KeyError: If the dictionary is empty.
+        """
+        self._check_delete_policy()
+        for key in self.keys():
+            try:
+                value = self.pop(key)
+                return (key, value)
+            except KeyError:
+                # Another process deleted this key; try the next one.
+                continue
+        raise KeyError("dictionary is empty")
+
     def discard(self, key: NonEmptyPersiDictKey) -> bool:
         """Delete an item without raising an exception if it doesn't exist.
 

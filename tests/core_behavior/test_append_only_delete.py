@@ -1,8 +1,8 @@
 """Verify that all deletion operations raise TypeError on append-only dicts.
 
 Deletion is an unsupported operation for append-only dictionaries, regardless
-of the backend.  Every deletion path (__delitem__, clear, discard,
-discard_item_if) must raise TypeError consistently.
+of the backend.  Every deletion path (__delitem__, clear, discard, pop,
+popitem, discard_item_if) must raise TypeError consistently.
 """
 
 import pytest
@@ -58,6 +58,28 @@ def test_discard_raises_type_error(tmpdir, DictToTest, kwargs):
     d["k"] = "v"
     with pytest.raises(TypeError):
         d.discard("k")
+    assert "k" in d
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", append_only_tests)
+@mock_aws
+def test_pop_raises_type_error(tmpdir, DictToTest, kwargs):
+    """pop() on an append-only dict raises TypeError."""
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
+    d["k"] = "v"
+    with pytest.raises(TypeError):
+        d.pop("k")
+    assert "k" in d
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", append_only_tests)
+@mock_aws
+def test_popitem_raises_type_error(tmpdir, DictToTest, kwargs):
+    """popitem() on an append-only dict raises TypeError."""
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
+    d["k"] = "v"
+    with pytest.raises(TypeError):
+        d.popitem()
     assert "k" in d
 
 
