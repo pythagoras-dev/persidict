@@ -373,7 +373,8 @@ class FileDirDict(PersiDict[ValueType]):
 
     @staticmethod
     def _with_retry(fn, *args, n_retries=12,
-                    retried_exceptions=(PermissionError,), **kwargs):
+                    retried_exceptions=(PermissionError,),
+                    immediately_raised_exceptions=(), **kwargs):
         """Execute a callable with exponential backoff on transient errors.
 
         Args:
@@ -382,6 +383,9 @@ class FileDirDict(PersiDict[ValueType]):
             n_retries: Maximum number of attempts (default 12).
             retried_exceptions: Tuple of exception types that trigger a
                 retry. Any exception not in this tuple is raised immediately.
+            immediately_raised_exceptions: Tuple of exception types that
+                are always raised immediately, even if they are subclasses
+                of *retried_exceptions*.
             **kwargs: Keyword arguments forwarded to *fn*.
 
         Returns:
@@ -394,6 +398,8 @@ class FileDirDict(PersiDict[ValueType]):
         for i in range(n_retries):
             try:
                 return fn(*args, **kwargs)
+            except immediately_raised_exceptions:
+                raise
             except retried_exceptions:
                 if i < n_retries - 1:
                     time.sleep(random.uniform(0.01, 0.2) * (1.75 ** i))
@@ -452,12 +458,14 @@ class FileDirDict(PersiDict[ValueType]):
             Any: The deserialized value according to serialization_format.
 
         Raises:
+            FileNotFoundError: Immediately if the file does not exist.
             Exception: Propagates the last exception if all retries fail.
         """
 
         return self._with_retry(
             self._read_from_file_impl, file_name,
-            retried_exceptions=(Exception,))
+            retried_exceptions=(Exception,),
+            immediately_raised_exceptions=(FileNotFoundError,))
 
 
     def _save_to_file_impl(self, file_name:str, value:Any) -> None:
@@ -571,9 +579,10 @@ class FileDirDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
-        if not self._with_retry(os.path.isfile, filename):
-            raise KeyError(f"File {filename} does not exist")
-        result = self._read_from_file(filename)
+        try:
+            result = self._read_from_file(filename)
+        except FileNotFoundError as exc:
+            raise KeyError(f"File {filename} does not exist") from exc
         self._validate_returned_value(result)
         return result
 
@@ -596,7 +605,10 @@ class FileDirDict(PersiDict[ValueType]):
                 stat_before = self._with_retry(os.stat, filename)
             except FileNotFoundError as exc:
                 raise KeyError(f"File {filename} does not exist") from exc
-            result = self._read_from_file(filename)
+            try:
+                result = self._read_from_file(filename)
+            except FileNotFoundError as exc:
+                raise KeyError(f"File {filename} does not exist") from exc
             try:
                 stat_after = self._with_retry(os.stat, filename)
             except FileNotFoundError as exc:

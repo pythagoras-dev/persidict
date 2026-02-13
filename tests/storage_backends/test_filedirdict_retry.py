@@ -1,10 +1,13 @@
-"""Tests that FileDirDict public operations recover from transient PermissionError.
+"""Tests for FileDirDict retry and error-handling behavior at the OS boundary.
 
-On Windows, concurrent file access causes transient PermissionError when
-another process holds a lock.  FileDirDict retries these operations with
-exponential backoff.  These tests verify that the public API is resilient:
-each operation succeeds after a configurable number of transient failures
-injected at the OS boundary.
+Covers two concerns:
+- Transient PermissionError recovery: On Windows, concurrent file access
+  causes transient PermissionError.  FileDirDict retries with exponential
+  backoff, and these tests verify that public operations succeed after a
+  configurable number of transient failures.
+- FileNotFoundError fast-fail: When a file is genuinely missing,
+  _read_from_file raises immediately (no retries), and __getitem__
+  converts the error to KeyError.
 """
 
 import os
@@ -46,10 +49,11 @@ def _populated_dict(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_getitem_recovers_from_transient_permission_error(tmp_path, monkeypatch):
-    """__getitem__ succeeds after transient PermissionError on os.path.isfile."""
+    """__getitem__ succeeds after transient PermissionError on open()."""
+    import builtins
     d, path = _populated_dict(tmp_path)
-    real_isfile = os.path.isfile
-    monkeypatch.setattr(os.path, "isfile", _make_transient(real_isfile, 2))
+    real_open = builtins.open
+    monkeypatch.setattr(builtins, "open", _make_transient(real_open, 2))
 
     assert d["k"] == "hello"
 
@@ -105,12 +109,42 @@ def test_setdefault_recovers_from_transient_permission_error(tmp_path, monkeypat
 
 def test_persistent_permission_error_is_raised(tmp_path, monkeypatch):
     """PermissionError is raised when all retries are exhausted."""
+    import builtins
     d, _ = _populated_dict(tmp_path)
 
     def always_fail(*args, **kwargs):
         raise PermissionError("permanent lock")
 
-    monkeypatch.setattr(os.path, "isfile", always_fail)
+    monkeypatch.setattr(builtins, "open", always_fail)
 
     with pytest.raises(PermissionError):
         _ = d["k"]
+
+
+def test_getitem_missing_key_raises_key_error(tmp_path):
+    """__getitem__ raises KeyError (not FileNotFoundError) for a missing key."""
+    d = FileDirDict(base_dir=str(tmp_path), serialization_format="json")
+
+    with pytest.raises(KeyError):
+        _ = d["nonexistent"]
+
+
+def test_file_not_found_is_not_retried(tmp_path, monkeypatch):
+    """FileNotFoundError in _read_from_file raises immediately without retries."""
+    import builtins
+    d = FileDirDict(base_dir=str(tmp_path), serialization_format="json")
+
+    call_count = 0
+    real_open = builtins.open
+
+    def counting_open(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        raise FileNotFoundError("gone")
+
+    monkeypatch.setattr(builtins, "open", counting_open)
+
+    with pytest.raises(KeyError):
+        _ = d["k"]
+
+    assert call_count == 1
