@@ -10,8 +10,6 @@ Setting the probability of random checks to 0 disables them.
 """
 from __future__ import annotations
 
-import time
-
 from deepdiff import DeepDiff
 from mixinforge import sort_dict_by_keys
 
@@ -23,6 +21,9 @@ from .jokers_and_status_flags import (
     ETagIfExists,
     RetrieveValueFlag, IF_ETAG_CHANGED,
     ConditionalOperationResult,
+    ANY_ETAG,
+    ITEM_NOT_AVAILABLE,
+    ALWAYS_RETRIEVE,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .file_dir_dict import FileDirDict
@@ -209,52 +210,59 @@ class WriteOnceDict(PersiDict[ValueType]):
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
         """Set a value for a key, preserving the first assignment.
 
-        If the key is new, the value is stored. If the key already exists,
-        a probabilistic consistency check may be performed to ensure the new
-        value matches the originally stored value. If a check is performed and
-        the values differ, a ValueError is raised.
+        Uses ``setdefault_if`` on the wrapped dict for an atomic
+        insert-if-absent operation. If the key already exists, a
+        probabilistic consistency check may be performed to ensure the
+        new value matches the originally stored value. If a check is
+        performed and the values differ, a ValueError is raised.
 
         Args:
-            key: key (string or sequence of strings or SafeStrTuple)
+            key: Dictionary key.
             value: Value to store.
 
         Raises:
-            KeyError: If the wrapped dict failed to set a new key unexpectedly.
             ValueError: If a consistency check is triggered and the new value
                 differs from the original value for the key.
         """
-        check_needed = False
+        result = self._wrapped_dict.setdefault_if(
+            key,
+            default_value=value,
+            condition=ANY_ETAG,
+            expected_etag=ITEM_NOT_AVAILABLE,
+            retrieve_value=ALWAYS_RETRIEVE,
+        )
 
-        n_retries = 8
-        for i in range(n_retries):
-            try:  # extra protections to better handle concurrent writes
-                if key in self._wrapped_dict:
-                    check_needed = True
-                else:
-                    self._wrapped_dict[key] = value
-                break
-            except Exception as e:
-                if i < n_retries - 1:
-                    time.sleep(random.uniform(0.01, 0.1) * (2 ** i))
-                else:
-                    raise e
+        if not result.value_was_mutated:
+            self._run_consistency_check(key, value)
 
-        if key not in self._wrapped_dict:
-            raise KeyError(
-                f"Key {key} was not set in the wrapped dict "
-                + f"{self._wrapped_dict}. This should not happen.")
+    def _run_consistency_check(
+            self, key: NonEmptyPersiDictKey, new_value: ValueType
+    ) -> None:
+        """Probabilistically check that new_value matches the stored value.
 
-        if check_needed and self.p_consistency_checks > 0:
+        Called when a write targets a key that already exists. Based on
+        ``p_consistency_checks``, a random check may compare the stored
+        value against the new value and raise ValueError on mismatch.
+
+        Args:
+            key: The key that already exists.
+            new_value: The value that was attempted to be written.
+
+        Raises:
+            ValueError: If the check fires and the values differ.
+        """
+        if self.p_consistency_checks > 0:
             if random.random() < self.p_consistency_checks:
                 self._consistency_checks_attempted += 1
-                signature_old = _get_md5_signature(self._wrapped_dict[key])
-                signature_new = _get_md5_signature(value)
+                stored_value = self._wrapped_dict[key]
+                signature_old = _get_md5_signature(stored_value)
+                signature_new = _get_md5_signature(new_value)
                 if signature_old != signature_new:
-                    diff_dict = DeepDiff(self._wrapped_dict[key], value)
+                    diff_dict = DeepDiff(stored_value, new_value)
                     raise ValueError(
                         f"Key {key} is already set "
-                        + f"to {self._wrapped_dict[key]} "
-                        + f"and the new value {value} is different, "
+                        + f"to {stored_value} "
+                        + f"and the new value {new_value} is different, "
                         + f"which is not allowed. Details here: {diff_dict} ")
                 self._consistency_checks_passed += 1
 
