@@ -24,6 +24,7 @@ from .jokers_and_status_flags import (
     ANY_ETAG,
     ITEM_NOT_AVAILABLE,
     ALWAYS_RETRIEVE,
+    NEVER_RETRIEVE,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .file_dir_dict import FileDirDict
@@ -216,6 +217,11 @@ class WriteOnceDict(PersiDict[ValueType]):
         new value matches the originally stored value. If a check is
         performed and the values differ, a ValueError is raised.
 
+        When ``p_consistency_checks`` is 1.0, the stored value is always
+        retrieved in the same round-trip as the setdefault_if call.
+        For lower probabilities, the value is only fetched when the
+        random check actually fires, avoiding unnecessary reads.
+
         Args:
             key: Dictionary key.
             value: Value to store.
@@ -224,26 +230,33 @@ class WriteOnceDict(PersiDict[ValueType]):
             ValueError: If a consistency check is triggered and the new value
                 differs from the original value for the key.
         """
+        p = self.p_consistency_checks
+        always_check = (p >= 1.0)
+
         result = self._wrapped_dict.setdefault_if(
             key,
             default_value=value,
             condition=ANY_ETAG,
             expected_etag=ITEM_NOT_AVAILABLE,
-            retrieve_value=ALWAYS_RETRIEVE,
+            retrieve_value=ALWAYS_RETRIEVE if always_check else NEVER_RETRIEVE,
         )
 
         if not result.value_was_mutated:
-            self._run_consistency_check(key, value, result.new_value)
+            if always_check:
+                self._do_consistency_check(key, value, result.new_value)
+            elif p > 0 and random.random() < p:
+                stored_value = self._wrapped_dict[key]
+                self._do_consistency_check(key, value, stored_value)
 
-    def _run_consistency_check(
+    def _do_consistency_check(
             self, key: NonEmptyPersiDictKey, new_value: ValueType,
             stored_value: ValueType
     ) -> None:
-        """Probabilistically check that new_value matches the stored value.
+        """Check that new_value matches the stored value.
 
-        Called when a write targets a key that already exists. Based on
-        ``p_consistency_checks``, a random check may compare the stored
-        value against the new value and raise ValueError on mismatch.
+        Called when a consistency check has already been selected to run
+        (the random gating is handled by the caller). Compares the MD5
+        signatures of both values and raises ValueError on mismatch.
 
         Args:
             key: The key that already exists.
@@ -251,21 +264,19 @@ class WriteOnceDict(PersiDict[ValueType]):
             stored_value: The value already retrieved from the backend.
 
         Raises:
-            ValueError: If the check fires and the values differ.
+            ValueError: If the values differ.
         """
-        if self.p_consistency_checks > 0:
-            if random.random() < self.p_consistency_checks:
-                self._consistency_checks_attempted += 1
-                signature_old = _get_md5_signature(stored_value)
-                signature_new = _get_md5_signature(new_value)
-                if signature_old != signature_new:
-                    diff_dict = DeepDiff(stored_value, new_value)
-                    raise ValueError(
-                        f"Key {key} is already set "
-                        + f"to {stored_value} "
-                        + f"and the new value {new_value} is different, "
-                        + f"which is not allowed. Details here: {diff_dict} ")
-                self._consistency_checks_passed += 1
+        self._consistency_checks_attempted += 1
+        signature_old = _get_md5_signature(stored_value)
+        signature_new = _get_md5_signature(new_value)
+        if signature_old != signature_new:
+            diff_dict = DeepDiff(stored_value, new_value)
+            raise ValueError(
+                f"Key {key} is already set "
+                + f"to {stored_value} "
+                + f"and the new value {new_value} is different, "
+                + f"which is not allowed. Details here: {diff_dict} ")
+        self._consistency_checks_passed += 1
 
     def __contains__(self, key:NonEmptyPersiDictKey):
         """Check if a key exists in the dictionary.

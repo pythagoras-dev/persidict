@@ -149,6 +149,91 @@ def test_write_once_dict_consistency_check_uses_prefetched_value(tmp_path):
     assert getitem_calls == 1
 
 
+def test_write_once_dict_low_p_skips_read_when_check_not_triggered(tmp_path):
+    """When p < 1 and the random check does not fire, no backend read
+    should occur on a duplicate write (value is not fetched at all)."""
+    import random as stdlib_random
+
+    wrapped = FileDirDict(base_dir=tmp_path, append_only=True)
+    d = WriteOnceDict(wrapped_dict=wrapped, p_consistency_checks=0.5)
+    d["k"] = "hello"
+
+    getitem_calls = 0
+    original_getitem = type(wrapped).__getitem__
+
+    def counting_getitem(self, key):
+        nonlocal getitem_calls
+        getitem_calls += 1
+        return original_getitem(self, key)
+
+    # Seed so random.random() > 0.5 → check does not fire
+    stdlib_random.seed(0)  # random.random() ≈ 0.844 > 0.5
+    type(wrapped).__getitem__ = counting_getitem
+    try:
+        d["k"] = "hello"
+    finally:
+        type(wrapped).__getitem__ = original_getitem
+
+    assert d.consistency_checks_attempted == 0
+    assert getitem_calls == 0
+
+
+def test_write_once_dict_low_p_reads_separately_when_check_triggered(tmp_path):
+    """When p < 1 and the random check fires, a separate backend read is
+    performed to fetch the stored value for comparison."""
+    import random as stdlib_random
+
+    wrapped = FileDirDict(base_dir=tmp_path, append_only=True)
+    d = WriteOnceDict(wrapped_dict=wrapped, p_consistency_checks=0.5)
+    d["k"] = "hello"
+
+    getitem_calls = 0
+    original_getitem = type(wrapped).__getitem__
+
+    def counting_getitem(self, key):
+        nonlocal getitem_calls
+        getitem_calls += 1
+        return original_getitem(self, key)
+
+    # Seed so random.random() < 0.5 → check fires
+    stdlib_random.seed(4)  # random.random() ≈ 0.236 < 0.5
+    type(wrapped).__getitem__ = counting_getitem
+    try:
+        d["k"] = "hello"
+    finally:
+        type(wrapped).__getitem__ = original_getitem
+
+    assert d.consistency_checks_attempted == 1
+    assert d.consistency_checks_passed == 1
+    # Exactly 1 read: the separate __getitem__ for the consistency check
+    assert getitem_calls == 1
+
+
+def test_write_once_dict_p_zero_no_reads_on_duplicate(tmp_path):
+    """When p=0, duplicate writes must not read the stored value at all."""
+    wrapped = FileDirDict(base_dir=tmp_path, append_only=True)
+    d = WriteOnceDict(wrapped_dict=wrapped, p_consistency_checks=0)
+    d["k"] = "hello"
+
+    getitem_calls = 0
+    original_getitem = type(wrapped).__getitem__
+
+    def counting_getitem(self, key):
+        nonlocal getitem_calls
+        getitem_calls += 1
+        return original_getitem(self, key)
+
+    type(wrapped).__getitem__ = counting_getitem
+    try:
+        for _ in range(10):
+            d["k"] = "hello"
+    finally:
+        type(wrapped).__getitem__ = original_getitem
+
+    assert getitem_calls == 0
+    assert d.consistency_checks_attempted == 0
+
+
 def test_write_once_dict_get_subdict_preserves_settings(tmp_path):
     d = WriteOnceDict(
         wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
