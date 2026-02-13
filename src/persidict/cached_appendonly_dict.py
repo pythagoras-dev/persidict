@@ -27,8 +27,10 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       Joker,
                                       ETagValue,
                                       ETagConditionFlag,
+                                      ANY_ETAG,
                                       ETagIfExists,
                                       RetrieveValueFlag, IF_ETAG_CHANGED,
+                                      NEVER_RETRIEVE,
                                       ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
                                       ConditionalOperationResult)
 
@@ -225,9 +227,9 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
         """Store a value in the main dict and mirror it into the cache.
 
-        The PersiDict base validates special joker values and the
-        base_class_for_values via _process_setitem_args. On successful
-        validation, the value is written to the main dict and then cached.
+        Uses ``setdefault_if`` for insert-if-absent on the main dict
+        (atomic when the main dict supports conditional writes), then
+        mirrors the value into the cache.
 
         Args:
             key: Dictionary key (string or sequence of strings) or
@@ -235,15 +237,21 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: The value to store, or a joker (KEEP_CURRENT/DELETE_CURRENT).
 
         Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
+            KeyError: If attempting to modify an existing item (append-only).
             TypeError: If the value fails base_class_for_values validation.
         """
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return
-        self._main[key] = value
-        self._data_cache[key] = value
+        result = self.setdefault_if(
+            key,
+            default_value=value,
+            condition=ANY_ETAG,
+            expected_etag=ITEM_NOT_AVAILABLE,
+            retrieve_value=NEVER_RETRIEVE,
+        )
+        if not result.value_was_mutated:
+            raise KeyError("Can't modify an immutable key-value pair")
 
     def set_item_if(
             self,

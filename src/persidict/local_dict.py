@@ -401,6 +401,9 @@ class LocalDict(PersiDict[ValueType]):
         class helper and enforces optional type restrictions if
         base_class_for_values is set.
 
+        When append_only is True, checks for key existence before writing
+        (best-effort insert-if-absent).
+
         Args:
             key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
             value (Any): Value to store, or a joker.
@@ -414,6 +417,11 @@ class LocalDict(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
+
+        if self.append_only:
+            if key in self:
+                raise KeyError("Can't modify an immutable key-value pair")
+
         parent_node, leaf = self._navigate_to_parent(key)
         bucket = parent_node.get_values_bucket(self.serialization_format)
         self._backend._write_counter[0] += 1

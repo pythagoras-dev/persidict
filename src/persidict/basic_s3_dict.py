@@ -23,7 +23,7 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagValue,
                                       ETagConditionFlag,
-                                      ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
+                                      ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
                                       RetrieveValueFlag, ALWAYS_RETRIEVE,
                                       NEVER_RETRIEVE, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE, ItemNotAvailableFlag,
@@ -1076,6 +1076,11 @@ class BasicS3Dict(PersiDict[ValueType]):
         conditional operations. Validates value types against base_class_for_values
         if specified, then serializes and uploads directly to S3.
 
+        When append_only is True, uses ``setdefault_if`` with S3 conditional
+        headers (IfNoneMatch: ``*``) for atomic insert-if-absent, avoiding
+        the TOCTOU race of a separate existence check followed by an
+        unconditional write.
+
         Args:
             key: Dictionary key (string or sequence of strings
                 or NonEmptyPersiDictKey).
@@ -1090,6 +1095,18 @@ class BasicS3Dict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
+            return
+
+        if self.append_only:
+            result = self.setdefault_if(
+                key,
+                default_value=value,
+                condition=ANY_ETAG,
+                expected_etag=ITEM_NOT_AVAILABLE,
+                retrieve_value=NEVER_RETRIEVE,
+            )
+            if not result.value_was_mutated:
+                raise KeyError("Can't modify an immutable key-value pair")
             return
 
         self._put_object_get_etag(key, value)

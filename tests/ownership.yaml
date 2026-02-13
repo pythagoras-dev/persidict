@@ -23,6 +23,7 @@ rules:
       - tests/core_behavior/test_discard.py
       - tests/core_behavior/test_discard_empty_dict.py
       - tests/core_behavior/test_append_only_delete.py
+      - tests/core_behavior/test_append_only_setitem.py
       - tests/core_behavior/test_empty_dict.py
       - tests/core_behavior/test_bool.py
       - tests/core_behavior/test_equality.py
@@ -66,6 +67,7 @@ rules:
       - tests/simple_storage_service/test_basic_s3_iteration_and_metadata.py
       - tests/simple_storage_service/test_root_prefix_behavior.py
       - tests/simple_storage_service/test_s3_append_only_etag.py
+      - tests/simple_storage_service/test_s3_append_only_setitem_atomic.py
       - tests/simple_storage_service/test_actual_s3.py
 
   - name: cached_variants

@@ -616,8 +616,10 @@ class FileDirDict(PersiDict[ValueType]):
         Interprets joker values KEEP_CURRENT and DELETE_CURRENT accordingly.
         Validates value type if base_class_for_values is set, then serializes
         and writes to a file determined by the key and serialization_format.
-        Best-effort: no file locking is performed, so concurrent writers
-        may race on the same key.
+
+        When append_only is True, checks for key existence before writing
+        (best-effort insert-if-absent). No file locking is performed, so
+        concurrent writers may race on the same key.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string or sequence of strings
@@ -636,6 +638,11 @@ class FileDirDict(PersiDict[ValueType]):
             return None
 
         filename = self._build_full_path(key, create_subdirs=True)
+
+        if self.append_only:
+            if key in self:
+                raise KeyError("Can't modify an immutable key-value pair")
+
         self._save_to_file(filename, value)
 
 

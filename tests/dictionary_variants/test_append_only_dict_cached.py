@@ -138,6 +138,19 @@ def test_attempt_to_modify_existing_key_raises(append_only_env):
         wrapper[("k1",)] = "v2"  # append-only
 
 
+def test_failed_overwrite_preserves_cache(append_only_env):
+    """A rejected overwrite must leave both main and cache unchanged."""
+    main, cache, wrapper = append_only_env
+
+    wrapper[("k",)] = "original"
+    with pytest.raises(KeyError):
+        wrapper[("k",)] = "replacement"
+
+    assert main[("k",)] == "original"
+    assert cache[("k",)] == "original"
+    assert wrapper[("k",)] == "original"
+
+
 def test_value_type_validation(tmp_path):
     # Create a typed environment: only ints allowed
     main = FileDirDict(base_dir=str(tmp_path / "typed_main"), append_only=True, serialization_format="json", base_class_for_values=int)

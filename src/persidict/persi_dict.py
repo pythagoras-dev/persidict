@@ -870,8 +870,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 DELETE_CURRENT).
 
         Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True (except for KEEP_CURRENT).
+            KeyError: If value is DELETE_CURRENT and append_only is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
 
@@ -880,7 +879,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """
 
         if self.append_only and value is not KEEP_CURRENT:
-            if value is DELETE_CURRENT or key in self:
+            if value is DELETE_CURRENT:
                 raise KeyError("Can't modify an immutable key-value pair")
 
         self._validate_value(value)
@@ -891,6 +890,12 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                               ) -> StatusFlag:
         """Perform the first steps for setting an item.
 
+        Handles joker commands (KEEP_CURRENT, DELETE_CURRENT) and validates
+        value types. Does NOT enforce the append-only existence check —
+        callers (concrete ``__setitem__`` implementations) are responsible
+        for that, using either an inline ``key in self`` guard or an atomic
+        ``setdefault_if`` call.
+
         Args:
             key: Dictionary key (string or sequence of strings
                 or NonEmptySafeStrTuple).
@@ -898,8 +903,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 DELETE_CURRENT).
 
         Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
+            KeyError: If value is DELETE_CURRENT and append_only is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
 
