@@ -103,7 +103,7 @@ jsonpickle_pandas.register_handlers()
 FILEDIRDICT_DEFAULT_BASE_DIR: Final[str] = "__file_dir_dict__"
 
 class FileDirDict(PersiDict[ValueType]):
-    """ A persistent Dict that stores key-value pairs in local files.
+    """A persistent dict that stores key-value pairs in local files.
 
     A new file is created for each key-value pair.
     A key is either a filename (without an extension),
@@ -112,7 +112,9 @@ class FileDirDict(PersiDict[ValueType]):
     Insertion order is not preserved.
 
     FileDirDict can store objects in binary files or in human-readable
-    text files (either in JSON format or as plain text).
+    text files (either in JSON format or as plain text). By default, a
+    short hash suffix (``digest_len=4``) is appended to each key path
+    component to prevent collisions on case-insensitive filesystems.
     """
 
     _base_dir:str
@@ -123,7 +125,7 @@ class FileDirDict(PersiDict[ValueType]):
                  , base_dir: str = FILEDIRDICT_DEFAULT_BASE_DIR
                  , serialization_format: str = "pkl"
                  , append_only:bool = False
-                 , digest_len:int = 1
+                 , digest_len:int = 4
                  , base_class_for_values: Optional[type] = None):
         """Initialize a filesystem-backed persistent dictionary.
 
@@ -137,7 +139,6 @@ class FileDirDict(PersiDict[ValueType]):
                 or deleted.
             digest_len: Length of a hash suffix appended to each key path
                 element to avoid case-insensitive collisions. Use 0 to disable.
-                If you decide to enable it (not 0), we recommend at least 4.
             base_class_for_values: Optional base class that all
                 stored values must be instances of. If provided and not ``str``,
                 then serialization_format must be either "pkl" or "json".
@@ -272,6 +273,10 @@ class FileDirDict(PersiDict[ValueType]):
             An absolute path within base_dir corresponding to the key. On
             Windows, this path is prefixed with '\\\\?\\' to support paths
             longer than 260 characters.
+
+        Raises:
+            ValueError: If the resolved path escapes base_dir (path
+                traversal defense-in-depth).
         """
 
         key = sign_safe_str_tuple(key, self.digest_len)
@@ -280,16 +285,32 @@ class FileDirDict(PersiDict[ValueType]):
 
         dir_path = str(os.path.join(*dir_names))
 
-        if create_subdirs:
-            path_for_makedirs = dir_path
-            path_for_makedirs = add_long_path_prefix(path_for_makedirs)
-            os.makedirs(path_for_makedirs, exist_ok=True)
-
         if is_file_path:
             file_name = key_components[-1] + "." + self.serialization_format
             final_path = os.path.join(dir_path, file_name)
         else:
             final_path = dir_path
+
+        # Defense-in-depth: verify that the resolved path stays
+        # within base_dir to prevent path traversal attacks.
+        normalised_base = os.path.normpath(
+            drop_long_path_prefix(self._base_dir))
+        normalised_path = os.path.normpath(
+            drop_long_path_prefix(final_path))
+        # Allow exact match (empty-prefix subdict) or proper child paths.
+        # Use rstrip(os.sep) + os.sep to handle root dir correctly
+        # (os.path.normpath("/") → "/" so "/" + "/" → "//", which breaks).
+        base_prefix = normalised_base.rstrip(os.sep) + os.sep
+        if normalised_path != normalised_base and not normalised_path.startswith(
+                base_prefix):
+            raise ValueError(
+                f"Key resolves to a path outside base_dir: "
+                f"{normalised_path}")
+
+        if create_subdirs:
+            path_for_makedirs = dir_path
+            path_for_makedirs = add_long_path_prefix(path_for_makedirs)
+            os.makedirs(path_for_makedirs, exist_ok=True)
 
         return add_long_path_prefix(final_path)
 
@@ -416,6 +437,7 @@ class FileDirDict(PersiDict[ValueType]):
             Any: The deserialized value according to serialization_format.
         """
         file_open_mode = 'rb' if self.serialization_format == "pkl" else 'r'
+        file_encoding = None if self.serialization_format == "pkl" else "utf-8"
         if os.name == 'nt':
             handle = CreateFileW(file_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, None, OPEN_EXISTING, 0, None)
             if int(handle) == INVALID_HANDLE_VALUE:
@@ -434,7 +456,7 @@ class FileDirDict(PersiDict[ValueType]):
                 raise
 
             try:
-                f = os.fdopen(fd, file_open_mode)
+                f = os.fdopen(fd, file_open_mode, encoding=file_encoding)
                 fd = None
             except Exception:
                 if fd is not None:
@@ -444,7 +466,7 @@ class FileDirDict(PersiDict[ValueType]):
             with f:
                 return self._deserialize_from_file(f)
         else:
-            with open(file_name, file_open_mode) as f:
+            with open(file_name, file_open_mode, encoding=file_encoding) as f:
                 return self._deserialize_from_file(f)
 
 
@@ -485,7 +507,8 @@ class FileDirDict(PersiDict[ValueType]):
 
         try:
             file_open_mode = 'wb' if self.serialization_format == 'pkl' else 'w'
-            with open(fd, file_open_mode) as f:
+            file_encoding = None if self.serialization_format == 'pkl' else 'utf-8'
+            with open(fd, file_open_mode, encoding=file_encoding) as f:
                 self._serialize_to_file(value, f, pkl_compress='lz4')
                 f.flush()
                 os.fsync(f.fileno())
@@ -705,7 +728,8 @@ class FileDirDict(PersiDict[ValueType]):
                 - tuple[..., float] including POSIX timestamp if "timestamps" is requested.
 
         Raises:
-            TypeError: If result_type is not a set.
+            TypeError: If result_type is not a set, or if base_class_for_values
+                is set and a yielded value does not match it.
             ValueError: If result_type is empty or contains unsupported labels.
         """
 
@@ -754,6 +778,7 @@ class FileDirDict(PersiDict[ValueType]):
                                     continue
                                 else:
                                     raise
+                            self._validate_returned_value(value_to_return)
 
                         timestamp_to_return = None
                         if "timestamps" in result_type:

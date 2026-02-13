@@ -472,7 +472,8 @@ class LocalDict(PersiDict[ValueType]):
             Iterator: A generator over requested items.
 
         Raises:
-            TypeError: If result_type is not a set.
+            TypeError: If result_type is not a set, or if base_class_for_values
+                is set and a yielded value does not match it.
             ValueError: If result_type is empty or contains unsupported labels.
         """
         self._process_generic_iter_args(result_type)
@@ -482,10 +483,13 @@ class LocalDict(PersiDict[ValueType]):
             bucket = node.values.get(self.serialization_format, {})
             for leaf, (val, ts, *_rest) in bucket.items():
                 full_key = SafeStrTuple((*prefix, leaf))
+                value = deepcopy(val)
+                if "values" in result_type:
+                    self._validate_returned_value(value)
                 yield self._assemble_iter_result(
                     result_type
                     , key=full_key
-                    , value=deepcopy(val)
+                    , value=value
                     , timestamp=ts)
             # then recurse into children
             for name, child in node.subdicts.items():

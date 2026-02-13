@@ -28,6 +28,12 @@ def test_filedirdict_setdefault_missing_key_rejects_invalid_default_type(tmp_pat
         d.setdefault("missing", "bad")
 
 
+def test_filedirdict_default_digest_len(tmp_path):
+    """FileDirDict defaults to digest_len=4 for robust collision avoidance."""
+    d = FileDirDict(base_dir=tmp_path)
+    assert d.digest_len == 4
+
+
 def test_filedirdict_rejects_negative_digest_len(tmp_path):
     with pytest.raises(ValueError):
         FileDirDict(base_dir=tmp_path, digest_len=-1)

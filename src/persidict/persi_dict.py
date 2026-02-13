@@ -525,7 +525,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         if value is DELETE_CURRENT:
             if not self.discard(key):
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(condition, satisfied)
             return self._result_delete_success(condition, actual_etag)
 
         self[key] = value
@@ -816,8 +816,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         Dispatches on self.serialization_format to write the value using the
         appropriate library. The caller is responsible for opening the file in
-        the correct mode ('wb' for pkl, 'w' for json/text) and for any
-        post-write actions (flush, fsync, close).
+        the correct mode ('wb' for pkl, 'w' for json/text) with UTF-8 encoding
+        for text modes, and for any post-write actions (flush, fsync, close).
 
         Args:
             value: The Python object to serialize.
@@ -842,8 +842,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         Dispatches on self.serialization_format to read the value using the
         appropriate library. The caller is responsible for opening the file in
-        the correct mode ('rb' for pkl, 'r' for json/text) and for closing it
-        afterward.
+        the correct mode ('rb' for pkl, 'r' for json/text) with UTF-8 encoding
+        for text modes, and for closing it afterward.
 
         Args:
             f: A readable file-like object (binary for pkl, text for others).

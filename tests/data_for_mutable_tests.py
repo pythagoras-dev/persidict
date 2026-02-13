@@ -34,6 +34,7 @@ mutable_tests = [
 # Targeted matrices for configuration edge coverage.
 mutable_tests_digest_len = [
     (FileDirDict, dict(serialization_format="pkl", digest_len=0)),
+    (FileDirDict, dict(serialization_format="json", digest_len=4)),
     (FileDirDict, dict(serialization_format="json", digest_len=5)),
     (FileDirDict, dict(serialization_format="pkl", digest_len=11)),
     (S3Dict_FileDirCached, dict(serialization_format="json", bucket_name="digest_bucket", digest_len=5)),

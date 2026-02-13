@@ -307,10 +307,54 @@ def test_delete_current_with_any_etag_succeeds(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
 def test_delete_current_with_any_etag_missing_key(tmpdir, DictToTest, kwargs):
-    """Verify DELETE_CURRENT with ANY_ETAG on a missing key."""
+    """Verify DELETE_CURRENT with ANY_ETAG on a missing key reports condition satisfied.
+
+    ANY_ETAG is unconditionally true, so condition_was_satisfied must be True
+    even when the key is absent (the delete is a no-op).
+    """
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
     result = d.set_item_if("nonexistent", value=DELETE_CURRENT, condition=ANY_ETAG, expected_etag="irrelevant")
 
+    assert result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+    assert result.new_value is ITEM_NOT_AVAILABLE
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_delete_current_missing_key_etag_same_with_item_not_available(tmpdir, DictToTest, kwargs):
+    """Verify DELETE_CURRENT on a missing key when ETAG_IS_THE_SAME + ITEM_NOT_AVAILABLE.
+
+    The caller believes the key is absent (expected_etag=ITEM_NOT_AVAILABLE) and
+    it truly is, so the condition is satisfied. The delete is a no-op.
+    """
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
+
+    result = d.set_item_if(
+        "nonexistent", value=DELETE_CURRENT,
+        condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+
+
+@pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
+@mock_aws
+def test_delete_current_missing_key_etag_changed_with_real_etag(tmpdir, DictToTest, kwargs):
+    """Verify DELETE_CURRENT on a missing key when ETAG_HAS_CHANGED + real expected_etag.
+
+    The caller expects a real ETag but actual is ITEM_NOT_AVAILABLE, so the
+    condition is satisfied (they differ). The delete is a no-op.
+    """
+    d = make_test_dict(DictToTest, tmpdir, **kwargs)
+
+    result = d.set_item_if(
+        "nonexistent", value=DELETE_CURRENT,
+        condition=ETAG_HAS_CHANGED, expected_etag="some_old_etag")
+
+    assert result.condition_was_satisfied
     assert result.actual_etag is ITEM_NOT_AVAILABLE
     assert result.resulting_etag is ITEM_NOT_AVAILABLE

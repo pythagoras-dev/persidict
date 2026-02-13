@@ -5,8 +5,9 @@ Read-side validation (_validate_returned_value) catches type mismatches
 when a value was written without a constraint and later read through a
 handle that has base_class_for_values set.
 
-Both LocalDict and FileDirDict are exercised because each has its own
-_get_value / _get_value_and_etag implementation.
+LocalDict and FileDirDict are exercised because each has its own
+__getitem__, _get_value_and_etag, and _generic_iter implementation.
+BasicS3Dict tests live in simple_storage_service/test_s3_validate_returned_value.py.
 """
 
 import pytest
@@ -63,6 +64,50 @@ def test_localdict_getitem_accepts_matching_type():
     )
 
     assert constrained["k"] == 42
+
+
+def test_localdict_values_rejects_mismatched_type():
+    """Iterating values() through a constrained handle raises on mismatch."""
+    unconstrained = LocalDict(serialization_format="pkl")
+    unconstrained["k"] = "not-an-int"
+
+    constrained = LocalDict(
+        backend=unconstrained.get_params()["backend"],
+        serialization_format="pkl",
+        base_class_for_values=int,
+    )
+
+    with pytest.raises(TypeError, match="int"):
+        list(constrained.values())
+
+
+def test_localdict_items_rejects_mismatched_type():
+    """Iterating items() through a constrained handle raises on mismatch."""
+    unconstrained = LocalDict(serialization_format="pkl")
+    unconstrained["k"] = "not-an-int"
+
+    constrained = LocalDict(
+        backend=unconstrained.get_params()["backend"],
+        serialization_format="pkl",
+        base_class_for_values=int,
+    )
+
+    with pytest.raises(TypeError, match="int"):
+        list(constrained.items())
+
+
+def test_localdict_keys_skips_validation():
+    """Iterating keys() does not validate values, so no TypeError."""
+    unconstrained = LocalDict(serialization_format="pkl")
+    unconstrained["k"] = "not-an-int"
+
+    constrained = LocalDict(
+        backend=unconstrained.get_params()["backend"],
+        serialization_format="pkl",
+        base_class_for_values=int,
+    )
+
+    assert len(list(constrained.keys())) == 1
 
 
 def test_localdict_accepts_subclass():
@@ -128,3 +173,50 @@ def test_filedirdict_getitem_accepts_matching_type(tmp_path):
     )
 
     assert constrained["k"] == 42
+
+
+def test_filedirdict_values_rejects_mismatched_type(tmp_path):
+    """Iterating values() through a constrained handle raises on mismatch."""
+    unconstrained = FileDirDict(
+        base_dir=str(tmp_path), serialization_format="json",
+    )
+    unconstrained["k"] = "not-an-int"
+
+    constrained = FileDirDict(
+        base_dir=str(tmp_path), serialization_format="json",
+        base_class_for_values=int,
+    )
+
+    with pytest.raises(TypeError, match="int"):
+        list(constrained.values())
+
+
+def test_filedirdict_items_rejects_mismatched_type(tmp_path):
+    """Iterating items() through a constrained handle raises on mismatch."""
+    unconstrained = FileDirDict(
+        base_dir=str(tmp_path), serialization_format="json",
+    )
+    unconstrained["k"] = "not-an-int"
+
+    constrained = FileDirDict(
+        base_dir=str(tmp_path), serialization_format="json",
+        base_class_for_values=int,
+    )
+
+    with pytest.raises(TypeError, match="int"):
+        list(constrained.items())
+
+
+def test_filedirdict_keys_skips_validation(tmp_path):
+    """Iterating keys() does not validate values, so no TypeError."""
+    unconstrained = FileDirDict(
+        base_dir=str(tmp_path), serialization_format="json",
+    )
+    unconstrained["k"] = "not-an-int"
+
+    constrained = FileDirDict(
+        base_dir=str(tmp_path), serialization_format="json",
+        base_class_for_values=int,
+    )
+
+    assert len(list(constrained.keys())) == 1

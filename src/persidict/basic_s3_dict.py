@@ -306,6 +306,8 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         Raises:
             KeyError: If the key does not exist in S3.
+            TypeError: If base_class_for_values is set and the stored value
+                does not match it.
         """
         obj_name = self._build_full_objectname(key)
         try:
@@ -313,6 +315,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 Bucket=self.bucket_name, Key=obj_name)
             s3_etag = ETagValue(response["ETag"])
             value = self._deserialize_s3_body(response['Body'])
+            self._validate_returned_value(value)
             return value, s3_etag
         except ClientError as e:
             if not_found_error(e):
@@ -393,6 +396,10 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         Returns:
             ConditionalOperationResult with the outcome.
+
+        Raises:
+            TypeError: If base_class_for_values is set and the retrieved value
+                does not match it.
         """
         self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
@@ -436,6 +443,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                     condition, satisfied, expected_etag, VALUE_NOT_RETRIEVED)
             raise
 
+        self._validate_returned_value(value)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
         return self._result_unchanged(condition, satisfied, actual_etag, value)
 
@@ -451,13 +459,17 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         Raises:
             KeyError: If the key does not exist in S3.
+            TypeError: If base_class_for_values is set and the stored value
+                does not match it.
         """
         key = NonEmptySafeStrTuple(key)
         obj_name = self._build_full_objectname(key)
         try:
             response = self.s3_client.get_object(
                 Bucket=self.bucket_name, Key=obj_name)
-            return self._deserialize_s3_body(response['Body'])
+            value = self._deserialize_s3_body(response['Body'])
+            self._validate_returned_value(value)
+            return value
         except ClientError as e:
             if not_found_error(e):
                 raise KeyError(
@@ -771,7 +783,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 condition, True, actual_etag, VALUE_NOT_RETRIEVED)
         if value is DELETE_CURRENT:
             if actual_etag is ITEM_NOT_AVAILABLE:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(condition, satisfied)
             if not type(self)._conditional_delete_probed:
                 self._probe_conditional_delete()
             if type(self)._conditional_delete_supported:
@@ -791,7 +803,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                     raise
             else:
                 if not self.discard(key):
-                    return self._result_item_not_available(condition, False)
+                    return self._result_item_not_available(condition, satisfied)
                 return self._result_delete_success(condition, actual_etag)
 
         # Attempt conditional write when possible
@@ -1213,6 +1225,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                 - tuple including float timestamp if "timestamps" requested
 
         Raises:
+            TypeError: If base_class_for_values is set and a yielded value
+                does not match it.
             ValueError: If result_type is invalid (empty, not a set, or contains
                 unsupported field names).
         """

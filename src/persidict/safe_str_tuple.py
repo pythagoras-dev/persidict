@@ -73,8 +73,9 @@ class SafeStrTuple(Sequence, Hashable):
         Raises:
             TypeError: If unexpected keyword arguments are provided or if an
                 argument has an invalid type.
-            ValueError: If a string is empty, too long, or contains disallowed
-                characters.
+            ValueError: If a string is empty, too long, contains disallowed
+                characters, or is '.' or '..' (which have special filesystem
+                semantics and are not valid key components).
         """
         if len(kwargs) != 0:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs.keys())}")
@@ -85,6 +86,9 @@ class SafeStrTuple(Sequence, Hashable):
             elif isinstance(a, str):
                 if len(a) == 0:
                     raise ValueError("Strings must be non-empty")
+                if a in (".", ".."):
+                    raise ValueError(
+                        f"'{a}' is not allowed as a key component")
                 if len(a) >= SAFE_STRING_MAX_LENGTH:
                     raise ValueError(
                         f"String length must be < {SAFE_STRING_MAX_LENGTH}, got {len(a)}")

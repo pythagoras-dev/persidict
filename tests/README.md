@@ -43,6 +43,7 @@ feature-oriented so it is quick to scan.
   - tests/key_handling/test_safe_chars.py
   - tests/key_handling/test_safe_str_tuple.py
   - tests/key_handling/test_complex_keys.py
+  - tests/key_handling/test_path_traversal.py
 
 - Subdicts:
   - tests/subdictionary_operations/test_subdicts.py
@@ -60,6 +61,7 @@ feature-oriented so it is quick to scan.
   - tests/storage_backends/test_local_dict_etag_shared_counter.py
   - tests/storage_backends/test_discard_local_dict.py
   - tests/storage_backends/test_serialization_format_validation.py
+  - tests/storage_backends/test_utf8_encoding.py
   - tests/storage_backends/test_unc_support.py
 
 - Simple Storage Service (S3-backed dicts):
@@ -69,6 +71,7 @@ feature-oriented so it is quick to scan.
   - tests/simple_storage_service/test_root_prefix_behavior.py
   - tests/simple_storage_service/test_s3_append_only_etag.py
   - tests/simple_storage_service/test_s3_append_only_setitem_atomic.py
+  - tests/simple_storage_service/test_s3_validate_returned_value.py
   - tests/simple_storage_service/test_actual_s3.py
 
 - Entity tag and conditional operations:
