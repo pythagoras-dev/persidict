@@ -401,8 +401,9 @@ class LocalDict(PersiDict[ValueType]):
         class helper and enforces optional type restrictions if
         base_class_for_values is set.
 
-        When append_only is True, checks for key existence before writing
-        (best-effort insert-if-absent).
+        When append_only is True, the existence check and the insert are
+        performed on the same bucket dict in a single code path, closing
+        the TOCTOU gap that a separate ``key in self`` guard would have.
 
         Args:
             key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
@@ -418,12 +419,12 @@ class LocalDict(PersiDict[ValueType]):
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
             return None
 
-        if self.append_only:
-            if key in self:
-                raise KeyError("Can't modify an immutable key-value pair")
-
         parent_node, leaf = self._navigate_to_parent(key)
         bucket = parent_node.get_values_bucket(self.serialization_format)
+
+        if self.append_only and leaf in bucket:
+            raise KeyError("Can't modify an immutable key-value pair")
+
         self._backend._write_counter[0] += 1
         bucket[leaf] = (deepcopy(value), time.time(), self._backend._write_counter[0])
 
