@@ -11,10 +11,18 @@ Covers two concerns:
 """
 
 import os
+import sys
 
 import pytest
 
 from persidict import FileDirDict
+
+# On Windows, _read_from_file_impl uses CreateFileW instead of builtins.open,
+# so tests that monkeypatch builtins.open only exercise the non-Windows path.
+_skip_on_windows = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="builtins.open is not used on Windows (CreateFileW path instead)",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +56,7 @@ def _populated_dict(tmp_path):
 # Tests
 # ---------------------------------------------------------------------------
 
+@_skip_on_windows
 def test_getitem_recovers_from_transient_permission_error(tmp_path, monkeypatch):
     """__getitem__ succeeds after transient PermissionError on open()."""
     import builtins
@@ -107,6 +116,7 @@ def test_setdefault_recovers_from_transient_permission_error(tmp_path, monkeypat
     assert result == "hello"
 
 
+@_skip_on_windows
 def test_persistent_permission_error_is_raised(tmp_path, monkeypatch):
     """PermissionError is raised when all retries are exhausted."""
     import builtins
@@ -129,6 +139,7 @@ def test_getitem_missing_key_raises_key_error(tmp_path):
         _ = d["nonexistent"]
 
 
+@_skip_on_windows
 def test_file_not_found_is_not_retried(tmp_path, monkeypatch):
     """FileNotFoundError in _read_from_file raises immediately without retries."""
     import builtins

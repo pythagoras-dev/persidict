@@ -36,7 +36,8 @@ if os.name == 'nt':
     FILE_SHARE_WRITE: Final[int] = 0x00000002
     FILE_SHARE_DELETE: Final[int] = 0x00000004
     OPEN_EXISTING: Final[int] = 3
-    INVALID_HANDLE_VALUE: Final[int] = -1
+    # Use unsigned form so the comparison matches wintypes.HANDLE (c_void_p)
+    INVALID_HANDLE_VALUE: Final[int] = ctypes.c_void_p(-1).value
 
     CreateFileW = ctypes.windll.kernel32.CreateFileW
     CreateFileW.argtypes = [wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
