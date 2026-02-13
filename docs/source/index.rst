@@ -713,12 +713,12 @@ Project Statistics
      - Total
    * - Lines Of Code (LOC)
      - 7165
-     - 12317
-     - 19482
+     - 12315
+     - 19480
    * - Source Lines Of Code (SLOC)
      - 3211
-     - 7835
-     - 11046
+     - 7834
+     - 11045
    * - Classes
      - 32
      - 8
