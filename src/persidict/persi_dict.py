@@ -1412,9 +1412,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 hierarchical key spaces.
         """
 
-        if type(self) is PersiDict:
-            raise NotImplementedError("PersiDict is an abstract base class"
-                " and cannot create sub-dictionaries directly")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support get_subdict()")
 
 
     def subdicts(self) -> dict[str, 'PersiDict[ValueType]']:
