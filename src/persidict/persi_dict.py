@@ -1323,7 +1323,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 return KEEP_CURRENT
             return DELETE_CURRENT
 
-        result = self.transform_item(key, transformer=_grab_and_delete)
+        self.transform_item(key, transformer=_grab_and_delete)
 
         if captured and captured[0] is not ITEM_NOT_AVAILABLE:
             return captured[0]

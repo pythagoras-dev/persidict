@@ -135,8 +135,6 @@ def test_file_not_found_is_not_retried(tmp_path, monkeypatch):
     d = FileDirDict(base_dir=str(tmp_path), serialization_format="json")
 
     call_count = 0
-    real_open = builtins.open
-
     def counting_open(*args, **kwargs):
         nonlocal call_count
         call_count += 1
