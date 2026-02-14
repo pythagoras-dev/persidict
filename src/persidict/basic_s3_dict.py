@@ -10,7 +10,7 @@ See individual method docstrings for details on semantics and exceptions.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final
 import io
 
 import boto3
@@ -33,7 +33,7 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       ETagIfExists, ConditionalOperationResult)
 
 
-_MAX_SETDEFAULT_RETRIES = 5
+_MAX_SETDEFAULT_RETRIES: Final[int] = 5
 
 
 def _s3_error_status_code(e: ClientError) -> tuple[int | None, str | None]:
