@@ -1087,7 +1087,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                     condition, satisfied, actual_etag, existing_value)
             raise
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Store a value for a key directly in S3.
 
         Handles special joker values (KEEP_CURRENT, DELETE_CURRENT) for

@@ -300,7 +300,7 @@ class MutableDictCached(PersiDict[ValueType]):
         return res
 
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Set value for key via main dict and keep caches in sync.
 
         Args:

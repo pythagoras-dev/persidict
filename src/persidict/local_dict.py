@@ -16,7 +16,7 @@ from mixinforge import sort_dict_by_keys
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
-from .jokers_and_status_flags import EXECUTION_IS_COMPLETE, ETagValue
+from .jokers_and_status_flags import EXECUTION_IS_COMPLETE, ETagValue, Joker
 
 
 class _RAMBackend:
@@ -401,7 +401,7 @@ class LocalDict(PersiDict[ValueType]):
         etag = ETagValue(str(bucket[leaf][2]))
         return value, etag
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Store a value for a key.
 
         Interprets joker values (KEEP_CURRENT, DELETE_CURRENT) using the base

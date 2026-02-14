@@ -72,7 +72,7 @@ class EmptyDict(PersiDict[ValueType]):
         return self._absent_key_result(condition, expected_etag)
 
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Accepts any write operation, discards the data (like /dev/null)."""
         # Run base validations (immutable checks, key normalization,
         # type checks, jokers) to ensure API consistency, then discard.

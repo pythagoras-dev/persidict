@@ -155,7 +155,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         """Get item from dictionary."""
         return self._cached_dict.__getitem__(key)
     
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Set item in dictionary."""
         self._cached_dict.__setitem__(key, value)
     

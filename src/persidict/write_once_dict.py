@@ -17,6 +17,7 @@ from .jokers_and_status_flags import (
     KEEP_CURRENT,
     KeepCurrentFlag,
     Joker,
+    EXECUTION_IS_COMPLETE,
     ETagConditionFlag,
     ETagIfExists,
     RetrieveValueFlag, IF_ETAG_CHANGED,
@@ -27,6 +28,7 @@ from .jokers_and_status_flags import (
     NEVER_RETRIEVE,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
+from .safe_str_tuple import NonEmptySafeStrTuple
 from .file_dir_dict import FileDirDict
 import random
 import sys
@@ -221,7 +223,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         """
         raise NotImplementedError("Operation not supported on WriteOnceDict.")
 
-    def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Set a value for a key, preserving the first assignment.
 
         Uses ``setdefault_if`` on the wrapped dict for insert-if-absent

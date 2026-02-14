@@ -224,7 +224,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             self._data_cache[key] = res.new_value
         return res
 
-    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType) -> None:
+    def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Store a value in the main dict and mirror it into the cache.
 
         Uses ``setdefault_if`` for insert-if-absent on the main dict
