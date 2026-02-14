@@ -10,13 +10,20 @@ from __future__ import annotations
 
 import time
 from copy import deepcopy
-from typing import Any, Iterable
+from typing import Any, Iterable, NamedTuple
 
 from mixinforge import sort_dict_by_keys
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .jokers_and_status_flags import EXECUTION_IS_COMPLETE, ETagValue, Joker
+
+
+class _StoredEntry(NamedTuple):
+    """A single value entry stored in the in-memory backend."""
+    value: Any
+    timestamp: float
+    write_counter: int
 
 
 class _RAMBackend:
@@ -32,9 +39,10 @@ class _RAMBackend:
         subdicts (dict[str, _RAMBackend]):
             Mapping of first-level key segment to a child RAMBackend representing
             the corresponding subtree.
-        values (dict[str, dict[str, tuple[Any, float]]]):
-            Mapping of serialization_format to a dictionary of leaf-name -> (value, timestamp)
-            pairs. The timestamp is a POSIX float seconds value (time.time()).
+        values (dict[str, dict[str, _StoredEntry]]):
+            Mapping of serialization_format to a dictionary of
+            leaf-name -> _StoredEntry. Each entry holds the value, a POSIX
+            timestamp (time.time()), and a monotonic write counter for ETags.
         _write_counter (list[int]):
             Shared mutable monotonic counter used for ETag generation. Stored as
             a single-element list so that child nodes created via child() share
@@ -64,7 +72,7 @@ class _RAMBackend:
                 ETags are unique across the entire backend tree.
         """
         self.subdicts: dict[str, _RAMBackend] = {}
-        self.values: dict[str, dict[str, tuple[Any, float]]] = {}
+        self.values: dict[str, dict[str, _StoredEntry]] = {}
         self._write_counter: list[int] = [0]
 
     def child(self, name: str) -> "_RAMBackend":
@@ -89,12 +97,11 @@ class _RAMBackend:
             self.subdicts[name] = child_backend
         return child_backend
 
-    def get_values_bucket(self, serialization_format: str) -> dict[str, tuple[Any, float]]:
+    def get_values_bucket(self, serialization_format: str) -> dict[str, _StoredEntry]:
         """Return the per-serialization_format bucket for leaf values, creating if absent.
 
-        The bucket maps a leaf key (final segment string) to a tuple of
-        (value, timestamp). The timestamp is the POSIX time when the value was
-        last written.
+        The bucket maps a leaf key (final segment string) to a _StoredEntry
+        containing the value, timestamp, and write counter.
 
         Args:
             serialization_format: Object type label under which values are
@@ -329,7 +336,7 @@ class LocalDict(PersiDict[ValueType]):
     def _lookup_leaf(
             self
             , key: NonEmptySafeStrTuple
-            ) -> tuple[dict[str, tuple[Any, float]], str]:
+            ) -> tuple[dict[str, _StoredEntry], str]:
         """Resolve a key to its values bucket and leaf name, or raise KeyError.
 
         Navigates to the parent node for *key* and looks up the leaf in the
@@ -341,8 +348,8 @@ class LocalDict(PersiDict[ValueType]):
 
         Returns:
             A (bucket, leaf) pair where *bucket* is the mutable dict mapping
-            leaf names to (value, timestamp, write_counter) tuples, and *leaf*
-            is the final key segment.
+            leaf names to _StoredEntry instances, and *leaf* is the final
+            key segment.
 
         Raises:
             KeyError: If the key does not exist.
@@ -388,7 +395,7 @@ class LocalDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         bucket, leaf = self._lookup_leaf(key)
-        value = deepcopy(bucket[leaf][0])
+        value = deepcopy(bucket[leaf].value)
         self._validate_returned_value(value)
         return value
 
@@ -396,9 +403,10 @@ class LocalDict(PersiDict[ValueType]):
         """Return the value and ETag for a key in a single lookup."""
         key = NonEmptySafeStrTuple(key)
         bucket, leaf = self._lookup_leaf(key)
-        value = deepcopy(bucket[leaf][0])
+        entry = bucket[leaf]
+        value = deepcopy(entry.value)
         self._validate_returned_value(value)
-        etag = ETagValue(str(bucket[leaf][2]))
+        etag = ETagValue(str(entry.write_counter))
         return value, etag
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
@@ -433,7 +441,8 @@ class LocalDict(PersiDict[ValueType]):
             raise KeyError("Can't modify an immutable key-value pair")
 
         self._backend._write_counter[0] += 1
-        bucket[leaf] = (deepcopy(value), time.time(), self._backend._write_counter[0])
+        bucket[leaf] = _StoredEntry(
+            deepcopy(value), time.time(), self._backend._write_counter[0])
 
     def _remove_item(self, key: NonEmptySafeStrTuple) -> None:
         """Remove *key* from the in-memory tree.
@@ -488,16 +497,16 @@ class LocalDict(PersiDict[ValueType]):
         def walk(prefix: tuple[str, ...], node: _RAMBackend):
             # yield values at this level
             bucket = node.values.get(self.serialization_format, {})
-            for leaf, (val, ts, *_rest) in bucket.items():
+            for leaf, entry in bucket.items():
                 full_key = SafeStrTuple((*prefix, leaf))
-                value = deepcopy(val)
+                value = deepcopy(entry.value)
                 if "values" in result_type:
                     self._validate_returned_value(value)
                 yield self._assemble_iter_result(
                     result_type
                     , key=full_key
                     , value=value
-                    , timestamp=ts)
+                    , timestamp=entry.timestamp)
             # then recurse into children
             for name, child in node.subdicts.items():
                 yield from walk((*prefix, name), child)
@@ -519,7 +528,7 @@ class LocalDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         bucket, leaf = self._lookup_leaf(key)
-        return bucket[leaf][1]
+        return bucket[leaf].timestamp
 
     def etag(self, key: NonEmptyPersiDictKey) -> ETagValue:
         """Return a unique ETag for a key based on a monotonic write counter.
@@ -541,7 +550,7 @@ class LocalDict(PersiDict[ValueType]):
         """
         key = NonEmptySafeStrTuple(key)
         bucket, leaf = self._lookup_leaf(key)
-        return ETagValue(str(bucket[leaf][2]))
+        return ETagValue(str(bucket[leaf].write_counter))
 
     def get_subdict(self, prefix_key: Iterable[str] | SafeStrTuple) -> 'LocalDict[ValueType]':
         """Return a view rooted at the given key prefix.
