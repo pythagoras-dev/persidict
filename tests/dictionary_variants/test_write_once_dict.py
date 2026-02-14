@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from persidict import FileDirDict, KEEP_CURRENT, WriteOnceDict
+from persidict import FileDirDict, KEEP_CURRENT, DELETE_CURRENT, WriteOnceDict
 
 import pytest
 
@@ -246,3 +246,42 @@ def test_write_once_dict_get_subdict_preserves_settings(tmp_path):
     assert isinstance(sub, WriteOnceDict)
     assert sub.p_consistency_checks == d.p_consistency_checks
     assert sub["child"] == "value"
+
+
+def test_write_once_dict_keep_current_noop_on_existing_key(tmp_path):
+    """KEEP_CURRENT via __setitem__ preserves the stored value."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=1,
+    )
+    d["k"] = "original"
+    d["k"] = KEEP_CURRENT
+
+    assert d["k"] == "original"
+    assert len(d) == 1
+
+
+def test_write_once_dict_keep_current_noop_on_missing_key(tmp_path):
+    """KEEP_CURRENT on a missing key is a silent no-op."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=0,
+    )
+    d["k"] = KEEP_CURRENT
+
+    assert "k" not in d
+    assert len(d) == 0
+
+
+def test_write_once_dict_delete_current_raises(tmp_path):
+    """DELETE_CURRENT raises KeyError because WriteOnceDict is append-only."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=0,
+    )
+    d["k"] = "value"
+
+    with pytest.raises(KeyError):
+        d["k"] = DELETE_CURRENT
+
+    assert d["k"] == "value"
