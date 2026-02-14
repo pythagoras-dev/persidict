@@ -24,7 +24,7 @@ import joblib
 import jsonpickle
 import random
 import time
-from typing import Any, Sequence, Optional, Iterator, Mapping
+from typing import Any, Sequence, Iterator, Mapping, Self
 
 from mixinforge import ParameterizableMixin, sort_dict_by_keys
 
@@ -75,7 +75,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         append_only (bool):
             If True, items are immutable and non-removable: existing values 
             cannot be modified or deleted.
-        base_class_for_values (Optional[type]):
+        base_class_for_values (type | None):
             Optional base class that all values must inherit from. If None, any
             type is accepted.
         serialization_format (str):
@@ -83,7 +83,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     """
 
     append_only:bool
-    base_class_for_values:Optional[type]
+    base_class_for_values: type | None
     serialization_format:str
 
     def __init__(self,
@@ -146,14 +146,14 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         sorted_params = sort_dict_by_keys(params)
         return sorted_params
 
-    def __copy__(self) -> 'PersiDict[ValueType]':
+    def __copy__(self) -> Self:
         """Return a shallow copy of the dictionary.
 
         This creates a new PersiDict instance with the same parameters, pointing
         to the same underlying storage. This is analogous to `dict.copy()`.
 
         Returns:
-            PersiDict[ValueType]: A new PersiDict instance that is a shallow copy of this one.
+            Self: A new instance of the same concrete type that is a shallow copy of this one.
         """
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
@@ -1235,7 +1235,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return NotImplemented
         return not eq_result
 
-    def __ior__(self, other: Mapping) -> 'PersiDict':
+    def __ior__(self, other: Mapping) -> Self:
         """Update this dict with items from other (self |= other)."""
         if not isinstance(other, Mapping):
             raise TypeError(f"Cannot update PersiDict with non-Mapping type: {type(other)}")
@@ -1379,7 +1379,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """
         return self.discard(key)
 
-    def get_subdict(self, prefix_key:PersiDictKey) -> 'PersiDict[ValueType]':
+    def get_subdict(self, prefix_key:PersiDictKey) -> Self:
         """Get a sub-dictionary containing items with the given prefix key.
 
         Items whose keys start with the provided prefix are visible through the
@@ -1394,7 +1394,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 identifying the sub-dict to expose.
 
         Returns:
-            PersiDict[ValueType]: A dictionary-like view restricted to keys under the
+            Self: A dictionary-like view restricted to keys under the
                 provided prefix.
 
         Raises:
@@ -1406,13 +1406,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             f"{type(self).__name__} does not support get_subdict()")
 
 
-    def subdicts(self) -> dict[str, 'PersiDict[ValueType]']:
+    def subdicts(self) -> dict[str, Self]:
         """Return a mapping of first-level keys to sub-dictionaries.
 
         This method is absent in the original dict API.
 
         Returns:
-            dict[str, PersiDict[ValueType]]: A mapping from a top-level key segment to a
+            dict[str, Self]: A mapping from a top-level key segment to a
                 sub-dictionary restricted to the corresponding keyspace.
         """
         all_keys = {k[0] for k in self.keys()}

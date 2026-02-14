@@ -10,7 +10,7 @@ See individual method docstrings for details on semantics and exceptions.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 import io
 
 import boto3
@@ -111,7 +111,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                  root_prefix: str = "",
                  serialization_format: str = "pkl",
                  append_only: bool = False,
-                 base_class_for_values: Optional[type] = None):
+                 base_class_for_values: type | None = None):
         """Initialize a basic S3-backed persistent dictionary.
 
         Args:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional
+from typing import Final
 
 from mixinforge import sort_dict_by_keys
 
@@ -48,7 +48,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
                  serialization_format: str = "pkl",
                  digest_len: int = 8,
                  append_only: bool = False,
-                 base_class_for_values: Optional[type] = None):
+                 base_class_for_values: type | None = None):
         """Initialize an S3-backed persistent dictionary with local caching.
 
         Args:

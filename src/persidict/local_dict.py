@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from copy import deepcopy
-from typing import Any, Optional, Iterable
+from typing import Any, Iterable
 
 from mixinforge import sort_dict_by_keys
 
@@ -140,11 +140,11 @@ class LocalDict(PersiDict[ValueType]):
     """
 
     def __init__(self, *,
-                 backend: Optional[_RAMBackend] = None,
+                 backend: _RAMBackend | None = None,
                  serialization_format: str = "pkl",
                  append_only: bool = False,
-                 base_class_for_values: Optional[type] = None,
-                 prune_interval: Optional[int] = 64):
+                 base_class_for_values: type | None = None,
+                 prune_interval: int | None = 64):
         """Initialize an in-memory persistent dictionary.
 
         Args:
@@ -254,7 +254,7 @@ class LocalDict(PersiDict[ValueType]):
             self._prune_empty_subtrees(self._backend)
             self._ops_since_prune = 0
 
-    def _prune_empty_subtrees(self, node: Optional[_RAMBackend] = None) -> bool:
+    def _prune_empty_subtrees(self, node: _RAMBackend | None = None) -> bool:
         """Remove empty per-serialization_format buckets and prunes empty subtrees.
 
         This walks the in-memory tree and:
@@ -287,7 +287,7 @@ class LocalDict(PersiDict[ValueType]):
     def _navigate_to_parent(self
                             , key: SafeStrTuple
                             , create_if_missing: bool = True
-                            ) -> tuple[Optional[_RAMBackend], str]:
+                            ) -> tuple[_RAMBackend | None, str]:
         """Resolve a hierarchical key to its parent node and leaf name.
 
         This helper walks all segments of the key except the last one to find
@@ -308,12 +308,12 @@ class LocalDict(PersiDict[ValueType]):
                 traversing. Defaults to True.
 
         Returns:
-            tuple[Optional[_RAMBackend], str]: A pair consisting of the backend
+            tuple[_RAMBackend | None, str]: A pair consisting of the backend
             node that would hold the leaf bucket (or None if not found during
             lookup when create_if_missing=False) and the leaf segment (final
             component).
         """
-        backend_node: Optional[_RAMBackend] = self._backend
+        backend_node: _RAMBackend | None = self._backend
         for segment in key[:-1]:
             if backend_node is None:
                 break

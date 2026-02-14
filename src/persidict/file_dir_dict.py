@@ -13,7 +13,7 @@ import os
 import random
 import tempfile
 import time
-from typing import Any, Final, Optional
+from typing import Any, Final
 
 import jsonpickle.ext.numpy as jsonpickle_numpy
 import jsonpickle.ext.pandas as jsonpickle_pandas
@@ -129,7 +129,7 @@ class FileDirDict(PersiDict[ValueType]):
                  , serialization_format: str = "pkl"
                  , append_only:bool = False
                  , digest_len:int = 4
-                 , base_class_for_values: Optional[type] = None):
+                 , base_class_for_values: type | None = None):
         """Initialize a filesystem-backed persistent dictionary.
 
         Args:
@@ -193,7 +193,7 @@ class FileDirDict(PersiDict[ValueType]):
 
 
     @property
-    def base_dir(self) -> str|None:
+    def base_dir(self) -> str:
         """Return dictionary's base directory.
 
         This property is absent in the original dict API.
@@ -873,7 +873,7 @@ class FileDirDict(PersiDict[ValueType]):
                 ext = "." + ext
 
         stack = [self._base_dir]
-        winner: Optional[str] = None
+        winner: str | None = None
         seen = 0
 
         while stack:
