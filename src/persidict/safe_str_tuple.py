@@ -6,7 +6,7 @@ useful for constructing keys and paths that must be portable and safe for URLs
 and filesystems.
 """
 from __future__ import annotations
-from collections.abc import Sequence, Mapping, Hashable
+from collections.abc import Iterator, Sequence, Mapping, Hashable
 from typing import Any, Self
 from .safe_chars import SAFE_CHARS_SET, SAFE_STRING_MAX_LENGTH
 
@@ -130,7 +130,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """
         return len(self.strings)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Compute the hash of the underlying tuple.
 
         Returns:
@@ -194,7 +194,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         other = SafeStrTuple(other)
         return SafeStrTuple(*(other.strings + self.strings))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """Return an iterator over the strings.
 
         Returns:
@@ -202,7 +202,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """
         return iter(self.strings)
 
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item: object) -> bool:
         """Check membership.
 
         Args:
@@ -225,7 +225,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Return self since immutable objects need no copying."""
         return self
 
-    def __deepcopy__(self, memo: dict) -> Self:
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """Return self since immutable objects need no deep copying."""
         return self
 
