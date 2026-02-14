@@ -22,7 +22,7 @@ Result dataclasses:
     - ConditionalOperationResult: result of conditional _if methods.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Final, NewType, TypeAlias
+from typing import Any, Callable, Final, Generic, NewType, TypeAlias, TypeVar
 
 from mixinforge import SingletonMixin
 
@@ -257,17 +257,17 @@ ETAG_HAS_CHANGED: Final[ETagHasChangedFlag] = ETagHasChangedFlag()
 
 # --- Type aliases ---
 
-ValueType = Any
-"""Type alias for values stored in a PersiDict."""
+ValueType = TypeVar('ValueType')
+"""Generic type variable for values stored in a PersiDict."""
 
 ETagIfExists: TypeAlias = ETagValue | ItemNotAvailableFlag
 """ETag value or ITEM_NOT_AVAILABLE if the key is absent."""
 
-ValueIfExists: TypeAlias = ValueType | ItemNotAvailableFlag
-"""Value or ITEM_NOT_AVAILABLE if the key is absent."""
+ValueIfExists: TypeAlias = Any | ItemNotAvailableFlag
+"""Value or ITEM_NOT_AVAILABLE if the key is absent (non-generic, used by TransformingFunction)."""
 
-ValueInResult: TypeAlias = ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag
-"""Value, ITEM_NOT_AVAILABLE, or VALUE_NOT_RETRIEVED in operation results."""
+ValueInResult: TypeAlias = Any | ItemNotAvailableFlag | ValueNotRetrievedFlag
+"""Value, ITEM_NOT_AVAILABLE, or VALUE_NOT_RETRIEVED in operation results (non-generic, used for documentation)."""
 
 TransformingFunction = Callable[
     [ValueIfExists], ValueType | KeepCurrentFlag | DeleteCurrentFlag]
@@ -278,20 +278,39 @@ a new value, DELETE_CURRENT, or KEEP_CURRENT."""
 # --- Result dataclasses ---
 
 @dataclass(frozen=True)
-class OperationResult:
-    """Result of an unconditional mutating operation (transform_item)."""
+class OperationResult(Generic[ValueType]):
+    """Result of an unconditional mutating operation (transform_item).
+
+    Attributes:
+        resulting_etag: ETag after the operation, or ITEM_NOT_AVAILABLE
+            if the key is absent.
+        new_value: The value after the operation, or ITEM_NOT_AVAILABLE
+            if the key is absent.
+    """
     resulting_etag: ETagIfExists
-    new_value: ValueIfExists
+    new_value: ValueType | ItemNotAvailableFlag
 
 
 @dataclass(frozen=True)
-class ConditionalOperationResult:
-    """Result of a conditional operation guarded by an ETag check."""
+class ConditionalOperationResult(Generic[ValueType]):
+    """Result of a conditional operation guarded by an ETag check.
+
+    Attributes:
+        condition_was_satisfied: Whether the ETag condition was met.
+        requested_condition: The condition flag that was requested.
+        actual_etag: ETag of the key before the operation, or
+            ITEM_NOT_AVAILABLE if the key was absent.
+        resulting_etag: ETag after the operation, or ITEM_NOT_AVAILABLE
+            if the key is absent.
+        new_value: The value after the operation. May be
+            ITEM_NOT_AVAILABLE (key absent) or VALUE_NOT_RETRIEVED
+            (value fetch was skipped).
+    """
     condition_was_satisfied: bool
     requested_condition: ETagConditionFlag
     actual_etag: ETagIfExists
     resulting_etag: ETagIfExists
-    new_value: ValueInResult
+    new_value: ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag
 
     @property
     def value_was_mutated(self) -> bool:

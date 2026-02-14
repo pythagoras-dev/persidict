@@ -52,7 +52,7 @@ class EmptyDict(PersiDict[ValueType]):
             self,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Evaluate a conditional operation against an always-absent key."""
         satisfied = self._check_condition(
             condition, expected_etag, ITEM_NOT_AVAILABLE)
@@ -65,7 +65,7 @@ class EmptyDict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Key is always absent; condition evaluated with actual_etag=ITEM_NOT_AVAILABLE."""
         self._validate_retrieve_value(retrieve_value)
         NonEmptySafeStrTuple(key)
@@ -88,7 +88,7 @@ class EmptyDict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Key is always absent; condition evaluated, write discarded on success."""
         self._validate_retrieve_value(retrieve_value)
         self._validate_setitem_args(key, value)
@@ -102,7 +102,7 @@ class EmptyDict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Key is always absent; condition evaluated, write discarded on success."""
         if isinstance(default_value, Joker):
             raise TypeError("default_value must be a regular value, not a Joker command")
@@ -116,12 +116,12 @@ class EmptyDict(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Key is always absent; condition evaluated normally."""
         NonEmptySafeStrTuple(key)
         return self._absent_key_result(condition, expected_etag)
 
-    def transform_item(self, key, *, transformer, n_retries: int | None = 6) -> OperationResult:
+    def transform_item(self, key, *, transformer, n_retries: int | None = 6) -> OperationResult[ValueType]:
         """No-op: returns ITEM_NOT_AVAILABLE without calling the transformer."""
         return OperationResult(
             resulting_etag=ITEM_NOT_AVAILABLE,

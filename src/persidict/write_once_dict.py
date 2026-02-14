@@ -209,7 +209,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Not supported for write-once dictionaries.
 
         Conditional overwrites (``set_item_if``) contradict write-once

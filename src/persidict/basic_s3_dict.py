@@ -333,7 +333,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             self,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Build a ConditionalOperationResult for a missing key."""
         satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
         return self._result_item_not_available(condition, satisfied)
@@ -346,7 +346,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: ETagIfExists = ITEM_NOT_AVAILABLE,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED,
             return_existing_value: bool = True
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Build result for a failed conditional write/delete."""
         if not return_existing_value or retrieve_value is NEVER_RETRIEVE:
             new_actual = self._actual_etag(key)
@@ -384,7 +384,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Retrieve the value for a key only if an ETag condition is satisfied.
 
         Uses S3 conditional headers (IfMatch/IfNoneMatch) for server-side
@@ -638,7 +638,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Store a value only if an ETag condition is satisfied.
 
         Uses S3 conditional headers (IfMatch / IfNoneMatch) for a
@@ -711,7 +711,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Optimistic S3 conditional write in a single round-trip.
 
         Supports ETAG_IS_THE_SAME (any expected_etag) and
@@ -758,7 +758,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Check-then-act path for conditions other than the fast path.
 
         Handles jokers (KEEP_CURRENT, DELETE_CURRENT), append_only checks,
@@ -908,7 +908,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Discard a key only if an ETag condition is satisfied.
 
         Uses S3 conditional delete with IfMatch to guard against
@@ -943,7 +943,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: NonEmptySafeStrTuple,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Optimistic S3 conditional delete for ETAG_IS_THE_SAME.
 
         Attempts a single S3 delete with IfMatch header,
@@ -971,7 +971,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: NonEmptySafeStrTuple,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Check-then-delete path for conditions other than the fast path.
 
         Handles ETAG_HAS_CHANGED, ANY_ETAG, ETAG_IS_THE_SAME with
@@ -1012,7 +1012,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Insert default_value if key is absent; conditioned on ETag check.
 
         Uses S3 conditional put (IfNoneMatch: ``*``) for atomic

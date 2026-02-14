@@ -285,7 +285,7 @@ class MutableDictCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Return value only if the ETag satisfies a condition.
 
         Delegates to the main dict and refreshes caches when data is fetched.
@@ -327,7 +327,7 @@ class MutableDictCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Set item only if ETag satisfies a condition; update caches when a value is returned."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.set_item_if(
@@ -347,7 +347,7 @@ class MutableDictCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.setdefault_if(
@@ -364,7 +364,7 @@ class MutableDictCached(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Discard item only if ETag satisfies a condition; update caches."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.discard_item_if(
@@ -380,7 +380,7 @@ class MutableDictCached(PersiDict[ValueType]):
             *,
             transformer: TransformingFunction,
             n_retries: int | None = 6
-    ) -> OperationResult:
+    ) -> OperationResult[ValueType]:
         """Apply a transformation; delegate to main dict and update caches."""
         key = NonEmptySafeStrTuple(key)
         res = self._main_dict.transform_item(

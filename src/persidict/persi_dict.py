@@ -24,7 +24,7 @@ import joblib
 import jsonpickle
 import random
 import time
-from typing import Any, Sequence, Optional, TypeVar, Iterator, Mapping
+from typing import Any, Sequence, Optional, Iterator, Mapping
 
 from mixinforge import ParameterizableMixin, sort_dict_by_keys
 
@@ -37,20 +37,10 @@ from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       NEVER_RETRIEVE, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
                                       ETagIfExists, TransformingFunction,
+                                      ValueType,
                                       OperationResult, ConditionalOperationResult)
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
-
-ValueType = TypeVar('ValueType')
-"""Generic type variable for dictionary values.
-
-This TypeVar is used to make PersiDict and its subclasses generic over
-the value type, enabling static type checking with tools like mypy.
-
-Example:
-    d: FileDirDict[int] = FileDirDict(base_dir="./data")
-    val: int = d["key"]  # Type checker knows this is int
-"""
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
 NonEmptyPersiDictKey = NonEmptySafeStrTuple | Sequence[str] | str
@@ -325,7 +315,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def _result_item_not_available(
             condition: ETagConditionFlag,
             satisfied: bool
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Build result when the key is absent."""
         return ConditionalOperationResult(
             condition_was_satisfied=satisfied,
@@ -340,7 +330,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             satisfied: bool,
             actual_etag: ETagIfExists,
             new_value: Any
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Build result when no mutation occurred (resulting_etag == actual_etag)."""
         return ConditionalOperationResult(
             condition_was_satisfied=satisfied,
@@ -355,7 +345,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             actual_etag: ETagIfExists,
             resulting_etag: ETagValue,
             new_value: Any
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Build result for a successful write."""
         return ConditionalOperationResult(
             condition_was_satisfied=True,
@@ -368,7 +358,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def _result_delete_success(
             condition: ETagConditionFlag,
             actual_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Build result for a successful delete."""
         return ConditionalOperationResult(
             condition_was_satisfied=True,
@@ -380,7 +370,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def get_with_etag(
             self,
             key: NonEmptyPersiDictKey
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Retrieve the value and its ETag for a key in a single operation.
 
         Convenience wrapper around get_item_if that fetches the current
@@ -411,7 +401,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Retrieve the value for a key only if an ETag condition is satisfied.
 
         If the key is absent, actual_etag is ITEM_NOT_AVAILABLE and the
@@ -475,7 +465,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Store a value only if an ETag condition is satisfied.
 
         If the key is absent, actual_etag is ITEM_NOT_AVAILABLE and the
@@ -541,7 +531,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Insert default_value if key is absent; conditioned on ETag check.
 
         If the key is absent and the condition is satisfied, default_value
@@ -599,7 +589,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Discard a key only if an ETag condition is satisfied.
 
         No retrieve_value parameter — new_value is ITEM_NOT_AVAILABLE
@@ -643,7 +633,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             *,
             transformer: TransformingFunction,
             n_retries: int | None = 6
-    ) -> OperationResult:
+    ) -> OperationResult[ValueType]:
         """Apply a transformation function to a key's value.
 
         Reads the current value (or ITEM_NOT_AVAILABLE if absent), calls

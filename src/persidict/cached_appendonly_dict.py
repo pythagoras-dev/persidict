@@ -211,7 +211,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Return value only if its ETag satisfies a condition; cache on success."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.get_item_if(
@@ -261,7 +261,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Append-only: delegates to main dict; caches a returned value when available."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.set_item_if(
@@ -282,7 +282,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Insert default if absent and condition satisfied; delegate to main dict."""
         key = NonEmptySafeStrTuple(key)
         res = self._main.setdefault_if(
@@ -300,7 +300,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 

@@ -6,10 +6,14 @@ if TYPE_CHECKING:
     from typing import Any, assert_type, cast
 
     from persidict import (
+        ConditionalOperationResult,
         EmptyDict,
+        ETAG_HAS_CHANGED,
         FileDirDict,
+        ITEM_NOT_AVAILABLE,
         LocalDict,
         NonEmptySafeStrTuple,
+        OperationResult,
     )
 
     # Parameterized usage - typed dictionaries
@@ -53,6 +57,34 @@ if TYPE_CHECKING:
         assert_type(key, NonEmptySafeStrTuple)
         assert_type(value, str)
 
+    # Conditional / ETag operations return generic result types
+    assert_type(
+        int_dict.get_with_etag("key"),
+        ConditionalOperationResult[int])
+    assert_type(
+        int_dict.get_item_if(
+            "key", condition=ETAG_HAS_CHANGED,
+            expected_etag=ITEM_NOT_AVAILABLE),
+        ConditionalOperationResult[int])
+    assert_type(
+        int_dict.set_item_if(
+            "key", value=42, condition=ETAG_HAS_CHANGED,
+            expected_etag=ITEM_NOT_AVAILABLE),
+        ConditionalOperationResult[int])
+    assert_type(
+        int_dict.setdefault_if(
+            "key", default_value=0, condition=ETAG_HAS_CHANGED,
+            expected_etag=ITEM_NOT_AVAILABLE),
+        ConditionalOperationResult[int])
+    assert_type(
+        int_dict.discard_item_if(
+            "key", condition=ETAG_HAS_CHANGED,
+            expected_etag=ITEM_NOT_AVAILABLE),
+        ConditionalOperationResult[int])
+    assert_type(
+        int_dict.transform_item("key", transformer=lambda v: 0),
+        OperationResult[int])
+
     # Unparameterized usage (backward compatible)
     any_dict = cast(FileDirDict, None)
     assert_type(any_dict["key"], Any)
@@ -71,8 +103,13 @@ if TYPE_CHECKING:
 def test_runtime_imports() -> None:
     """Ensure referenced typing targets exist at runtime."""
 
-    from persidict import EmptyDict, FileDirDict, LocalDict
+    from persidict import (
+        ConditionalOperationResult, EmptyDict, FileDirDict,
+        LocalDict, OperationResult,
+    )
 
     assert EmptyDict is not None
     assert FileDirDict is not None
     assert LocalDict is not None
+    assert OperationResult is not None
+    assert ConditionalOperationResult is not None

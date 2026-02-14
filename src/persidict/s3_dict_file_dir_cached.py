@@ -247,7 +247,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Get item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.get_item_if(
             key, condition=condition, expected_etag=expected_etag,
@@ -261,7 +261,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Set item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.set_item_if(
             key, value=value, condition=condition, expected_etag=expected_etag,
@@ -275,7 +275,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Insert default if absent and condition satisfied; delegate to cached dict."""
         return self._cached_dict.setdefault_if(
             key, default_value=default_value, condition=condition,
@@ -287,7 +287,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             *,
             condition: ETagConditionFlag,
             expected_etag: ETagIfExists
-    ) -> ConditionalOperationResult:
+    ) -> ConditionalOperationResult[ValueType]:
         """Discard item only if ETag satisfies a condition; delegate to cached dict."""
         return self._cached_dict.discard_item_if(
             key, condition=condition, expected_etag=expected_etag)
@@ -298,7 +298,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             *,
             transformer: TransformingFunction,
             n_retries: int | None = 6
-    ) -> OperationResult:
+    ) -> OperationResult[ValueType]:
         """Transform item; delegate to cached dict."""
         return self._cached_dict.transform_item(
             key, transformer=transformer, n_retries=n_retries)
