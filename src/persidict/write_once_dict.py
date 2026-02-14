@@ -244,6 +244,10 @@ class WriteOnceDict(PersiDict[ValueType]):
             ValueError: If a consistency check is triggered and the new value
                 differs from the original value for the key.
         """
+        key = NonEmptySafeStrTuple(key)
+        if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
+            return
+
         p = self.p_consistency_checks
         always_check = (p >= 1.0)
 
