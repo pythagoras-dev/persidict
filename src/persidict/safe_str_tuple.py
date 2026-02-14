@@ -41,7 +41,7 @@ def _is_sequence_not_mapping(obj: Any) -> bool:
         return False
 
 
-class SafeStrTuple(Sequence, Hashable):
+class SafeStrTuple(Sequence[str], Hashable):
     """An immutable sequence of URL/filename-safe strings.
 
     The sequence is flat (no nested structures) and hashable, making it suitable
