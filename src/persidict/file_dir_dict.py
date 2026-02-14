@@ -824,20 +824,24 @@ class FileDirDict(PersiDict[ValueType]):
 
     @staticmethod
     def _etag_from_stat(stat_result: os.stat_result) -> ETagValue:
-        """Derive an ETag from an os.stat_result."""
+        """Derive an ETag from an os.stat_result (mtime, size, inode).
+
+        Including the inode detects atomic file replacements (write-to-temp
+        + rename) where mtime and size could theoretically stay the same.
+        """
         mtime_ns = getattr(stat_result, "st_mtime_ns", None)
         if mtime_ns is None:
             mtime_part = f"{stat_result.st_mtime:.6f}"
         else:
             mtime_part = str(mtime_ns)
-        return ETagValue(f"{mtime_part}:{stat_result.st_size}")
+        return ETagValue(f"{mtime_part}:{stat_result.st_size}:{stat_result.st_ino}")
 
     def etag(self, key:NonEmptyPersiDictKey) -> ETagValue:
-        """Return a stable ETag derived from mtime and file size.
+        """Return a stable ETag derived from mtime, file size, and inode.
 
-        Uses a single stat call and combines st_mtime_ns with st_size. Falls
-        back to a float-based mtime representation if nanosecond precision
-        is not available.
+        Uses a single stat call and combines st_mtime_ns, st_size, and
+        st_ino. Falls back to a float-based mtime representation if
+        nanosecond precision is not available.
 
         Raises:
             KeyError: If the key does not exist.
