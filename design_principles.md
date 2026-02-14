@@ -2,7 +2,7 @@
 
 `persidict` is built on a small set of explicit assumptions and trade‑offs that make it well‑suited for distributed computing. Understanding these principles will help you use the library effectively.
 
-## 1. Familiar, `dict`‑like API
+## 1. Familiar, `dict`‑like API 
 
 `persidict` mirrors Python’s built‑in `dict` interface for familiar access (`__getitem__`, `__setitem__`, `__contains__`), but stores values durably and doesn’t guarantee insertion order. It also adds helpers like `timestamp()`, `random_key()`, and `get_subdict()`.
 
