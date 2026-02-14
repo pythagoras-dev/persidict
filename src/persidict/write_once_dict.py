@@ -226,25 +226,24 @@ class WriteOnceDict(PersiDict[ValueType]):
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Set a value for a key, preserving the first assignment.
 
-        Uses ``setdefault_if`` on the wrapped dict for insert-if-absent
-        semantics. Atomicity of the insert depends on the wrapped
-        backend (see class docstring). If the key already exists, a
-        probabilistic consistency check may be performed to ensure the
-        new value matches the originally stored value. If a check is
-        performed and the values differ, a ValueError is raised.
+        Handles joker commands (KEEP_CURRENT, DELETE_CURRENT) before
+        attempting the write. KEEP_CURRENT is a no-op; DELETE_CURRENT
+        raises KeyError because WriteOnceDict is always append-only.
 
-        When ``p_consistency_checks`` is 1.0, the stored value is always
-        retrieved in the same round-trip as the setdefault_if call.
-        For lower probabilities, the value is only fetched when the
-        random check actually fires, avoiding unnecessary reads.
+        For regular values, uses ``setdefault_if`` on the wrapped dict
+        for insert-if-absent semantics. Atomicity of the insert depends
+        on the wrapped backend (see class docstring). If the key already
+        exists, a probabilistic consistency check may be performed to
+        ensure the new value matches the originally stored value.
 
         Args:
             key: Dictionary key.
-            value: Value to store.
+            value: Value to store, or a joker command.
 
         Raises:
-            ValueError: If a consistency check is triggered and the new value
-                differs from the original value for the key.
+            KeyError: If value is DELETE_CURRENT (append-only).
+            ValueError: If a consistency check is triggered and the new
+                value differs from the original value for the key.
         """
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
