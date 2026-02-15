@@ -36,14 +36,14 @@ class _RAMBackend:
     bucket per serialization_format.
 
     Attributes:
-        subdicts (dict[str, _RAMBackend]):
+        subdicts:
             Mapping of first-level key segment to a child RAMBackend representing
             the corresponding subtree.
-        values (dict[str, dict[str, _StoredEntry]]):
+        values:
             Mapping of serialization_format to a dictionary of
             leaf-name -> _StoredEntry. Each entry holds the value, a POSIX
             timestamp (time.time()), and a monotonic write counter for ETags.
-        _write_counter (list[int]):
+        _write_counter:
             Shared mutable monotonic counter used for ETag generation. Stored as
             a single-element list so that child nodes created via child() share
             the same counter object, ensuring ETags are unique across the entire
@@ -129,15 +129,15 @@ class LocalDict(PersiDict[ValueType]):
     API surface as other PersiDict implementations.
 
     Attributes:
-        append_only (bool): If True, items are immutable and cannot be
+        append_only: If True, items are immutable and cannot be
             modified or deleted after initial creation.
-        base_class_for_values (type | None): Optional base class that all
+        base_class_for_values: Optional base class that all
             stored values must inherit from. If None, any type is accepted (with
             serialization_format restrictions enforced by the base class).
-        serialization_format (str): Logical serialization/format label (e.g., "pkl",
+        serialization_format: Logical serialization/format label (e.g., "pkl",
             "json") used as a namespace for values and timestamps within the
             backend.
-        _backend (_RAMBackend): The in-memory tree that actually stores data.
+        _backend: The in-memory tree that actually stores data.
 
     Notes:
         - Not thread-safe or process-safe; use external synchronization if
@@ -155,16 +155,16 @@ class LocalDict(PersiDict[ValueType]):
         """Initialize an in-memory persistent dictionary.
 
         Args:
-            backend (_RAMBackend | None): Optional existing RAMBackend tree to
+            backend: Optional existing RAMBackend tree to
                 use. If None, a new empty backend is created.
-            serialization_format (str): Logical serialization/format label under which
+            serialization_format: Logical serialization/format label under which
                 values are grouped (e.g., "pkl", "json"). Defaults to "pkl".
-            append_only (bool): If True, items are immutable and cannot
+            append_only: If True, items are immutable and cannot
                 be modified or deleted after the first write. Defaults to False.
-            base_class_for_values (type | None): Optional base class that all
+            base_class_for_values: Optional base class that all
                 stored values must inherit from. If None, any type is accepted
                 (subject to serialization_format restrictions). Defaults to None.
-            prune_interval (int | None): If None or <= 0, disables pruning.
+            prune_interval: If None or <= 0, disables pruning.
                 Otherwise, run pruning only once every N destructive
                 operations (deletions/clears). Higher values reduce pruning
                 overhead at the cost of keeping some empty nodes around until
@@ -219,7 +219,7 @@ class LocalDict(PersiDict[ValueType]):
         current serialization_format namespace.
 
         Returns:
-            int: Total number of items.
+            Total number of items.
         """
         def count(node: _RAMBackend) -> int:
             total = len(node.values.get(self.serialization_format, {}))
@@ -273,10 +273,10 @@ class LocalDict(PersiDict[ValueType]):
         indicating whether the given node is now empty.
 
         Args:
-            node (_RAMBackend | None): Node to prune; defaults to the root.
+            node: Node to prune; defaults to the root.
 
         Returns:
-            bool: True if the node is empty after pruning; False otherwise.
+            True if the node is empty after pruning; False otherwise.
         """
         if node is None:
             node = self._backend
@@ -309,13 +309,13 @@ class LocalDict(PersiDict[ValueType]):
               semantics), ensuring no phantom nodes are created.
 
         Args:
-            key (SafeStrTuple): Full hierarchical key. Must be non-empty; the
+            key: Full hierarchical key. Must be non-empty; the
                 last segment is treated as the leaf item name.
-            create_if_missing (bool): Whether to create intermediate nodes while
+            create_if_missing: Whether to create intermediate nodes while
                 traversing. Defaults to True.
 
         Returns:
-            tuple[_RAMBackend | None, str]: A pair consisting of the backend
+            A pair consisting of the backend
             node that would hold the leaf bucket (or None if not found during
             lookup when create_if_missing=False) and the leaf segment (final
             component).
@@ -367,10 +367,10 @@ class LocalDict(PersiDict[ValueType]):
         """Return True if the key exists in the current serialization_format namespace.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
+            key: Key (string/sequence or SafeStrTuple).
 
         Returns:
-            bool: True if the key is present; False otherwise.
+            True if the key is present; False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
         parent_node, leaf = self._navigate_to_parent(key, create_if_missing=False)
@@ -383,10 +383,10 @@ class LocalDict(PersiDict[ValueType]):
         """Retrieve the value stored for a key.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
+            key: Key (string/sequence or SafeStrTuple).
 
         Returns:
-            Any: The stored value.
+            The stored value.
 
         Raises:
             KeyError: If the key does not exist.
@@ -421,8 +421,8 @@ class LocalDict(PersiDict[ValueType]):
         the TOCTOU gap that a separate ``key in self`` guard would have.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
-            value (Any): Value to store, or a joker.
+            key: Key (string/sequence or SafeStrTuple).
+            value: Value to store, or a joker.
 
         Raises:
             KeyError: If attempting to modify an existing item when
@@ -459,7 +459,7 @@ class LocalDict(PersiDict[ValueType]):
         """Delete a stored value for a key.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
+            key: Key (string/sequence or SafeStrTuple).
 
         Raises:
             TypeError: If append_only is True.
@@ -481,11 +481,11 @@ class LocalDict(PersiDict[ValueType]):
             -> tuples that end with a float POSIX timestamp.
 
         Args:
-            result_type (set[str]): Any non-empty subset of {"keys", "values",
+            result_type: Any non-empty subset of {"keys", "values",
                 "timestamps"} specifying which fields to yield.
 
         Returns:
-            Iterator: A generator over requested items.
+            A generator over requested items.
 
         Raises:
             TypeError: If result_type is not a set, or if base_class_for_values
@@ -517,10 +517,10 @@ class LocalDict(PersiDict[ValueType]):
         """Return the last modification time of a key.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
+            key: Key (string/sequence or SafeStrTuple).
 
         Returns:
-            float: POSIX timestamp (seconds since Unix epoch) when the value was
+            POSIX timestamp (seconds since Unix epoch) when the value was
                 last written.
 
         Raises:
@@ -540,10 +540,10 @@ class LocalDict(PersiDict[ValueType]):
         sharing the same backend.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string/sequence or SafeStrTuple).
+            key: Key (string/sequence or SafeStrTuple).
 
         Returns:
-            ETagValue: A unique opaque string identifying the current version.
+            A unique opaque string identifying the current version.
 
         Raises:
             KeyError: If the key does not exist.
@@ -562,11 +562,11 @@ class LocalDict(PersiDict[ValueType]):
         and any other sub-dictionaries that share the same backend.
 
         Args:
-            prefix_key (Iterable[str] | SafeStrTuple): Key prefix identifying the
+            prefix_key: Key prefix identifying the
                 subtree to expose. May be empty to refer to the current root.
 
         Returns:
-            PersiDict: A LocalDict instance whose operations are restricted to
+            A LocalDict instance whose operations are restricted to
                 the keys under the specified prefix.
         """
         prefix = SafeStrTuple(prefix_key) if not isinstance(prefix_key, SafeStrTuple) else prefix_key

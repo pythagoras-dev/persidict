@@ -49,7 +49,7 @@ def _get_md5_signature(x: Any) -> str:
             specialized hashing.
 
     Returns:
-        str: The base16 MD5 hash of the object.
+        The base16 MD5 hash of the object.
     """
     if 'numpy' in sys.modules:
         hasher = joblib.hashing.NumpyHasher(hash_name='md5')
@@ -125,7 +125,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         """Probability of checking a new value against the first value stored.
 
         Returns:
-            float: Probability in [0, 1].
+            Probability in [0, 1].
         """
         return self._p_consistency_checks
 
@@ -163,7 +163,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         """Number of failed consistency checks.
 
         Returns:
-            int: Failed checks (attempted - passed).
+            Failed checks (attempted - passed).
         """
         return (self._consistency_checks_attempted
                 - self._consistency_checks_passed)
@@ -174,7 +174,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         """Number of attempted consistency checks.
 
         Returns:
-            int: Attempted checks counter.
+            Attempted checks counter.
         """
         return self._consistency_checks_attempted
 
@@ -184,7 +184,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         """Number of successful consistency checks.
 
         Returns:
-            int: Passed checks counter.
+            Passed checks counter.
         """
         return self._consistency_checks_passed
 
@@ -304,7 +304,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             key: Key to check.
 
         Returns:
-            bool: True if the key exists, False otherwise.
+            True if the key exists, False otherwise.
         """
         return key in self._wrapped_dict
 
@@ -315,7 +315,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             key: Key to look up.
 
         Returns:
-            Any: Stored value.
+            Stored value.
         """
         return self._wrapped_dict[key]
 
@@ -324,7 +324,7 @@ class WriteOnceDict(PersiDict[ValueType]):
         """Return the number of items stored.
 
         Returns:
-            int: Number of key-value pairs.
+            Number of key-value pairs.
         """
         return len(self._wrapped_dict)
 
@@ -343,7 +343,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             name: Attribute name.
 
         Returns:
-            Any: Attribute value from the wrapped dict.
+            Attribute value from the wrapped dict.
         """
         return getattr(self._wrapped_dict, name)
 
@@ -366,7 +366,7 @@ class WriteOnceDict(PersiDict[ValueType]):
             prefix_key: Prefix identifying the sub-dictionary.
 
         Returns:
-            WriteOnceDict: A new WriteOnceDict wrapping the corresponding
+            A new WriteOnceDict wrapping the corresponding
                 sub-dictionary of the underlying store, sharing the same
                 p_consistency_checks probability.
         """

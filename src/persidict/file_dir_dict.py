@@ -199,7 +199,7 @@ class FileDirDict(PersiDict[ValueType]):
         This property is absent in the original dict API.
 
         Returns:
-            str: Absolute path to the base directory used by this dictionary.
+            Absolute path to the base directory used by this dictionary.
         """
         return drop_long_path_prefix(self._base_dir)
 
@@ -210,7 +210,7 @@ class FileDirDict(PersiDict[ValueType]):
         This performs a recursive traversal of the base directory.
 
         Returns:
-            int: Count of stored items.
+            Count of stored items.
 
         Note:
             This operation can be slow on large dictionaries as it walks the
@@ -330,11 +330,11 @@ class FileDirDict(PersiDict[ValueType]):
             components according to digest_len.
 
             Args:
-                full_path (str): Absolute path within the dictionary's base
+                full_path: Absolute path within the dictionary's base
                     directory.
 
             Returns:
-                SafeStrTuple: The reconstructed (unsigned) key.
+                The reconstructed (unsigned) key.
 
             Raises:
                 ValueError: If full_path is not located under base_dir.
@@ -379,11 +379,11 @@ class FileDirDict(PersiDict[ValueType]):
         This method is absent in the original dict API.
 
         Args:
-            prefix_key (PersiDictKey): Prefix key (string or sequence of strings) that
+            prefix_key: Prefix key (string or sequence of strings) that
                 identifies the subdirectory.
 
         Returns:
-            FileDirDict: A new FileDirDict instance rooted at the specified
+            A new FileDirDict instance rooted at the specified
                 subdirectory, sharing the same parameters as this dictionary.
         """
         prefix_key = SafeStrTuple(prefix_key)
@@ -438,10 +438,10 @@ class FileDirDict(PersiDict[ValueType]):
         """Read a value from a single file without retries.
 
         Args:
-            file_name (str): Absolute path to the file to read.
+            file_name: Absolute path to the file to read.
 
         Returns:
-            Any: The deserialized value according to serialization_format.
+            The deserialized value according to serialization_format.
         """
         file_open_mode = 'rb' if self.serialization_format == "pkl" else 'r'
         file_encoding = None if self.serialization_format == "pkl" else "utf-8"
@@ -481,10 +481,10 @@ class FileDirDict(PersiDict[ValueType]):
         """Read a value from a file with retry/backoff for concurrency.
 
         Args:
-            file_name (str): Absolute path of the file to read.
+            file_name: Absolute path of the file to read.
 
         Returns:
-            Any: The deserialized value according to serialization_format.
+            The deserialized value according to serialization_format.
 
         Raises:
             FileNotFoundError: Immediately if the file does not exist.
@@ -504,8 +504,8 @@ class FileDirDict(PersiDict[ValueType]):
         reduce the chance of readers observing corrupted data.
 
         Args:
-            file_name (str): Absolute destination file path.
-            value (Any): Value to serialize and save.
+            file_name: Absolute destination file path.
+            value: Value to serialize and save.
         """
 
         dir_name = os.path.dirname(file_name)
@@ -562,8 +562,8 @@ class FileDirDict(PersiDict[ValueType]):
         """Save a value to a file with retry/backoff.
 
         Args:
-            file_name (str): Absolute destination file path.
-            value (Any): Value to serialize and save.
+            file_name: Absolute destination file path.
+            value: Value to serialize and save.
 
         Raises:
             Exception: Propagates the last exception if all retries fail.
@@ -578,11 +578,11 @@ class FileDirDict(PersiDict[ValueType]):
         """Check whether a key exists in the dictionary.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+            key: Key (string or sequence of strings
                 or NonEmptySafeStrTuple).
 
         Returns:
-            bool: True if a file for the key exists; False otherwise.
+            True if a file for the key exists; False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
@@ -596,11 +596,11 @@ class FileDirDict(PersiDict[ValueType]):
         deserializes according to serialization_format.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+            key: Key (string or sequence of strings
                 or NonEmptySafeStrTuple).
 
         Returns:
-            Any: The stored value.
+            The stored value.
 
         Raises:
             KeyError: If the file for the key does not exist.
@@ -664,9 +664,9 @@ class FileDirDict(PersiDict[ValueType]):
         concurrent writers may race on the same key.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+            key: Key (string or sequence of strings
                 or NonEmptySafeStrTuple).
-            value (Any): Value to store, or a joker command.
+            value: Value to store, or a joker command.
 
         Raises:
             KeyError: If attempting to modify an existing item when
@@ -704,7 +704,7 @@ class FileDirDict(PersiDict[ValueType]):
         """Delete the stored value for a key.
 
         Args:
-            key (NonEmptyPersiDictKey): Key (string or sequence of strings
+            key: Key (string or sequence of strings
                 or NonEmptySafeStrTuple).
 
         Raises:
@@ -724,11 +724,11 @@ class FileDirDict(PersiDict[ValueType]):
         removing the file extension and unsigning according to digest_len.
 
         Args:
-            result_type (set[str]): Any non-empty subset of {"keys", "values",
+            result_type: Any non-empty subset of {"keys", "values",
                 "timestamps"} specifying which fields to yield.
 
         Returns:
-            Iterator: A generator yielding:
+            A generator yielding:
                 - SafeStrTuple if result_type == {"keys"}
                 - Any if result_type == {"values"}
                 - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
@@ -748,10 +748,10 @@ class FileDirDict(PersiDict[ValueType]):
             """Transform a relative dirname into SafeStrTuple components.
 
             Args:
-                dir_path (str): Relative path under base_dir (e.g., "a/b").
+                dir_path: Relative path under base_dir (e.g., "a/b").
 
             Returns:
-                list[str]: List of safe string components (may be empty).
+                List of safe string components (may be empty).
             """
             if dir_path == ".":
                 return []
@@ -807,10 +807,10 @@ class FileDirDict(PersiDict[ValueType]):
         This method is absent in the original dict API.
 
         Args:
-            key (NonEmptyPersiDictKey): Key whose timestamp to return.
+            key: Key whose timestamp to return.
 
         Returns:
-            float: POSIX timestamp of the underlying file.
+            POSIX timestamp of the underlying file.
 
         Raises:
             KeyError: If the key does not exist.

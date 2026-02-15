@@ -33,7 +33,7 @@ def _create_signature_suffix(input_str: str, digest_len: int) -> str:
             Must be non-negative. A value of 0 disables suffixing.
 
     Returns:
-        str: The computed suffix to append (may be an empty string).
+        The computed suffix to append (may be an empty string).
 
     Raises:
         TypeError: If input_str is not a str or digest_len is not an int.
@@ -70,7 +70,7 @@ def _add_signature_suffix_if_absent(input_str: str, digest_len: int) -> str:
             unchanged.
 
     Returns:
-        str: The original or suffixed string.
+        The original or suffixed string.
 
     Raises:
         TypeError: If input_str is not a str or digest_len is not an int.
@@ -107,7 +107,7 @@ def _add_all_suffixes_if_absent(
         digest_len: Digest fragment length; 0 results in a no-op.
 
     Returns:
-        SafeStrTuple: The suffixed sequence.
+        The suffixed sequence.
     """
 
     str_seq = SafeStrTuple(str_seq)
@@ -133,7 +133,7 @@ def _remove_signature_suffix_if_present(input_str: str, digest_len: int) -> str:
             string unchanged.
 
     Returns:
-        str: The original string without the suffix if detected; otherwise the
+        The original string without the suffix if detected; otherwise the
         original string.
 
     Raises:
@@ -172,7 +172,7 @@ def _remove_all_signature_suffixes_if_present(
             no-op.
 
     Returns:
-        SafeStrTuple: The unsigned sequence.
+        The unsigned sequence.
     """
 
     str_seq = SafeStrTuple(str_seq)
@@ -204,7 +204,7 @@ def sign_safe_str_tuple(
             0 to disable suffixing.
 
     Returns:
-        SafeStrTuple: The suffixed sequence.
+        The suffixed sequence.
     """
 
     str_seq = SafeStrTuple(str_seq)
@@ -226,7 +226,7 @@ def unsign_safe_str_tuple(
             0 for a no-op.
 
     Returns:
-        SafeStrTuple: The unsigned sequence.
+        The unsigned sequence.
     """
 
     str_seq = SafeStrTuple(str_seq)

@@ -21,7 +21,7 @@ def _is_sequence_not_mapping(obj: Any) -> bool:
         obj: Object to inspect.
 
     Returns:
-        bool: True if obj is a sequence (e.g., list, tuple) and not a mapping
+        True if obj is a sequence (e.g., list, tuple) and not a mapping
         (e.g., dict); otherwise False.
     """
     if isinstance(obj, Sequence) and not isinstance(obj, Mapping):
@@ -107,7 +107,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Alias for strings for backward compatibility.
 
         Returns:
-            tuple[str, ...]: The underlying tuple of strings.
+            The underlying tuple of strings.
         """
         return self.strings
 
@@ -118,7 +118,7 @@ class SafeStrTuple(Sequence[str], Hashable):
             key: Zero-based index.
 
         Returns:
-            str: The string at the specified position.
+            The string at the specified position.
         """
         return self.strings[key]
 
@@ -126,7 +126,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Return the number of strings in the tuple.
 
         Returns:
-            int: The number of elements.
+            The number of elements.
         """
         return len(self.strings)
 
@@ -134,7 +134,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Compute the hash of the underlying tuple.
 
         Returns:
-            int: A hash value suitable for dict/set usage.
+            A hash value suitable for dict/set usage.
         """
         return hash(self.strings)
 
@@ -142,7 +142,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Return a developer-friendly representation.
 
         Returns:
-            str: A representation including the class name and contents.
+            A representation including the class name and contents.
         """
         return f"{type(self).__name__}({self.strings})"
 
@@ -157,7 +157,7 @@ class SafeStrTuple(Sequence[str], Hashable):
             other: Another SafeStrTuple or compatible input.
 
         Returns:
-            bool: True if both contain the same sequence of strings.
+            True if both contain the same sequence of strings.
         """
         if isinstance(other, SafeStrTuple):
             if type(self).__eq__ != type(other).__eq__:
@@ -177,7 +177,7 @@ class SafeStrTuple(Sequence[str], Hashable):
             other: Another SafeStrTuple or compatible input.
 
         Returns:
-            SafeStrTuple: A new instance containing elements of self then other.
+            A new instance containing elements of self then other.
         """
         other = SafeStrTuple(other)
         return SafeStrTuple(*(self.strings + other.strings))
@@ -189,7 +189,7 @@ class SafeStrTuple(Sequence[str], Hashable):
             other: Another SafeStrTuple or compatible input.
 
         Returns:
-            SafeStrTuple: A new instance containing elements of other then self.
+            A new instance containing elements of other then self.
         """
         other = SafeStrTuple(other)
         return SafeStrTuple(*(other.strings + self.strings))
@@ -198,7 +198,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Return an iterator over the strings.
 
         Returns:
-            Iterator[str]: An iterator over the internal tuple.
+            An iterator over the internal tuple.
         """
         return iter(self.strings)
 
@@ -209,7 +209,7 @@ class SafeStrTuple(Sequence[str], Hashable):
             item: String to check for presence.
 
         Returns:
-            bool: True if item is present.
+            True if item is present.
         """
         return item in self.strings
 
@@ -217,7 +217,7 @@ class SafeStrTuple(Sequence[str], Hashable):
         """Return a reversed SafeStrTuple.
 
         Returns:
-            SafeStrTuple: A new instance with elements in reverse order.
+            A new instance with elements in reverse order.
         """
         return SafeStrTuple(*reversed(self.strings))
 

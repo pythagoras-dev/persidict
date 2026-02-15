@@ -158,7 +158,7 @@ class EmptyDict(PersiDict[ValueType]):
                 'timestamps'}. Validated but result is always empty.
 
         Returns:
-            Iterator[tuple]: Always returns an empty iterator.
+            Always returns an empty iterator.
 
         Raises:
             ValueError: If result_type is invalid or contains unsupported fields.
@@ -214,6 +214,6 @@ class EmptyDict(PersiDict[ValueType]):
             prefix_key: Key prefix (ignored, as EmptyDict has no hierarchical structure).
 
         Returns:
-            EmptyDict: A new EmptyDict instance with the same configuration.
+            A new EmptyDict instance with the same configuration.
         """
         return EmptyDict(**self.get_params())

@@ -100,7 +100,7 @@ class MutableDictCached(PersiDict[ValueType]):
             key: Non-empty key (tuple or coercible) to check.
 
         Returns:
-            bool: True if the key exists in the main dict, False otherwise.
+            True if the key exists in the main dict, False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
         return key in self._main_dict
@@ -109,7 +109,7 @@ class MutableDictCached(PersiDict[ValueType]):
         """Number of items in the main dict.
 
         Returns:
-            int: Count of keys according to the main dict.
+            Count of keys according to the main dict.
         """
         return len(self._main_dict)
 
@@ -132,7 +132,7 @@ class MutableDictCached(PersiDict[ValueType]):
             key: Non-empty key to query.
 
         Returns:
-            float: POSIX timestamp (seconds since epoch) as provided by the main dict.
+            POSIX timestamp (seconds since epoch) as provided by the main dict.
         """
         key = NonEmptySafeStrTuple(key)
         return self._main_dict.timestamp(key)
@@ -152,7 +152,7 @@ class MutableDictCached(PersiDict[ValueType]):
             key: Non-empty key to query.
 
         Returns:
-            ETagValue: The ETag string for the key.
+            The ETag string for the key.
 
         Raises:
             KeyError: If the key does not exist in the main dict.
@@ -234,7 +234,7 @@ class MutableDictCached(PersiDict[ValueType]):
             key: Non-empty key to fetch.
 
         Returns:
-            Any: The value associated with the key.
+            The value associated with the key.
 
         Raises:
             KeyError: If the key does not exist in the main dict.
@@ -418,7 +418,7 @@ class MutableDictCached(PersiDict[ValueType]):
                 subdictionary scope.
 
         Returns:
-            MutableDictCached: A new cached dictionary rooted at the
+            A new cached dictionary rooted at the
                 specified prefix.
         """
         prefix_key = SafeStrTuple(prefix_key)

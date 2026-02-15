@@ -213,7 +213,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 or NonEmptySafeStrTuple).
 
         Returns:
-            ETagValue: The ETag value for the S3 object.
+            The ETag value for the S3 object.
 
         Raises:
             KeyError: If the key does not exist in S3.
@@ -237,7 +237,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         This property is not part of the standard Python dictionary interface.
 
         Returns:
-            str: The base S3 URL in the format "s3://<bucket>/<root_prefix>".
+            The base S3 URL in the format "s3://<bucket>/<root_prefix>".
         """
         return f"s3://{self.bucket_name}/{self.root_prefix}"
 
@@ -250,7 +250,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             or NonEmptySafeStrTuple).
 
         Returns:
-            str: The complete S3 object key including root_prefix and serialization_format
+            The complete S3 object key including root_prefix and serialization_format
             extension, with digest-based collision prevention applied if enabled.
         """
         key = NonEmptySafeStrTuple(key)
@@ -269,7 +269,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             or NonEmptySafeStrTuple).
 
         Returns:
-            bool: True if the key exists in S3, False otherwise.
+            True if the key exists in S3, False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
         try:
@@ -289,7 +289,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             body: The S3 response Body stream.
 
         Returns:
-            Any: The deserialized value.
+            The deserialized value.
         """
         try:
             raw = body.read()
@@ -308,7 +308,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             key: Normalized dictionary key.
 
         Returns:
-            tuple[ValueType, ETagValue]: The deserialized value and ETag.
+            The deserialized value and ETag.
 
         Raises:
             KeyError: If the key does not exist in S3.
@@ -461,7 +461,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             or NonEmptySafeStrTuple).
 
         Returns:
-            Any: The deserialized value stored for the key.
+            The deserialized value stored for the key.
 
         Raises:
             KeyError: If the key does not exist in S3.
@@ -626,7 +626,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             value: Value to store (not a joker).
 
         Returns:
-            ETagValue: The ETag of the newly stored object.
+            The ETag of the newly stored object.
         """
         return self._put_object_with_conditions(key, value)
 
@@ -1189,7 +1189,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             Avoid using in performance-critical code.
 
         Returns:
-            int: Number of stored items under this dictionary's root_prefix.
+            Number of stored items under this dictionary's root_prefix.
         """
 
         num_files = 0
@@ -1224,7 +1224,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 specifying which fields to yield from each dictionary entry.
 
         Returns:
-            Iterator: A generator that yields:
+            A generator that yields:
                 - SafeStrTuple if result_type == {"keys"}
                 - Any if result_type == {"values"}  
                 - tuple[SafeStrTuple, Any] if result_type == {"keys", "values"}
@@ -1250,7 +1250,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 full_name: Complete S3 object key including root_prefix and extension.
 
             Returns:
-                SafeStrTuple: The parsed key components with digest signatures intact.
+                The parsed key components with digest signatures intact.
 
             Raises:
                 ValueError: If the object key does not start with this dictionary's
@@ -1320,7 +1320,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 used to scope items stored under this dictionary.
 
         Returns:
-            BasicS3Dict: A new BasicS3Dict instance with root_prefix
+            A new BasicS3Dict instance with root_prefix
                 extended by the given prefix_key, sharing the parent's bucket,
                 region, serialization_format, and other configuration settings.
         """
@@ -1353,7 +1353,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             or NonEmptySafeStrTuple).
 
         Returns:
-            float: POSIX timestamp (seconds since Unix epoch) of the last
+            POSIX timestamp (seconds since Unix epoch) of the last
             modification time as reported by S3. The timestamp is timezone-aware
             and converted to UTC.
 

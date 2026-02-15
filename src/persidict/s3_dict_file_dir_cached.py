@@ -183,7 +183,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
                 subdictionary scope.
 
         Returns:
-            S3Dict_FileDirCached: A new cached S3 dictionary rooted at the
+            A new cached S3 dictionary rooted at the
                 specified prefix.
         """
         prefix_key = SafeStrTuple(prefix_key)
@@ -233,7 +233,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             key: Non-empty key to query.
 
         Returns:
-            ETagValue: The ETag string for the key.
+            The ETag string for the key.
 
         Raises:
             KeyError: If the key does not exist.
@@ -313,7 +313,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             key: Key to delete.
             
         Returns:
-            bool: True if the item existed and was deleted; False otherwise.
+            True if the item existed and was deleted; False otherwise.
         """
         key = NonEmptySafeStrTuple(key)
 

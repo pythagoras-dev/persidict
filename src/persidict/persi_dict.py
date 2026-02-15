@@ -78,13 +78,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     persistence-specific helpers (e.g., timestamp()).
 
     Attributes (can't be changed after initialization):
-        append_only (bool):
-            If True, items are immutable and non-removable: existing values 
+        append_only:
+            If True, items are immutable and non-removable: existing values
             cannot be modified or deleted.
-        base_class_for_values (type | None):
+        base_class_for_values:
             Optional base class that all values must inherit from. If None, any
             type is accepted.
-        serialization_format (str):
+        serialization_format:
             File extension/format for stored values (e.g., "pkl", "json").
     """
 
@@ -159,7 +159,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         to the same underlying storage. This is analogous to `dict.copy()`.
 
         Returns:
-            Self: A new instance of the same concrete type that is a shallow copy of this one.
+            A new instance of the same concrete type that is a shallow copy of this one.
         """
         if type(self) is PersiDict:
             raise NotImplementedError("PersiDict is an abstract base class"
@@ -173,7 +173,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Whether the store is append-only.
 
         Returns:
-            bool: True if the store is append-only (contains immutable items
+            True if the store is append-only (contains immutable items
             that cannot be modified or deleted), False otherwise.
         """
         return self._append_only
@@ -183,7 +183,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return a reproducible string representation.
 
         Returns:
-            str: Representation including class name and constructor parameters.
+            Representation including class name and constructor parameters.
         """
         params = self.get_params()
         params_str = ', '.join(f'{k}={v!r}' for k, v in params.items())
@@ -194,7 +194,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return a user-friendly string with all items.
 
         Returns:
-            str: Stringified dict of items.
+            Stringified dict of items.
         """
         return str(dict(self.items()))
 
@@ -209,7 +209,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         key using the streaming iterator.
 
         Returns:
-            bool: True if at least one key exists; False if empty.
+            True if at least one key exists; False if empty.
         """
         try:
             next(iter(self))
@@ -226,7 +226,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            bool: True if key exists, False otherwise.
+            True if key exists, False otherwise.
         """
         raise NotImplementedError("PersiDict is an abstract base class"
                                     " and cannot check items directly")
@@ -249,7 +249,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 the key is absent.
 
         Returns:
-            bool: True if the condition is satisfied.
+            True if the condition is satisfied.
 
         Raises:
             ValueError: If condition is not a recognized ETagConditionFlag.
@@ -270,7 +270,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Normalized dictionary key.
 
         Returns:
-            ETagIfExists: The ETag value, or ITEM_NOT_AVAILABLE if the key
+            The ETag value, or ITEM_NOT_AVAILABLE if the key
                 does not exist.
         """
         try:
@@ -297,7 +297,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             _max_retries: Maximum number of attempts (default 3).
 
         Returns:
-            tuple[ValueType, ETagValue]: The value and its current ETag.
+            The value and its current ETag.
 
         Raises:
             KeyError: If the key does not exist.
@@ -743,7 +743,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            ValueType: The stored value.
+            The stored value.
         """
         raise NotImplementedError("PersiDict is an abstract base class"
                                   " and cannot retrieve items directly")
@@ -871,7 +871,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 the required base_class_for_values when specified.
 
         Returns:
-            NonEmptySafeStrTuple: Normalized key.
+            Normalized key.
         """
 
         if self.append_only and value is not KEEP_CURRENT:
@@ -904,7 +904,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 the required base_class_for_values when specified.
 
         Returns:
-            StatusFlag: CONTINUE_NORMAL_EXECUTION if the caller should
+            CONTINUE_NORMAL_EXECUTION if the caller should
                 proceed with storing the value; EXECUTION_IS_COMPLETE if a
                 joker command was processed and no further action is needed.
         """
@@ -1010,7 +1010,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return the number of stored items.
 
         Returns:
-            int: Number of key-value pairs.
+            Number of key-value pairs.
         Raises:
             NotImplementedError: Subclasses must implement counting.
         """
@@ -1086,7 +1086,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 'values', 'timestamps'}.
 
         Returns:
-            Any: An iterator yielding keys, values, and/or timestamps based on
+            An iterator yielding keys, values, and/or timestamps based on
                 result_type.
 
         Raises:
@@ -1103,7 +1103,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Iterate over keys.
 
         Returns:
-            Iterator[NonEmptySafeStrTuple]: Iterator of keys.
+            Iterator of keys.
         """
         return self._generic_iter({"keys"})
 
@@ -1112,7 +1112,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return an iterator over keys.
 
         Returns:
-            Iterator[NonEmptySafeStrTuple]: Keys iterator.
+            Keys iterator.
         """
         return self._generic_iter({"keys"})
 
@@ -1121,7 +1121,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return an iterator over (key, timestamp) pairs.
 
         Returns:
-            Iterator[tuple[NonEmptySafeStrTuple, float]]: Keys and POSIX timestamps.
+            Keys and POSIX timestamps.
         """
         return self._generic_iter({"keys", "timestamps"})
 
@@ -1130,7 +1130,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return an iterator over values.
 
         Returns:
-            Iterator[ValueType]: Values iterator.
+            Values iterator.
         """
         return self._generic_iter({"values"})
 
@@ -1139,7 +1139,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return an iterator over (value, timestamp) pairs.
 
         Returns:
-            Iterator[tuple[ValueType, float]]: Values and POSIX timestamps.
+            Values and POSIX timestamps.
         """
         return self._generic_iter({"values", "timestamps"})
 
@@ -1148,7 +1148,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return an iterator over (key, value) pairs.
 
         Returns:
-            Iterator[tuple[NonEmptySafeStrTuple, ValueType]]: Items iterator.
+            Items iterator.
         """
         return self._generic_iter({"keys", "values"})
 
@@ -1157,7 +1157,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Return an iterator over (key, value, timestamp) triples.
 
         Returns:
-            Iterator[tuple[NonEmptySafeStrTuple, ValueType, float]]: Items and timestamps.
+            Items and timestamps.
         """
         return self._generic_iter({"keys", "values", "timestamps"})
 
@@ -1363,7 +1363,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            bool: True if the item existed and was deleted; False otherwise.
+            True if the item existed and was deleted; False otherwise.
 
         Raises:
             TypeError: If the dictionary is append-only.
@@ -1400,7 +1400,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 identifying the sub-dict to expose.
 
         Returns:
-            Self: A dictionary-like view restricted to keys under the
+            A dictionary-like view restricted to keys under the
                 provided prefix.
 
         Raises:
@@ -1467,7 +1467,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            float: POSIX timestamp (seconds since Unix epoch) of the last
+            POSIX timestamp (seconds since Unix epoch) of the last
                 modification of the item.
 
         Raises:
@@ -1490,7 +1490,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Returns:
-            ETagValue: The ETag for the key.
+            The ETag for the key.
 
         Raises:
             KeyError: If the key does not exist.

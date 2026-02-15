@@ -22,16 +22,16 @@ class OverlappingMultiDict:
     bucket and differ only in how items are materialized by serialization format.
 
     Attributes:
-        dict_type (Type[PersiDict]): A subclass of PersiDict used to create each 
+        dict_type: A subclass of PersiDict used to create each
             sub-dictionary.
-        shared_subdicts_params (Dict[str, Any]): Parameters applied to every 
+        shared_subdicts_params: Parameters applied to every
             created sub-dictionary (e.g., base_dir, bucket, append_only,
             digest_len).
-        individual_subdicts_params (Dict[str, Dict[str, Any]]): Mapping from 
-            serialization_format (attribute name) to a dict of parameters that are specific 
-            to that sub-dictionary. These override or extend shared_subdicts_params 
+        individual_subdicts_params: Mapping from
+            serialization_format (attribute name) to a dict of parameters that are specific
+            to that sub-dictionary. These override or extend shared_subdicts_params
             for the given serialization_format.
-        subdicts_names (List[str]): The list of serialization_format names (i.e., attribute 
+        subdicts_names: The list of serialization_format names (i.e., attribute
             names) created.
 
     Raises:

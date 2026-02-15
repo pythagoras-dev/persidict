@@ -121,7 +121,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
                 NonEmptySafeStrTuple).
 
         Returns:
-            bool: True if the key exists.
+            True if the key exists.
         """
         key = NonEmptySafeStrTuple(key)
         if key in self._data_cache:
@@ -135,7 +135,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         """Return the number of items.
 
         Returns:
-            int: Number of items in the dictionary, delegated to the main dict.
+            Number of items in the dictionary, delegated to the main dict.
         """
         return len(self._main)
 
@@ -159,7 +159,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
                 NonEmptySafeStrTuple.
 
         Returns:
-            float: POSIX timestamp of the last write for the key.
+            POSIX timestamp of the last write for the key.
 
         Raises:
             KeyError: If the key does not exist in the main dict.
@@ -189,7 +189,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
                 NonEmptySafeStrTuple.
 
         Returns:
-            Any: The stored value.
+            The stored value.
 
         Raises:
             KeyError: If the key is missing in the main dict (and therefore
@@ -335,7 +335,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
                 subdictionary scope.
 
         Returns:
-            AppendOnlyDictCached: A new cached dictionary rooted at the
+            A new cached dictionary rooted at the
                 specified prefix.
         """
         prefix_key = SafeStrTuple(prefix_key)
