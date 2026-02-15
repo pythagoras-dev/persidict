@@ -230,8 +230,7 @@ class FileDirDict(PersiDict[ValueType]):
             TypeError: If append_only is True.
         """
 
-        if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
+        self._check_delete_policy()
 
         # we can't use shutil.rmtree() because
         # there may be overlapping dictionaries

@@ -235,8 +235,7 @@ class LocalDict(PersiDict[ValueType]):
         other serialization formats remains intact.
         """
         # Override for efficiency (optional). Remove only our serialization_format data.
-        if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
+        self._check_delete_policy()
 
         def clear_ft(node: _RAMBackend):
             node.values.pop(self.serialization_format, None)

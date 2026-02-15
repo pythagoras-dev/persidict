@@ -1277,8 +1277,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         Raises:
             TypeError: If the dictionary is append-only.
         """
-        if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
+        self._check_delete_policy()
 
         for k in self.keys():
             self.discard(k)
