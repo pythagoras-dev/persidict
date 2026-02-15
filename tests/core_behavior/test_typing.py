@@ -17,7 +17,6 @@ if TYPE_CHECKING:
         LocalDict,
         NonEmptySafeStrTuple,
         OperationResult,
-        TransformingFunction,
     )
 
     # Parameterized usage - typed dictionaries
