@@ -354,11 +354,11 @@ pip install persidict[dev]
 <!-- MIXINFORGE_STATS_START -->
 | Metric | Main code | Unit Tests | Total |
 |--------|-----------|------------|-------|
-| Lines Of Code (LOC) | 7299 | 12976 | 20275 |
-| Source Lines Of Code (SLOC) | 3260 | 8250 | 11510 |
+| Lines Of Code (LOC) | 7296 | 13623 | 20919 |
+| Source Lines Of Code (SLOC) | 3257 | 8674 | 11931 |
 | Classes | 34 | 8 | 42 |
-| Functions / Methods | 291 | 744 | 1035 |
-| Files | 16 | 119 | 135 |
+| Functions / Methods | 291 | 776 | 1067 |
+| Files | 16 | 127 | 143 |
 <!-- MIXINFORGE_STATS_END -->
 
 ## Contributing
