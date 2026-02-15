@@ -130,13 +130,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         ParameterizableMixin.__init__(self)
 
 
-    def get_params(self):
+    def get_params(self) -> dict[str, Any]:
         """Return configuration parameters of this dictionary.
 
         Returns:
-            dict: A sorted dictionary of parameters used to reconstruct the instance.
-                This supports the Parameterizable API and is absent in the
-                built-in dict.
+            A sorted dictionary of parameters used to reconstruct the instance.
+            This supports the Parameterizable API and is absent in the
+            built-in dict.
         """
         params = dict(
             append_only=self.append_only,

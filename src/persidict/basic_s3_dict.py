@@ -183,14 +183,14 @@ class BasicS3Dict(PersiDict[ValueType]):
             self.root_prefix += "/"
 
 
-    def get_params(self):
+    def get_params(self) -> dict[str, Any]:
         """Return configuration parameters as a dictionary.
 
         This method supports the Parameterizable API and is not part of
         the standard Python dictionary interface.
 
         Returns:
-            dict: A mapping of parameter names to their configured values,
+            A mapping of parameter names to their configured values,
             including S3-specific parameters (region, bucket_name, root_prefix)
             sorted by key names.
         """

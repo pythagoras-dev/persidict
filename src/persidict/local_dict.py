@@ -192,7 +192,7 @@ class LocalDict(PersiDict[ValueType]):
                            base_class_for_values=base_class_for_values,
                            serialization_format=serialization_format)
 
-    def get_params(self):
+    def get_params(self) -> dict[str, Any]:
         """Return constructor parameters needed to recreate this instance.
 
         Note that the backend object itself is included as a reference; copying
@@ -200,7 +200,7 @@ class LocalDict(PersiDict[ValueType]):
         in-memory store.
 
         Returns:
-            dict: A dictionary of parameters (sorted by key) suitable for
+            A dictionary of parameters (sorted by key) suitable for
             passing to the constructor.
         """
         params = super().get_params()

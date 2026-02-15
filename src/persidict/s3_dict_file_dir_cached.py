@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Any, Final
 
 from mixinforge import sort_dict_by_keys
 
@@ -118,7 +118,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
         """Get the digest length used for collision prevention."""
         return self._data_cache.digest_len
     
-    def get_params(self):
+    def get_params(self) -> dict[str, Any]:
         """Return configuration parameters as a dictionary."""
         # Get params from the main dict and local cache
         params = self._main_dict.get_params()
@@ -218,7 +218,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
 
         return result
     
-    def timestamp(self, key: NonEmptyPersiDictKey):
+    def timestamp(self, key: NonEmptyPersiDictKey) -> float:
         """Get the timestamp of when the item was last modified."""
         return self._cached_dict.timestamp(key)
 

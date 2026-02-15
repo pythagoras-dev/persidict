@@ -173,15 +173,15 @@ class FileDirDict(PersiDict[ValueType]):
             raise RuntimeError(f"Failed to create or access directory: {base_dir}")
 
 
-    def get_params(self):
+    def get_params(self) -> dict[str, Any]:
         """Return configuration parameters of the dictionary.
 
         This method is needed to support the ParameterizableMixin API and
         is absent in the standard dict API.
 
         Returns:
-            dict: A mapping of parameter names to values including base_dir
-                merged with the base PersiDict parameters.
+            A mapping of parameter names to values including base_dir
+            merged with the base PersiDict parameters.
         """
         params = super().get_params()
         additional_params = dict(

@@ -189,13 +189,13 @@ class WriteOnceDict(PersiDict[ValueType]):
         return self._consistency_checks_passed
 
 
-    def get_params(self):
+    def get_params(self) -> dict[str, Any]:
         """Return parameterization of this instance.
 
         Returns:
-            dict: A dictionary with keys 'wrapped_dict' and
-                'p_consistency_checks', sorted by keys for deterministic
-                comparison/serialization.
+            A dictionary with keys 'wrapped_dict' and
+            'p_consistency_checks', sorted by keys for deterministic
+            comparison/serialization.
         """
         params = dict(
             wrapped_dict=self._wrapped_dict,
