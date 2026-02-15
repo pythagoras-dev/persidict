@@ -1,6 +1,6 @@
 import pytest
 from persidict import EmptyDict
-from persidict.jokers_and_status_flags import ETAG_IS_THE_SAME
+from persidict.jokers_and_status_flags import ETAG_IS_THE_SAME, ITEM_NOT_AVAILABLE
 
 pytestmark = pytest.mark.smoke
 
@@ -175,3 +175,16 @@ def test_empty_dict_consistency():
         assert f"key_{i}" not in empty_dict
         assert empty_dict.get(f"key_{i}") is None
         assert not empty_dict.discard(f"key_{i}")
+
+
+def test_empty_dict_transform_item():
+    """transform_item on EmptyDict is a no-op returning ITEM_NOT_AVAILABLE."""
+    empty_dict = EmptyDict()
+    called = []
+
+    result = empty_dict.transform_item(
+        "any_key", transformer=lambda v: called.append(v) or "new")
+
+    assert result.new_value is ITEM_NOT_AVAILABLE
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+    assert called == [], "transformer should not be called on EmptyDict"

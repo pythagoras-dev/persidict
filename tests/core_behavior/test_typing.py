@@ -7,13 +7,17 @@ if TYPE_CHECKING:
 
     from persidict import (
         ConditionalOperationResult,
+        DeleteCurrentFlag,
         EmptyDict,
         ETAG_HAS_CHANGED,
         FileDirDict,
         ITEM_NOT_AVAILABLE,
+        ItemNotAvailableFlag,
+        KeepCurrentFlag,
         LocalDict,
         NonEmptySafeStrTuple,
         OperationResult,
+        TransformingFunction,
     )
 
     # Parameterized usage - typed dictionaries
@@ -85,6 +89,29 @@ if TYPE_CHECKING:
         int_dict.transform_item("key", transformer=lambda v: 0),
         OperationResult[int])
 
+    # TransformingFunction is a generic Protocol
+    def int_transformer(
+            current: int | ItemNotAvailableFlag,
+    ) -> int | KeepCurrentFlag | DeleteCurrentFlag:
+        if current is ITEM_NOT_AVAILABLE:
+            return 0
+        return current + 1
+
+    assert_type(
+        int_dict.transform_item("key", transformer=int_transformer),
+        OperationResult[int])
+
+    def str_transformer(
+            current: str | ItemNotAvailableFlag,
+    ) -> str | KeepCurrentFlag | DeleteCurrentFlag:
+        if current is ITEM_NOT_AVAILABLE:
+            return "default"
+        return current + "_updated"
+
+    assert_type(
+        str_dict.transform_item("key", transformer=str_transformer),
+        OperationResult[str])
+
     # Unparameterized usage (backward compatible)
     any_dict = cast(FileDirDict, None)
     assert_type(any_dict["key"], Any)
@@ -105,7 +132,7 @@ def test_runtime_imports() -> None:
 
     from persidict import (
         ConditionalOperationResult, EmptyDict, FileDirDict,
-        LocalDict, OperationResult,
+        LocalDict, OperationResult, TransformingFunction,
     )
 
     assert EmptyDict is not None
@@ -113,3 +140,27 @@ def test_runtime_imports() -> None:
     assert LocalDict is not None
     assert OperationResult is not None
     assert ConditionalOperationResult is not None
+    assert TransformingFunction is not None
+
+
+def test_transforming_function_protocol_isinstance() -> None:
+    """TransformingFunction is runtime-checkable: callables satisfy it."""
+    from persidict import TransformingFunction
+
+    def named_fn(v):
+        return v
+
+    assert isinstance(named_fn, TransformingFunction)
+    assert isinstance(lambda v: v, TransformingFunction)
+    assert not isinstance("not_callable", TransformingFunction)
+    assert not isinstance(42, TransformingFunction)
+
+
+def test_transforming_function_generic_subscript() -> None:
+    """TransformingFunction[T] can be subscripted at runtime."""
+    from persidict import TransformingFunction
+
+    parametrized = TransformingFunction[int]
+    assert parametrized is not None
+    # Subscripting twice with different types yields distinct objects
+    assert TransformingFunction[int] is not TransformingFunction[str]

@@ -297,7 +297,7 @@ class WriteOnceDict(PersiDict[ValueType]):
                 + f"which is not allowed. Details here: {diff_dict} ")
         self._consistency_checks_passed += 1
 
-    def __contains__(self, key:NonEmptyPersiDictKey):
+    def __contains__(self, key:NonEmptyPersiDictKey) -> bool:
         """Check if a key exists in the dictionary.
 
         Args:

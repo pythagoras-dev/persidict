@@ -631,7 +631,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             self,
             key: NonEmptyPersiDictKey,
             *,
-            transformer: TransformingFunction,
+            transformer: TransformingFunction[ValueType],
             n_retries: int | None = 6
     ) -> OperationResult[ValueType]:
         """Apply a transformation function to a key's value.

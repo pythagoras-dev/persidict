@@ -296,7 +296,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             *,
-            transformer: TransformingFunction,
+            transformer: TransformingFunction[ValueType],
             n_retries: int | None = 6
     ) -> OperationResult[ValueType]:
         """Transform item; delegate to cached dict."""

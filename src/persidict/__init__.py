@@ -64,7 +64,7 @@ from .jokers_and_status_flags import (
     ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED,
     ALWAYS_RETRIEVE, NEVER_RETRIEVE, IF_ETAG_CHANGED,
     ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
-    ETagIfExists, ValueIfExists, ValueInResult, ValueType, TransformingFunction,
+    ETagIfExists, ValueType, TransformingFunction,
     OperationResult, ConditionalOperationResult,
 )
 from .overlapping_multi_dict import OverlappingMultiDict
@@ -126,8 +126,6 @@ __all__ = [
     'VALUE_NOT_RETRIEVED',
     # Type aliases
     'ETagIfExists',
-    'ValueIfExists',
-    'ValueInResult',
     'ValueType',
     'TransformingFunction',
     # Result dataclasses

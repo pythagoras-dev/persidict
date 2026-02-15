@@ -17,12 +17,16 @@ ETag condition flags:
     - ETAG_IS_THE_SAME: condition requires etags to match.
     - ETAG_HAS_CHANGED: condition requires etags to differ.
 
+Protocols:
+    - TransformingFunction: generic callback protocol for transform_item.
+
 Result dataclasses:
     - OperationResult: result of transform_item.
     - ConditionalOperationResult: result of conditional _if methods.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Final, Generic, NewType, TypeAlias, TypeVar
+from typing import (Final, Generic, NewType, Protocol,
+                     TypeAlias, TypeVar, runtime_checkable)
 
 from mixinforge import SingletonMixin
 
@@ -263,16 +267,22 @@ ValueType = TypeVar('ValueType')
 ETagIfExists: TypeAlias = ETagValue | ItemNotAvailableFlag
 """ETag value or ITEM_NOT_AVAILABLE if the key is absent."""
 
-ValueIfExists: TypeAlias = Any | ItemNotAvailableFlag
-"""Value or ITEM_NOT_AVAILABLE if the key is absent (non-generic, used by TransformingFunction)."""
+@runtime_checkable
+class TransformingFunction(Protocol[ValueType]):
+    """Protocol for transform_item callback functions.
 
-ValueInResult: TypeAlias = Any | ItemNotAvailableFlag | ValueNotRetrievedFlag
-"""Value, ITEM_NOT_AVAILABLE, or VALUE_NOT_RETRIEVED in operation results (non-generic, used for documentation)."""
+    A TransformingFunction receives the current value (or
+    ITEM_NOT_AVAILABLE when the key is absent) and returns a new value,
+    KEEP_CURRENT, or DELETE_CURRENT.
 
-TransformingFunction = Callable[
-    [ValueIfExists], ValueType | KeepCurrentFlag | DeleteCurrentFlag]
-"""Callable that takes the current value (or ITEM_NOT_AVAILABLE) and returns
-a new value, DELETE_CURRENT, or KEEP_CURRENT."""
+    Generic over ValueType so that ``transform_item`` on a
+    ``PersiDict[int]`` expects a transformer whose input and output are
+    both typed in terms of ``int``.
+    """
+
+    def __call__(
+            self, current: ValueType | ItemNotAvailableFlag, /
+    ) -> ValueType | KeepCurrentFlag | DeleteCurrentFlag: ...
 
 
 # --- Result dataclasses ---

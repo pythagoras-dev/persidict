@@ -32,7 +32,9 @@ from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       RetrieveValueFlag, IF_ETAG_CHANGED,
                                       NEVER_RETRIEVE,
                                       ITEM_NOT_AVAILABLE, VALUE_NOT_RETRIEVED,
-                                      ConditionalOperationResult)
+                                      ConditionalOperationResult,
+                                      OperationResult,
+                                      TransformingFunction)
 
 
 class AppendOnlyDictCached(PersiDict[ValueType]):
@@ -304,7 +306,13 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
         """Deletion is not supported for append-only dictionaries."""
         raise TypeError("append-only dicts do not support deletion")
 
-    def transform_item(self, key, *, transformer, n_retries: int | None = 6):
+    def transform_item(
+            self,
+            key: NonEmptyPersiDictKey,
+            *,
+            transformer: TransformingFunction[ValueType],
+            n_retries: int | None = 6
+    ) -> OperationResult[ValueType]:
         """Not supported for append-only dictionaries."""
         raise NotImplementedError("append-only dicts do not support transform_item")
 

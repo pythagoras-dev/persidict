@@ -378,7 +378,7 @@ class MutableDictCached(PersiDict[ValueType]):
             self,
             key: NonEmptyPersiDictKey,
             *,
-            transformer: TransformingFunction,
+            transformer: TransformingFunction[ValueType],
             n_retries: int | None = 6
     ) -> OperationResult[ValueType]:
         """Apply a transformation; delegate to main dict and update caches."""

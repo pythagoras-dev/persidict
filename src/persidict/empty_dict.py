@@ -15,7 +15,8 @@ from .jokers_and_status_flags import (ETagConditionFlag, ETagIfExists,
                                       RetrieveValueFlag, IF_ETAG_CHANGED,
                                       ITEM_NOT_AVAILABLE,
                                       ConditionalOperationResult,
-                                      OperationResult)
+                                      OperationResult,
+                                      TransformingFunction)
 
 
 class EmptyDict(PersiDict[ValueType]):
@@ -121,7 +122,13 @@ class EmptyDict(PersiDict[ValueType]):
         NonEmptySafeStrTuple(key)
         return self._absent_key_result(condition, expected_etag)
 
-    def transform_item(self, key, *, transformer, n_retries: int | None = 6) -> OperationResult[ValueType]:
+    def transform_item(
+            self,
+            key: NonEmptyPersiDictKey,
+            *,
+            transformer: TransformingFunction[ValueType],
+            n_retries: int | None = 6
+    ) -> OperationResult[ValueType]:
         """No-op: returns ITEM_NOT_AVAILABLE without calling the transformer."""
         return OperationResult(
             resulting_etag=ITEM_NOT_AVAILABLE,
