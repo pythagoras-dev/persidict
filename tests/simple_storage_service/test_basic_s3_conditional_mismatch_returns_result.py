@@ -5,7 +5,6 @@ must return a ConditionalOperationResult with condition_was_satisfied=False
 rather than raising a ClientError.
 """
 
-import pytest
 from moto import mock_aws
 
 from persidict import BasicS3Dict
@@ -49,7 +48,6 @@ def test_discard_item_if_mismatch_returns_result_not_exception():
     old_etag = d.etag("k")
 
     d["k"] = "v2"
-    current_etag = d.etag("k")
 
     result = d.discard_item_if(
         "k",

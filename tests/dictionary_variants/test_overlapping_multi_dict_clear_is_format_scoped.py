@@ -4,7 +4,6 @@ Clearing one sub-dict (e.g., json) must not affect data stored in other
 sub-dicts (e.g., pkl) that share the same base directory.
 """
 
-import pytest
 
 from persidict import FileDirDict, LocalDict, OverlappingMultiDict
 
