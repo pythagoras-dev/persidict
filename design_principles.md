@@ -16,7 +16,7 @@ Concurrent access from multiple processes or machines is a first‑class use cas
 
 ## 3. Conditional operations are first‑class
 
-Conditional operations are the primary mechanism for avoiding lost updates. Instead of implicit compare‑and‑swap, the API makes the condition explicit and returns structured results:
+Conditional operations are the primary mechanism for avoiding lost updates and decreasing IO. Instead of implicit compare‑and‑swap, the API makes the condition explicit and returns structured results:
 
 - Conditional reads and writes: `get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`, and the retrying `transform_item`.
 - Explicit conditions and absent‑key handling: `ANY_ETAG`, `ETAG_IS_THE_SAME`, `ETAG_HAS_CHANGED`, with `ITEM_NOT_AVAILABLE` standing in for missing keys.
