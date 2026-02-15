@@ -60,6 +60,8 @@ rules:
       - tests/storage_backends/test_serialization_format_validation.py
       - tests/storage_backends/test_utf8_encoding.py
       - tests/storage_backends/test_unc_support.py
+      - tests/storage_backends/test_filedirdict_iteration_races.py
+      - tests/storage_backends/test_filedirdict_ignores_junk_files.py
       - tests/key_handling/test_path_traversal.py
 
   - name: simple_storage_service
@@ -75,6 +77,7 @@ rules:
       - tests/simple_storage_service/test_s3_append_only_setitem_atomic.py
       - tests/simple_storage_service/test_s3_validate_returned_value.py
       - tests/simple_storage_service/test_actual_s3.py
+      - tests/simple_storage_service/test_basic_s3_conditional_mismatch_returns_result.py
 
   - name: cached_variants
     paths:
@@ -85,6 +88,8 @@ rules:
       - tests/dictionary_variants/test_write_once_dict.py
       - tests/dictionary_variants/test_overlapping_multi_dict.py
       - tests/dictionary_variants/test_etaggable_dict_cached.py
+      - tests/dictionary_variants/test_mutable_cached_conflict_cache_safety.py
+      - tests/dictionary_variants/test_overlapping_multi_dict_clear_is_format_scoped.py
 
   - name: entity_tag_operations
     paths:
@@ -97,6 +102,9 @@ rules:
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value.py
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value_default.py
       - tests/entity_tag_operations/conditional_operations_contract/test_value_was_mutated.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_never_retrieve_skips_deserialization.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_setdefault_if_rejects_jokers.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_transform_item_retry_exhaustion.py
       - tests/entity_tag_operations/conditional_operations_mutable/
 
   - name: subdicts
