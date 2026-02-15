@@ -131,12 +131,15 @@ def test_runtime_imports() -> None:
 
     from persidict import (
         ConditionalOperationResult, EmptyDict, FileDirDict,
-        LocalDict, OperationResult, TransformingFunction,
+        LocalDict, NonEmptyPersiDictKey, OperationResult,
+        PersiDictKey, TransformingFunction,
     )
 
     assert EmptyDict is not None
     assert FileDirDict is not None
     assert LocalDict is not None
+    assert PersiDictKey is not None
+    assert NonEmptyPersiDictKey is not None
     assert OperationResult is not None
     assert ConditionalOperationResult is not None
     assert TransformingFunction is not None

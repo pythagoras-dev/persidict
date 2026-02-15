@@ -43,14 +43,20 @@ from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
 PersiDictKey = SafeStrTuple | Sequence[str] | str
-NonEmptyPersiDictKey = NonEmptySafeStrTuple | Sequence[str] | str
-"""A value which can be used as a key for PersiDict.
+"""Key type that includes empty tuples, used for prefix-based operations.
 
-PersiDict instances accept keys in the form of (NonEmpty)SafeStrTuple,
-or a string, or a (non-empty) sequence of strings.
-The characters within strings must be URL/filename-safe.
-If a string (or a sequence of strings) is passed to a PersiDict as a key,
-it will be automatically converted into SafeStrTuple.
+Accepts a SafeStrTuple (possibly empty), a string, or a sequence of strings.
+Used in operations like get_subdict where an empty prefix is meaningful.
+"""
+
+NonEmptyPersiDictKey = NonEmptySafeStrTuple | Sequence[str] | str
+"""Key type for item-level operations that require a non-empty key.
+
+Accepts a NonEmptySafeStrTuple, a string, or a non-empty sequence of strings.
+Used in __getitem__, __setitem__, __delitem__, __contains__, and other
+operations that address a specific item. Characters within strings must be
+URL/filename-safe. Strings and sequences are automatically converted into
+SafeStrTuple.
 """
 
 class TransformConflictError(RuntimeError):

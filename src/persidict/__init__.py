@@ -48,7 +48,7 @@ from ._version_info import __version__
 
 from .safe_chars import *
 from .safe_str_tuple import *
-from .persi_dict import PersiDict, PersiDictKey, TransformConflictError
+from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, TransformConflictError
 from .file_dir_dict import FileDirDict
 from .s3_dict_file_dir_cached import S3Dict_FileDirCached, S3Dict
 from .basic_s3_dict import BasicS3Dict
@@ -78,6 +78,7 @@ __all__ = [
     # Core classes
     'PersiDict',
     'PersiDictKey',
+    'NonEmptyPersiDictKey',
     'TransformConflictError',
     'FileDirDict',
     'S3Dict',
