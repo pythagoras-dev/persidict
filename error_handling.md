@@ -2,17 +2,17 @@
 
 This document defines **user-facing exception semantics** and **maintainer rules** for raising/translation so behavior is predictable across backends and wrappers.
 
-## Two reporting channels
+## Reporting channels
 
-Persidict reports problems through two fundamentally different channels. Every method uses exactly one.
+Persidict reports problems through two channels. Every method uses exactly one.
 
 **Exceptions** — used by the dict-protocol API (`__getitem__`, `__setitem__`, `__delitem__`, `pop`, etc.). Python callers expect these methods to raise on failure, so we follow that contract.
 
-**Result objects** — used by the conditional `_if` API (`get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`) and `transform_item`. These methods are designed for compare-and-swap loops where exceptions would be expensive control flow. They return `ConditionalOperationResult` / `OperationResult` with sentinel fields (`ITEM_NOT_AVAILABLE`, `VALUE_NOT_RETRIEVED`) instead of raising.
+**Result objects** — used by the conditional `_if` API (`get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`) and `transform_item`. These methods are designed for compare-and-swap loops where exceptions would be expensive control flow. They return `ConditionalOperationResult` / `OperationResult` with sentinel fields (`ITEM_NOT_AVAILABLE`, `VALUE_NOT_RETRIEVED`) instead of raising for key-absence and condition-not-met outcomes. Result-object methods still raise `TypeError`, `ValueError`, `MutationPolicyError`, and `BackendError` — only the expected outcome variability (key present/absent, condition met/unmet) is reported via the result object.
 
-A third category — **silent success** — applies to methods whose callers explicitly opted out of failure notification: `discard()` returns `bool`, joker assignments (`d[k] = KEEP_CURRENT`) are no-ops when there's nothing to do.
+Some methods are designed so that the operation always succeeds from the caller's perspective — there is no error to report. `discard()` returns `bool`, `get()` returns a default, joker assignments (`d[k] = KEEP_CURRENT`) are no-ops when there's nothing to do. These are not a separate reporting channel; they are convenience wrappers whose contract absorbs the conditions that would otherwise be errors.
 
-**Decision rule for new methods:** use exceptions if the method participates in the standard dict protocol or has a single expected outcome; use result objects if the method is designed for optimistic concurrency loops; use silent success only for fire-and-forget convenience wrappers around exception-raising primitives.
+**Decision rule for new methods:** use exceptions if the method participates in the standard dict protocol or has a single expected outcome; use result objects if the method is designed for optimistic concurrency loops; use the absorbing-convenience pattern only for fire-and-forget wrappers around exception-raising primitives.
 
 ---
 
@@ -178,5 +178,13 @@ Use helpers to enforce consistent types, payloads, and chaining.
 - `MutationPolicyError` messages should name the **policy** that was violated, not the operation that failed. Good: `"append-only dict does not allow deletion"`. Bad: `"Can't modify an immutable key-value pair"` (doesn't say which policy or what was attempted).
 - Custom exceptions carry **structured fields** (`key`, `attempts`, `policy`, etc.) for programmatic access; the human-readable `str` is secondary.
 - Never leak secrets (absolute paths, credentials). Put sensitive backend detail in `__cause__` when needed.
+
+### 4) Exception handling in wrappers
+- **Default: passthrough.** Wrappers must let inner-dict exceptions propagate unchanged. No catching, no wrapping, no message rewriting.
+- **Policy exceptions are raised before delegation.** If a wrapper enforces a policy the inner dict doesn't have (append-only, read-only), it raises `MutationPolicyError` *instead of* calling the inner dict — this is the wrapper's own exception, not a translation.
+- **Permitted catches** (exhaustive list):
+  - Converting `KeyError` to a return value in convenience methods (`discard()` → `False`, `get()` → default) — same as `PersiDict` base class.
+  - Cache-miss recovery: catching `KeyError` from a cache layer to fall through to the backing dict. The backing dict's exceptions must then propagate unchanged.
+- **Do not enrich inner-dict exception messages.** `KeyError(key)` must stay `KeyError(key)` — adding wrapper context breaks the raw-key payload convention.
 
 ---
