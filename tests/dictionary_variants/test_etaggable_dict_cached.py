@@ -113,6 +113,19 @@ def test_constructor_validations():
         MutableDictCached(main_dict=main, data_cache=good_cache, etag_cache={})  # type: ignore[arg-type]
 
 
+def test_get_params_returns_constructor_args(cached_env):
+    """Verify get_params returns the original main_dict, data_cache, and etag_cache."""
+    main, data_cache, etag_cache, wrapper = cached_env
+    params = wrapper.get_params()
+    assert set(params.keys()) == {"data_cache", "etag_cache", "main_dict"}
+    assert params["main_dict"] is main
+    assert params["data_cache"] is data_cache
+    assert params["etag_cache"] is etag_cache
+    # Roundtrip: reconstructing from get_params produces equivalent wrapper
+    wrapper2 = MutableDictCached(**params)
+    assert wrapper2.get_params() == params
+
+
 def test_setitem_and_caches_updated(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
     wrapper[("a",)] = 123

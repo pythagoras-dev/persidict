@@ -97,6 +97,18 @@ def test_set_item_if_failed_condition_populates_cache(append_only_env):
     assert cache[("k",)] == "v1"
 
 
+def test_get_params_returns_constructor_args(append_only_env):
+    """Verify get_params returns the original main_dict and data_cache objects."""
+    main, cache, wrapper = append_only_env
+    params = wrapper.get_params()
+    assert set(params.keys()) == {"data_cache", "main_dict"}
+    assert params["main_dict"] is main
+    assert params["data_cache"] is cache
+    # Roundtrip: reconstructing from get_params produces equivalent wrapper
+    wrapper2 = AppendOnlyDictCached(**params)
+    assert wrapper2.get_params() == params
+
+
 # --- Edge cases and error handling -----------------------------------------
 
 def test_constructor_validation_errors(tmp_path):

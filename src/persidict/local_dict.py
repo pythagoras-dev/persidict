@@ -205,7 +205,8 @@ class LocalDict(PersiDict[ValueType]):
         """
         params = super().get_params()
         additional_params = dict(
-            backend=self._backend)
+            backend=self._backend,
+            prune_interval=self._prune_interval)
         params = {**params, **additional_params}
         sorted_params = sort_dict_by_keys(params)
         return sorted_params

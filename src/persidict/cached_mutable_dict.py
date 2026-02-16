@@ -8,6 +8,9 @@ ensures cached values are consistent with the authoritative store.
 
 from __future__ import annotations
 
+from typing import Any
+
+from mixinforge import sort_dict_by_keys
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
@@ -92,6 +95,19 @@ class MutableDictCached(PersiDict[ValueType]):
         self._data_cache: PersiDict[ValueType] = data_cache
         self._etag_cache: PersiDict[ETagValue] = etag_cache
 
+    def get_params(self) -> dict[str, Any]:
+        """Return constructor parameters for this instance.
+
+        Returns:
+            A dictionary with keys 'main_dict', 'data_cache', and
+            'etag_cache', sorted by keys.
+        """
+        params = dict(
+            main_dict=self._main_dict,
+            data_cache=self._data_cache,
+            etag_cache=self._etag_cache)
+        sorted_params = sort_dict_by_keys(params)
+        return sorted_params
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
         """Check membership against the main dict.

@@ -24,6 +24,20 @@ def test_init_and_get_params_defaults(tmp_path):
     # backend object identity is included
     assert params["backend"] is not None
     assert params["backend"] is ld.get_params()["backend"]
+    # prune_interval defaults to 64
+    assert params["prune_interval"] == 64
+
+
+def test_get_params_custom_prune_interval():
+    """Verify get_params reflects a non-default prune_interval after normalization."""
+    ld = LocalDict(prune_interval=128)
+    assert ld.get_params()["prune_interval"] == 128
+
+    ld_none = LocalDict(prune_interval=None)
+    assert ld_none.get_params()["prune_interval"] is None
+
+    ld_disabled = LocalDict(prune_interval=0)
+    assert ld_disabled.get_params()["prune_interval"] is None
 
 
 def test_serialization_format_validation_and_repr():
