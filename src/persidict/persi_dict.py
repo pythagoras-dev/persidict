@@ -39,6 +39,7 @@ from .jokers_and_status_flags import (KEEP_CURRENT, DELETE_CURRENT, Joker,
                                       ETagIfExists, TransformingFunction,
                                       ValueType,
                                       OperationResult, ConditionalOperationResult)
+from .exceptions import MutationPolicyError, ConcurrencyConflictError
 from .safe_chars import contains_unsafe_chars
 from .safe_str_tuple import SafeStrTuple
 
@@ -58,8 +59,6 @@ operations that address a specific item. Characters within strings must be
 URL/filename-safe. Strings and sequences are automatically converted into
 SafeStrTuple.
 """
-
-from .exceptions import MutationPolicyError, ConcurrencyConflictError
 
 
 class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], ParameterizableMixin):

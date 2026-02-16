@@ -10,7 +10,6 @@ Setting the probability of random checks to 0 disables them.
 """
 from __future__ import annotations
 
-from deepdiff import DeepDiff
 from mixinforge import sort_dict_by_keys
 
 from .jokers_and_status_flags import (
@@ -290,7 +289,6 @@ class WriteOnceDict(PersiDict[ValueType]):
         signature_old = _get_md5_signature(stored_value)
         signature_new = _get_md5_signature(new_value)
         if signature_old != signature_new:
-            diff_dict = DeepDiff(stored_value, new_value)
             raise MutationPolicyError("write-once")
         self._consistency_checks_passed += 1
 
