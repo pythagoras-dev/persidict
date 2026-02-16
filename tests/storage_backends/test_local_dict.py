@@ -1,7 +1,7 @@
 import time
 import pytest
 
-from persidict import LocalDict
+from persidict import LocalDict, MutationPolicyError
 from persidict.safe_str_tuple import SafeStrTuple
 from persidict.jokers_and_status_flags import KEEP_CURRENT, DELETE_CURRENT
 
@@ -94,13 +94,13 @@ def test_immutable_items_prohibits_overwrite_and_delete():
     ld = make_ld(append_only=True)
     k = ("root", "leaf")
     ld[k] = 5
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         ld[k] = 6
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         del ld[k]
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         ld.clear()
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         ld.discard(k)
 
 
@@ -424,5 +424,5 @@ def test_timestamp_overwrite_vs_keep_current(monkeypatch):
 @pytest.mark.parametrize("serialization_format", ["pkl", "json"])
 def test_discard_immutable_raises(serialization_format):
     ld = make_ld(serialization_format=serialization_format, append_only=True)
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         ld.discard(("a",))

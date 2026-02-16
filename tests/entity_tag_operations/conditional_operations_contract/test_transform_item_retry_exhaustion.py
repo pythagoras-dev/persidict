@@ -1,15 +1,15 @@
-"""Tests that transform_item raises TransformConflictError after exhausting retries.
+"""Tests that transform_item raises ConcurrencyConflictError after exhausting retries.
 
 Verifies that when every conditional write reports a conflict, the retry
 loop terminates after the configured number of retries and raises
-TransformConflictError. Also checks that the transformer call count is
+ConcurrencyConflictError. Also checks that the transformer call count is
 bounded to (1 + n_retries).
 """
 
 import pytest
 
 import persidict.persi_dict as persi_dict
-from persidict import LocalDict, TransformConflictError
+from persidict import LocalDict, ConcurrencyConflictError
 from persidict.jokers_and_status_flags import (
     IF_ETAG_CHANGED,
     VALUE_NOT_RETRIEVED,
@@ -18,7 +18,7 @@ from persidict.jokers_and_status_flags import (
 
 
 def test_transform_raises_after_n_retries_exhausted(monkeypatch):
-    """TransformConflictError is raised after n_retries conflicts."""
+    """ConcurrencyConflictError is raised after n_retries conflicts."""
     d = LocalDict(serialization_format="pkl")
     d["key"] = "value"
 
@@ -40,7 +40,7 @@ def test_transform_raises_after_n_retries_exhausted(monkeypatch):
         calls.append(value)
         return "new"
 
-    with pytest.raises(TransformConflictError) as exc_info:
+    with pytest.raises(ConcurrencyConflictError) as exc_info:
         d.transform_item("key", transformer=transformer, n_retries=2)
 
     assert exc_info.value.attempts == 3
@@ -70,7 +70,7 @@ def test_transform_zero_retries_raises_after_one_attempt(monkeypatch):
         calls.append(value)
         return "new"
 
-    with pytest.raises(TransformConflictError) as exc_info:
+    with pytest.raises(ConcurrencyConflictError) as exc_info:
         d.transform_item("key", transformer=transformer, n_retries=0)
 
     assert exc_info.value.attempts == 1

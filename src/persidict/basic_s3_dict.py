@@ -21,6 +21,7 @@ from mixinforge import sort_dict_by_keys
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
+from .exceptions import MutationPolicyError, ConcurrencyConflictError
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       KEEP_CURRENT, DELETE_CURRENT,
                                       Joker, ETagValue,
@@ -225,7 +226,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             return ETagValue(response["ETag"])
         except ClientError as e:
             if not_found_error(e):
-                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise KeyError(key) from e
             else:
                 raise
 
@@ -325,8 +326,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             return value, s3_etag
         except ClientError as e:
             if not_found_error(e):
-                raise KeyError(
-                    f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise KeyError(key) from e
             raise
 
     def _result_for_missing_key(
@@ -478,8 +478,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             return value
         except ClientError as e:
             if not_found_error(e):
-                raise KeyError(
-                    f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise KeyError(key) from e
             raise
 
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
@@ -499,6 +498,8 @@ class BasicS3Dict(PersiDict[ValueType]):
         Raises:
             TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT),
                 or if the key is missing and default violates value type constraints.
+            ConcurrencyConflictError: If retries are exhausted due to
+                concurrent modifications.
         """
         key = NonEmptySafeStrTuple(key)
         if isinstance(default, Joker):
@@ -546,10 +547,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                         continue
                 raise
 
-        raise RuntimeError(
-            f"setdefault failed after {_MAX_SETDEFAULT_RETRIES}"
-            f" retries due to concurrent modifications on key {key}"
-        )
+        raise ConcurrencyConflictError(key, _MAX_SETDEFAULT_RETRIES)
 
 
     def _serialize_value_for_s3(self, value: Any) -> tuple[bytes, str]:
@@ -664,7 +662,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         self._validate_retrieve_value(retrieve_value)
         key = NonEmptySafeStrTuple(key)
         if self.append_only and value is DELETE_CURRENT:
-            raise KeyError("Can't modify an immutable key-value pair")
+            raise MutationPolicyError("append-only")
         self._validate_value(value)
 
         # Fast path: single-roundtrip S3 conditional put using
@@ -767,7 +765,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         actual_etag = self._actual_etag(key)
         if self.append_only and value is not KEEP_CURRENT:
             if actual_etag is not ITEM_NOT_AVAILABLE:
-                raise KeyError("Can't modify an immutable key-value pair")
+                raise MutationPolicyError("append-only")
 
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
@@ -986,7 +984,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             return self._result_unchanged(
                 condition, False, actual_etag, VALUE_NOT_RETRIEVED)
         if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
+            raise MutationPolicyError("append-only")
 
         # Atomic delete: guard against concurrent changes since the HEAD
         obj_name = self._build_full_objectname(key)
@@ -1106,8 +1104,8 @@ class BasicS3Dict(PersiDict[ValueType]):
                 DELETE_CURRENT).
 
         Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
+            MutationPolicyError: If attempting to modify an existing item
+                when append_only is True.
             TypeError: If value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
         """
@@ -1124,7 +1122,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 retrieve_value=NEVER_RETRIEVE,
             )
             if not result.value_was_mutated:
-                raise KeyError("Can't modify an immutable key-value pair")
+                raise MutationPolicyError("append-only")
             return
 
         self._put_object_get_etag(key, value)
@@ -1138,7 +1136,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 or NonEmptyPersiDictKey).
 
         Raises:
-            TypeError: If append_only is True.
+            MutationPolicyError: If append_only is True.
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
@@ -1367,6 +1365,6 @@ class BasicS3Dict(PersiDict[ValueType]):
             return response["LastModified"].timestamp()
         except ClientError as e:
             if not_found_error(e):
-                raise KeyError(f"Key {key} not found in S3 bucket {self.bucket_name}")
+                raise KeyError(key) from e
             else:
                 raise

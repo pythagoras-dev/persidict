@@ -59,14 +59,7 @@ URL/filename-safe. Strings and sequences are automatically converted into
 SafeStrTuple.
 """
 
-class TransformConflictError(RuntimeError):
-    """Raised when transform_item exhausts retries due to concurrent updates."""
-
-    def __init__(self, key: NonEmptySafeStrTuple, attempts: int) -> None:
-        super().__init__(
-            f"transform_item failed after {attempts} attempt(s) for key {key!r}")
-        self.key = key
-        self.attempts = attempts
+from .exceptions import MutationPolicyError, ConcurrencyConflictError
 
 
 class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], ParameterizableMixin):
@@ -275,7 +268,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """
         try:
             return self.etag(key)
-        except (KeyError, FileNotFoundError):
+        except KeyError:
             return ITEM_NOT_AVAILABLE
 
     def _get_value_and_etag(
@@ -436,7 +429,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         if retrieve_value is ALWAYS_RETRIEVE:
             try:
                 value, actual_etag = self._get_value_and_etag(key)
-            except (KeyError, FileNotFoundError):
+            except KeyError:
                 satisfied = self._check_condition(
                     condition, expected_etag, ITEM_NOT_AVAILABLE)
                 return self._result_item_not_available(condition, satisfied)
@@ -455,7 +448,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         try:
             value, actual_etag = self._get_value_and_etag(key)
-        except (KeyError, FileNotFoundError):
+        except KeyError:
             satisfied = self._check_condition(
                 condition, expected_etag, ITEM_NOT_AVAILABLE)
             return self._result_item_not_available(condition, satisfied)
@@ -511,7 +504,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             else:
                 try:
                     existing_value, actual_etag = self._get_value_and_etag(key)
-                except (KeyError, FileNotFoundError):
+                except KeyError:
                     return self._result_item_not_available(condition, False)
             return self._result_unchanged(condition, False, actual_etag, existing_value)
 
@@ -664,7 +657,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 indefinitely.
 
         Raises:
-            TransformConflictError: If conflicts persist after n_retries.
+            ConcurrencyConflictError: If conflicts persist after n_retries.
 
         Returns:
             OperationResult with resulting_etag and new_value.
@@ -729,7 +722,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 need_read = False
 
             if n_retries is not None and retries >= n_retries:
-                raise TransformConflictError(key, retries + 1)
+                raise ConcurrencyConflictError(key, retries + 1)
 
             time.sleep(random.uniform(0.01, 0.2) * (1.75 ** retries))
             retries += 1
@@ -866,7 +859,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 DELETE_CURRENT).
 
         Raises:
-            KeyError: If value is DELETE_CURRENT and append_only is True.
+            MutationPolicyError: If value is DELETE_CURRENT and
+                append_only is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
 
@@ -876,7 +870,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         if self.append_only and value is not KEEP_CURRENT:
             if value is DELETE_CURRENT:
-                raise KeyError("Can't modify an immutable key-value pair")
+                raise MutationPolicyError("append-only")
 
         self._validate_value(value)
         key = NonEmptySafeStrTuple(key)
@@ -899,7 +893,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 DELETE_CURRENT).
 
         Raises:
-            KeyError: If value is DELETE_CURRENT and append_only is True.
+            MutationPolicyError: If value is DELETE_CURRENT and append_only is True.
             TypeError: If the value is a PersiDict instance or does not match
                 the required base_class_for_values when specified.
 
@@ -932,8 +926,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             value: Value to store, or a Joker command.
 
         Raises:
-            KeyError: If attempting to modify an existing key when
-                append_only is True.
+            MutationPolicyError: If attempting to modify an existing key
+                when append_only is True.
             NotImplementedError: Subclasses must implement actual writing.
         """
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
@@ -944,13 +938,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
 
     def _check_delete_policy(self) -> None:
-        """Raise TypeError if deletion is not allowed on this dict.
+        """Raise MutationPolicyError if deletion is not allowed on this dict.
 
         Raises:
-            TypeError: If append_only is True.
+            MutationPolicyError: If append_only is True.
         """
         if self.append_only:
-            raise TypeError("append-only dicts do not support deletion")
+            raise MutationPolicyError("append-only")
 
     def _remove_item(self, key: NonEmptySafeStrTuple) -> None:
         """Remove a key from the backend storage.
@@ -976,7 +970,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Dictionary key (string or sequence of strings
                 or NonEmptySafeStrTuple).
         Raises:
-            TypeError: If attempting to delete an item when
+            MutationPolicyError: If attempting to delete an item when
                 append_only is True.
             KeyError: If the key does not exist.
         """
@@ -985,7 +979,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         key = NonEmptySafeStrTuple(key)
 
         if key not in self:
-            raise KeyError(f"Key {key} not found")
+            raise KeyError(key)
 
 
     @abstractmethod
@@ -996,7 +990,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             key: Key (string or sequence of strings) or SafeStrTuple.
 
         Raises:
-            TypeError: If append_only is True.
+            MutationPolicyError: If append_only is True.
             KeyError: If the key does not exist.
             NotImplementedError: Subclasses must implement deletion.
         """
@@ -1275,7 +1269,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Remove all items from the dictionary.
 
         Raises:
-            TypeError: If the dictionary is append-only.
+            MutationPolicyError: If the dictionary is append-only.
         """
         self._check_delete_policy()
 
@@ -1300,8 +1294,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             absent and a default was provided.
 
         Raises:
-            TypeError: If the dictionary is append-only, or if more
-                than one default argument is given.
+            MutationPolicyError: If the dictionary is append-only.
+            TypeError: If more than one default argument is given.
             KeyError: If the key does not exist and no default was given.
         """
         if len(args) > 1:
@@ -1340,7 +1334,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             A (key, value) tuple.
 
         Raises:
-            TypeError: If the dictionary is append-only.
+            MutationPolicyError: If the dictionary is append-only.
             KeyError: If the dictionary is empty.
         """
         self._check_delete_policy()
@@ -1365,7 +1359,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             True if the item existed and was deleted; False otherwise.
 
         Raises:
-            TypeError: If the dictionary is append-only.
+            MutationPolicyError: If the dictionary is append-only.
         """
         self._check_delete_policy()
         key = NonEmptySafeStrTuple(key)

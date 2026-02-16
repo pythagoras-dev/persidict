@@ -10,6 +10,7 @@ import pytest
 from moto import mock_aws
 
 from persidict import BasicS3Dict, FileDirDict, LocalDict, S3Dict_FileDirCached
+from persidict import MutationPolicyError
 from tests.data_for_mutable_tests import make_test_dict
 
 append_only_tests = [
@@ -38,11 +39,11 @@ def test_insert_new_key_succeeds(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", append_only_tests)
 @mock_aws
 def test_overwrite_existing_key_raises(tmpdir, DictToTest, kwargs):
-    """Overwriting an existing key raises KeyError and preserves the original."""
+    """Overwriting an existing key raises MutationPolicyError and preserves the original."""
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "original"
 
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         d["k"] = "replacement"
 
     assert d["k"] == "original"

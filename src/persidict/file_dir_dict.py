@@ -27,6 +27,7 @@ from .jokers_and_status_flags import (
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .safe_str_tuple_signing import sign_safe_str_tuple, unsign_safe_str_tuple
 from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, ValueType
+from .exceptions import MutationPolicyError, BackendError
 
 if os.name == 'nt':
     import msvcrt
@@ -170,7 +171,9 @@ class FileDirDict(PersiDict[ValueType]):
 
         os.makedirs(self._base_dir, exist_ok=True)
         if not os.path.isdir(self._base_dir):
-            raise RuntimeError(f"Failed to create or access directory: {base_dir}")
+            raise BackendError(
+                f"Failed to create or access directory: {base_dir}",
+                backend="filesystem", operation="init")
 
 
     def get_params(self) -> dict[str, Any]:
@@ -227,7 +230,7 @@ class FileDirDict(PersiDict[ValueType]):
         """Remove all elements from the dictionary.
 
         Raises:
-            TypeError: If append_only is True.
+            MutationPolicyError: If append_only is True.
         """
 
         self._check_delete_policy()
@@ -611,7 +614,7 @@ class FileDirDict(PersiDict[ValueType]):
         try:
             result = self._read_from_file(filename)
         except FileNotFoundError as exc:
-            raise KeyError(f"File {filename} does not exist") from exc
+            raise KeyError(key) from exc
         self._validate_returned_value(result)
         return result
 
@@ -633,15 +636,15 @@ class FileDirDict(PersiDict[ValueType]):
             try:
                 stat_before = self._with_retry(os.stat, filename)
             except FileNotFoundError as exc:
-                raise KeyError(f"File {filename} does not exist") from exc
+                raise KeyError(key) from exc
             try:
                 result = self._read_from_file(filename)
             except FileNotFoundError as exc:
-                raise KeyError(f"File {filename} does not exist") from exc
+                raise KeyError(key) from exc
             try:
                 stat_after = self._with_retry(os.stat, filename)
             except FileNotFoundError as exc:
-                raise KeyError(f"File {filename} does not exist") from exc
+                raise KeyError(key) from exc
             if self._etag_from_stat(stat_before) == self._etag_from_stat(stat_after):
                 self._validate_returned_value(result)
                 return result, self._etag_from_stat(stat_after)
@@ -668,8 +671,8 @@ class FileDirDict(PersiDict[ValueType]):
             value: Value to store, or a joker command.
 
         Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
+            MutationPolicyError: If attempting to modify an existing item
+                when append_only is True.
             TypeError: If the value is a PersiDict or does not match
                 base_class_for_values when it is set.
         """
@@ -682,7 +685,7 @@ class FileDirDict(PersiDict[ValueType]):
 
         if self.append_only:
             if key in self:
-                raise KeyError("Can't modify an immutable key-value pair")
+                raise MutationPolicyError("append-only")
 
         self._save_to_file(filename, value)
 
@@ -697,7 +700,7 @@ class FileDirDict(PersiDict[ValueType]):
         try:
             self._with_retry(os.remove, filename)
         except FileNotFoundError as exc:
-            raise KeyError(f"File {filename} does not exist") from exc
+            raise KeyError(key) from exc
 
     def __delitem__(self, key:NonEmptyPersiDictKey) -> None:
         """Delete the stored value for a key.
@@ -707,7 +710,7 @@ class FileDirDict(PersiDict[ValueType]):
                 or NonEmptySafeStrTuple).
 
         Raises:
-            TypeError: If append_only is True.
+            MutationPolicyError: If append_only is True.
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)
@@ -819,7 +822,7 @@ class FileDirDict(PersiDict[ValueType]):
         try:
             return self._with_retry(os.path.getmtime, filename)
         except FileNotFoundError as exc:
-            raise KeyError(f"File {filename} does not exist") from exc
+            raise KeyError(key) from exc
 
     @staticmethod
     def _etag_from_stat(stat_result: os.stat_result) -> ETagValue:
@@ -850,7 +853,7 @@ class FileDirDict(PersiDict[ValueType]):
         try:
             stat_result = self._with_retry(os.stat, filename)
         except FileNotFoundError as exc:
-            raise KeyError(f"File {filename} does not exist") from exc
+            raise KeyError(key) from exc
         return self._etag_from_stat(stat_result)
 
 

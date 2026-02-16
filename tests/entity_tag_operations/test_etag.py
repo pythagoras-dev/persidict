@@ -61,8 +61,7 @@ def test_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
     """Verify etag() raises an error for nonexistent keys."""
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    # Different backends may raise different errors (KeyError, FileNotFoundError)
-    with pytest.raises((KeyError, FileNotFoundError)):
+    with pytest.raises(KeyError):
         d.etag("nonexistent")
 
 

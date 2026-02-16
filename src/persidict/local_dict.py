@@ -15,6 +15,7 @@ from typing import Any, Iterable, NamedTuple
 from mixinforge import sort_dict_by_keys
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
+from .exceptions import MutationPolicyError
 from .safe_str_tuple import SafeStrTuple, NonEmptySafeStrTuple
 from .jokers_and_status_flags import EXECUTION_IS_COMPLETE, ETagValue, Joker
 
@@ -357,10 +358,10 @@ class LocalDict(PersiDict[ValueType]):
         parent_node, leaf = self._navigate_to_parent(
             key, create_if_missing=False)
         if parent_node is None:
-            raise KeyError(f"Key {key} not found")
+            raise KeyError(key)
         bucket = parent_node.values.get(self.serialization_format, {})
         if leaf not in bucket:
-            raise KeyError(f"Key {key} not found")
+            raise KeyError(key)
         return bucket, leaf
 
     def __contains__(self, key: NonEmptyPersiDictKey) -> bool:
@@ -425,8 +426,8 @@ class LocalDict(PersiDict[ValueType]):
             value: Value to store, or a joker.
 
         Raises:
-            KeyError: If attempting to modify an existing item when
-                append_only is True.
+            MutationPolicyError: If attempting to modify an existing item
+                when append_only is True.
             TypeError: If value is a PersiDict or does not match
                 base_class_for_values when it is set.
         """
@@ -438,7 +439,7 @@ class LocalDict(PersiDict[ValueType]):
         bucket = parent_node.get_values_bucket(self.serialization_format)
 
         if self.append_only and leaf in bucket:
-            raise KeyError("Can't modify an immutable key-value pair")
+            raise MutationPolicyError("append-only")
 
         self._backend._write_counter[0] += 1
         bucket[leaf] = _StoredEntry(
@@ -462,7 +463,7 @@ class LocalDict(PersiDict[ValueType]):
             key: Key (string/sequence or SafeStrTuple).
 
         Raises:
-            TypeError: If append_only is True.
+            MutationPolicyError: If append_only is True.
             KeyError: If the key does not exist.
         """
         key = NonEmptySafeStrTuple(key)

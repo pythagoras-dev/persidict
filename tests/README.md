@@ -38,6 +38,7 @@ feature-oriented so it is quick to scan.
   - tests/core_behavior/test_pop_no_redundant_read.py
   - tests/core_behavior/test_popitem.py
   - tests/core_behavior/test_get_value_and_etag_base.py
+  - tests/core_behavior/test_exception_contracts.py
 
 - Key handling and safe tuples:
   - tests/key_handling/test_safe_chars.py

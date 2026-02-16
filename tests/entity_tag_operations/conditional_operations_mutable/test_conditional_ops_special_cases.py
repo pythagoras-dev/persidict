@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from persidict import MutationPolicyError
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.empty_dict import EmptyDict
 from persidict.file_dir_dict import FileDirDict
@@ -70,7 +71,7 @@ def test_append_only_set_item_if_etag_different_mismatch_raises(append_only_env)
     main, cache, wrapper = append_only_env
     wrapper["k"] = "v1"
 
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         wrapper.set_item_if("k", value="v2", condition=ETAG_HAS_CHANGED, expected_etag="bogus")
 
 
@@ -95,7 +96,7 @@ def test_append_only_set_item_if_etag_different_keep_current_mismatch_noop(appen
 def test_append_only_delete_and_discard_not_supported(append_only_env, method_name, kwargs):
     main, cache, wrapper = append_only_env
     method = getattr(wrapper, method_name)
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         method("k", **kwargs)
 
 
@@ -104,9 +105,9 @@ def test_file_dir_append_only_conditional_set_raises(tmp_path):
     d["k"] = "v1"
     etag = d.etag("k")
 
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         d.set_item_if("k", value="v2", condition=ETAG_IS_THE_SAME, expected_etag=etag)
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         d.set_item_if("k", value="v2", condition=ETAG_HAS_CHANGED, expected_etag="bogus")
 
 
@@ -114,9 +115,9 @@ def test_write_once_conditional_ops_not_supported(tmp_path):
     wrapped = LocalDict(append_only=True, serialization_format="json")
     d = WriteOnceDict(wrapped_dict=wrapped, p_consistency_checks=0.0)
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(MutationPolicyError):
         d.set_item_if("k", value="v", condition=ETAG_IS_THE_SAME, expected_etag="e")
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(MutationPolicyError):
         d.set_item_if("k", value="v", condition=ETAG_HAS_CHANGED, expected_etag="e")
 
     d["k"] = "v1"

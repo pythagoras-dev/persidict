@@ -28,6 +28,7 @@ from .jokers_and_status_flags import (
     NEVER_RETRIEVE,
 )
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, ValueType
+from .exceptions import MutationPolicyError
 from .safe_str_tuple import NonEmptySafeStrTuple
 from .file_dir_dict import FileDirDict
 import random
@@ -73,7 +74,7 @@ class WriteOnceDict(PersiDict[ValueType]):
     without paying the full cost of always comparing values.
 
     **API limitation:** ``set_item_if`` is not supported and raises
-    ``NotImplementedError``. Conditional overwrites contradict write-once
+    ``MutationPolicyError``. Conditional overwrites contradict write-once
     semantics. Insert-if-absent is available via ``setdefault_if`` on the
     wrapped dict (and is used internally by ``__setitem__``).
 
@@ -219,16 +220,16 @@ class WriteOnceDict(PersiDict[ValueType]):
         ``setdefault_if`` on the wrapped dict for conditional inserts.
 
         Raises:
-            NotImplementedError: Always raised.
+            MutationPolicyError: Always raised.
         """
-        raise NotImplementedError("Operation not supported on WriteOnceDict.")
+        raise MutationPolicyError("write-once")
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
         """Set a value for a key, preserving the first assignment.
 
         Handles joker commands (KEEP_CURRENT, DELETE_CURRENT) before
         attempting the write. KEEP_CURRENT is a no-op; DELETE_CURRENT
-        raises KeyError because WriteOnceDict is always append-only.
+        raises MutationPolicyError because WriteOnceDict is always append-only.
 
         For regular values, uses ``setdefault_if`` on the wrapped dict
         for insert-if-absent semantics. Atomicity of the insert depends
@@ -241,9 +242,9 @@ class WriteOnceDict(PersiDict[ValueType]):
             value: Value to store, or a joker command.
 
         Raises:
-            KeyError: If value is DELETE_CURRENT (append-only).
-            ValueError: If a consistency check is triggered and the new
-                value differs from the original value for the key.
+            MutationPolicyError: If value is DELETE_CURRENT (append-only
+                policy) or if a consistency check finds a mismatch between
+                the new value and the stored value.
         """
         key = NonEmptySafeStrTuple(key)
         if self._process_setitem_args(key, value) is EXECUTION_IS_COMPLETE:
@@ -275,7 +276,7 @@ class WriteOnceDict(PersiDict[ValueType]):
 
         Called when a consistency check has already been selected to run
         (the random gating is handled by the caller). Compares the MD5
-        signatures of both values and raises ValueError on mismatch.
+        signatures of both values and raises MutationPolicyError on mismatch.
 
         Args:
             key: The key that already exists.
@@ -283,18 +284,14 @@ class WriteOnceDict(PersiDict[ValueType]):
             stored_value: The value already retrieved from the backend.
 
         Raises:
-            ValueError: If the values differ.
+            MutationPolicyError: If the values differ.
         """
         self._consistency_checks_attempted += 1
         signature_old = _get_md5_signature(stored_value)
         signature_new = _get_md5_signature(new_value)
         if signature_old != signature_new:
             diff_dict = DeepDiff(stored_value, new_value)
-            raise ValueError(
-                f"Key {key} is already set "
-                + f"to {stored_value} "
-                + f"and the new value {new_value} is different, "
-                + f"which is not allowed. Details here: {diff_dict} ")
+            raise MutationPolicyError("write-once")
         self._consistency_checks_passed += 1
 
     def __contains__(self, key:NonEmptyPersiDictKey) -> bool:
@@ -352,11 +349,9 @@ class WriteOnceDict(PersiDict[ValueType]):
         """Deletion is not supported for write-once dictionaries.
 
         Raises:
-            TypeError: Always raised to indicate immutable items.
+            MutationPolicyError: Always raised to indicate immutable items.
         """
-        raise TypeError(
-            f"{self.__class__.__name__} has immutable items "
-            "and does not support deletion.")
+        raise MutationPolicyError("write-once")
 
 
     def get_subdict(self, prefix_key: NonEmptyPersiDictKey) -> 'WriteOnceDict[ValueType]':

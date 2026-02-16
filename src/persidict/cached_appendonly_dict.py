@@ -25,6 +25,7 @@ from typing import Any
 from mixinforge import sort_dict_by_keys
 
 from .persi_dict import PersiDict, NonEmptyPersiDictKey, PersiDictKey, ValueType
+from .exceptions import MutationPolicyError
 from .safe_str_tuple import NonEmptySafeStrTuple, SafeStrTuple
 from .jokers_and_status_flags import (EXECUTION_IS_COMPLETE,
                                       Joker,
@@ -254,7 +255,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             value: The value to store, or a joker (KEEP_CURRENT/DELETE_CURRENT).
 
         Raises:
-            KeyError: If attempting to modify an existing item (append-only).
+            MutationPolicyError: If attempting to modify an existing item (append-only).
             TypeError: If the value fails base_class_for_values validation.
         """
         key = NonEmptySafeStrTuple(key)
@@ -268,7 +269,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             retrieve_value=NEVER_RETRIEVE,
         )
         if not result.value_was_mutated:
-            raise KeyError("Can't modify an immutable key-value pair")
+            raise MutationPolicyError("append-only")
 
     def set_item_if(
             self,
@@ -319,7 +320,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult[ValueType]:
         """Deletion is not supported for append-only dictionaries."""
-        raise TypeError("append-only dicts do not support deletion")
+        raise MutationPolicyError("append-only")
 
     def transform_item(
             self,
@@ -329,15 +330,16 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             n_retries: int | None = 6
     ) -> OperationResult[ValueType]:
         """Not supported for append-only dictionaries."""
-        raise NotImplementedError("append-only dicts do not support transform_item")
+        raise MutationPolicyError("append-only")
 
     def __delitem__(self, key: NonEmptyPersiDictKey):
         """Deletion is not supported for append-only dictionaries.
 
         Raises:
-            TypeError: Always raised to indicate append-only restriction.
+            MutationPolicyError: Always raised to indicate append-only
+                restriction.
         """
-        raise TypeError("append-only dicts do not support deletion")
+        raise MutationPolicyError("append-only")
 
     def get_subdict(self, prefix_key: PersiDictKey) -> 'AppendOnlyDictCached[ValueType]':
         """Get a sub-dictionary for the given key prefix.

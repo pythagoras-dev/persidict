@@ -48,7 +48,8 @@ from ._version_info import __version__
 
 from .safe_chars import *
 from .safe_str_tuple import *
-from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey, TransformConflictError
+from .persi_dict import PersiDict, PersiDictKey, NonEmptyPersiDictKey
+from .exceptions import MutationPolicyError, ConcurrencyConflictError, BackendError
 from .file_dir_dict import FileDirDict
 from .s3_dict_file_dir_cached import S3Dict_FileDirCached, S3Dict
 from .basic_s3_dict import BasicS3Dict
@@ -79,7 +80,9 @@ __all__ = [
     'PersiDict',
     'PersiDictKey',
     'NonEmptyPersiDictKey',
-    'TransformConflictError',
+    'MutationPolicyError',
+    'ConcurrencyConflictError',
+    'BackendError',
     'FileDirDict',
     'S3Dict',
     'S3Dict_FileDirCached',

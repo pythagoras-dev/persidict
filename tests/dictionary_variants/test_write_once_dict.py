@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from persidict import FileDirDict, KEEP_CURRENT, DELETE_CURRENT, WriteOnceDict
+from persidict import FileDirDict, KEEP_CURRENT, DELETE_CURRENT, MutationPolicyError, WriteOnceDict
 
 import pytest
 
@@ -40,12 +40,12 @@ def test_first_entry_dict_pchecks_one(tmpdir):
         value = i*i*i
         fed[key] = value
         assert fed[key] == value
-        with pytest.raises(ValueError):
+        with pytest.raises(MutationPolicyError):
             fed[key] = 3
         assert fed[key] == value
         fed[key] = value
         assert fed[key] == value
-        with pytest.raises(ValueError):
+        with pytest.raises(MutationPolicyError):
             fed[key] = -i
         assert len(fed) == i
 
@@ -115,7 +115,7 @@ def test_write_once_dict_delete_raises_type_error(tmp_path):
     )
     d["k"] = "value"
 
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         del d["k"]
 
 
@@ -274,14 +274,14 @@ def test_write_once_dict_keep_current_noop_on_missing_key(tmp_path):
 
 
 def test_write_once_dict_delete_current_raises(tmp_path):
-    """DELETE_CURRENT raises KeyError because WriteOnceDict is append-only."""
+    """DELETE_CURRENT raises MutationPolicyError because WriteOnceDict is append-only."""
     d = WriteOnceDict(
         wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
         p_consistency_checks=0,
     )
     d["k"] = "value"
 
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         d["k"] = DELETE_CURRENT
 
     assert d["k"] == "value"

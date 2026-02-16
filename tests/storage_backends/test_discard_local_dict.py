@@ -1,6 +1,6 @@
 import pytest
 
-from persidict import LocalDict
+from persidict import LocalDict, MutationPolicyError
 
 pytestmark = pytest.mark.smoke
 
@@ -25,5 +25,5 @@ def test_discard_immutable_raises():
     ld = LocalDict(append_only=True)
     k = ("root", "leaf")
     ld[k] = 5
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         ld.discard(k)

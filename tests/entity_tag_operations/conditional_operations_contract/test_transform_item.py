@@ -8,7 +8,7 @@ import pytest
 from moto import mock_aws
 
 import persidict.persi_dict as persi_dict
-from persidict import LocalDict, TransformConflictError
+from persidict import LocalDict, ConcurrencyConflictError
 from persidict.jokers_and_status_flags import (
     ITEM_NOT_AVAILABLE,
     KEEP_CURRENT, DELETE_CURRENT,
@@ -146,7 +146,7 @@ def test_transform_keep_current_does_not_change_etag(tmpdir, DictToTest, kwargs)
 
 
 def test_transform_conflict_retries_then_raises(monkeypatch):
-    """Conflicts past n_retries raise TransformConflictError."""
+    """Conflicts past n_retries raise ConcurrencyConflictError."""
     d = LocalDict(serialization_format="pkl")
     d["key"] = "value"
 
@@ -168,7 +168,7 @@ def test_transform_conflict_retries_then_raises(monkeypatch):
         calls.append(value)
         return "new"
 
-    with pytest.raises(TransformConflictError) as excinfo:
+    with pytest.raises(ConcurrencyConflictError) as excinfo:
         d.transform_item("key", transformer=transformer, n_retries=1)
 
     assert excinfo.value.attempts == 2

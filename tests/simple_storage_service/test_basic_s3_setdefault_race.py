@@ -10,7 +10,7 @@ from unittest.mock import patch
 from botocore.exceptions import ClientError
 from moto import mock_aws
 
-from persidict import BasicS3Dict
+from persidict import BasicS3Dict, ConcurrencyConflictError
 from persidict.basic_s3_dict import _MAX_SETDEFAULT_RETRIES
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME,
@@ -79,7 +79,7 @@ def test_setdefault_exhausts_retries_raises_runtime_error():
         raise _make_conditional_client_error()
 
     with patch.object(d.s3_client, "put_object", side_effect=always_conflict):
-        with pytest.raises(RuntimeError, match="retries"):
+        with pytest.raises(ConcurrencyConflictError):
             d.setdefault("k", "val")
 
 

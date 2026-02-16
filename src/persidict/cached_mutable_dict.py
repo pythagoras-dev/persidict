@@ -270,7 +270,7 @@ class MutableDictCached(PersiDict[ValueType]):
             res = self.get_item_if(
                 key, condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
             if res.new_value is ITEM_NOT_AVAILABLE:
-                raise KeyError(f"Key {key} not found")
+                raise KeyError(key)
             return res.new_value
 
         res = self.get_item_if(
@@ -278,7 +278,7 @@ class MutableDictCached(PersiDict[ValueType]):
             retrieve_value=IF_ETAG_CHANGED)
 
         if res.new_value is ITEM_NOT_AVAILABLE:
-            raise KeyError(f"Key {key} not found")
+            raise KeyError(key)
 
         if res.new_value is VALUE_NOT_RETRIEVED:
             # Etag hasn't changed, return from data cache
@@ -289,7 +289,7 @@ class MutableDictCached(PersiDict[ValueType]):
                 res2 = self.get_item_if(
                     key, condition=ETAG_HAS_CHANGED, expected_etag=ITEM_NOT_AVAILABLE)
                 if res2.new_value is ITEM_NOT_AVAILABLE:
-                    raise KeyError(f"Key {key} not found")
+                    raise KeyError(key)
                 return res2.new_value
 
         return res.new_value

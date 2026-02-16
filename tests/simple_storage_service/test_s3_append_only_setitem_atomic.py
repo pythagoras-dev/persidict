@@ -10,7 +10,7 @@ conditional PUT (IfNoneMatch: *) for atomic insert-if-absent.
 from moto import mock_aws
 import pytest
 
-from persidict import BasicS3Dict
+from persidict import BasicS3Dict, MutationPolicyError
 
 
 @mock_aws
@@ -62,7 +62,7 @@ def test_append_only_setitem_skips_contains_on_duplicate():
 
     type(d).__contains__ = counting_contains
     try:
-        with pytest.raises(KeyError):
+        with pytest.raises(MutationPolicyError):
             d["k"] = "replacement"
     finally:
         type(d).__contains__ = original_contains

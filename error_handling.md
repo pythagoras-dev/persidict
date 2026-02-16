@@ -37,7 +37,7 @@ Some methods absorb conditions that would otherwise be errors: `discard()` retur
 
 ## Translating backend exceptions
 
-- **Translate "not found" to `KeyError(key)`**, always with exception chaining.
+- **Translate "not found" to `KeyError(key)`**, always with exception chaining. Backends must translate all not-found signals (including `FileNotFoundError`, S3 404) into `KeyError(key)` at the backend boundary. Code above the backend layer catches only `KeyError`, never `FileNotFoundError`.
 - **Wrap other infrastructure failures in `BackendError`**, always with exception chaining. No ad-hoc `RuntimeError`.
 - **Only catch exceptions you can classify.** Translate known error codes (404 → `KeyError`, 412 → condition-not-met, known infra failures → `BackendError`). Re-raise anything unrecognized with bare `raise`.
 - **Never catch or wrap** `KeyboardInterrupt`, `SystemExit`, `GeneratorExit`.

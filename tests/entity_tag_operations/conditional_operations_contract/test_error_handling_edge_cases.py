@@ -27,7 +27,7 @@ def test_etag_missing_key_raises_error(tmpdir, DictToTest, kwargs):
     """Verify etag() raises error for missing keys."""
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
 
-    with pytest.raises((KeyError, FileNotFoundError)):
+    with pytest.raises(KeyError):
         d.etag("nonexistent")
 
 

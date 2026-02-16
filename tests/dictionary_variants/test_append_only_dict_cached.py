@@ -1,5 +1,6 @@
 import pytest
 
+from persidict import MutationPolicyError
 from persidict.cached_appendonly_dict import AppendOnlyDictCached
 from persidict.file_dir_dict import FileDirDict
 from persidict.jokers_and_status_flags import (
@@ -138,7 +139,7 @@ def test_constructor_validation_errors(tmp_path):
 def test_deletion_not_supported(append_only_env):
     main, cache, wrapper = append_only_env
     wrapper["a"] = 1
-    with pytest.raises(TypeError):
+    with pytest.raises(MutationPolicyError):
         del wrapper["a"]
 
 
@@ -146,7 +147,7 @@ def test_attempt_to_modify_existing_key_raises(append_only_env):
     main, cache, wrapper = append_only_env
 
     wrapper[("k1",)] = "v1"
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         wrapper[("k1",)] = "v2"  # append-only
 
 
@@ -155,7 +156,7 @@ def test_failed_overwrite_preserves_cache(append_only_env):
     main, cache, wrapper = append_only_env
 
     wrapper[("k",)] = "original"
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         wrapper[("k",)] = "replacement"
 
     assert main[("k",)] == "original"
@@ -197,8 +198,8 @@ def test_cache_miss_propagates_keyerror_from_main(append_only_env):
     key = ("absent",)
     if key in cache:
         # Unlikely, but clean up cache to ensure a cache miss path
-        with pytest.raises(KeyError):
-            del cache[key]  # FileDirDict will raise on immutable; just ignore
+        with pytest.raises(MutationPolicyError):
+            del cache[key]  # FileDirDict will raise on append-only; just ignore
     with pytest.raises(KeyError):
         _ = wrapper[key]
 

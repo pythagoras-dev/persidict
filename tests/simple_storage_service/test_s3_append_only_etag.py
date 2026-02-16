@@ -1,7 +1,7 @@
 from moto import mock_aws
 import pytest
 
-from persidict import BasicS3Dict, S3Dict_FileDirCached
+from persidict import BasicS3Dict, MutationPolicyError, S3Dict_FileDirCached
 from persidict.jokers_and_status_flags import (
     ETAG_IS_THE_SAME,
     ITEM_NOT_AVAILABLE,
@@ -70,7 +70,7 @@ def test_s3_append_only_overwrite_with_matching_etag_blocked():
     d["k"] = "v1"
     etag = d.etag("k")
 
-    with pytest.raises(KeyError):
+    with pytest.raises(MutationPolicyError):
         d.set_item_if("k", value="v2", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert d["k"] == "v1"
