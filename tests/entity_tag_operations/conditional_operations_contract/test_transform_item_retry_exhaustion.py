@@ -26,7 +26,6 @@ def test_transform_raises_after_n_retries_exhausted(monkeypatch):
                                     retrieve_value=IF_ETAG_CHANGED):
         return ConditionalOperationResult(
             condition_was_satisfied=False,
-            requested_condition=condition,
             actual_etag=expected_etag,
             resulting_etag=expected_etag,
             new_value=VALUE_NOT_RETRIEVED,
@@ -56,7 +55,6 @@ def test_transform_zero_retries_raises_after_one_attempt(monkeypatch):
                                     retrieve_value=IF_ETAG_CHANGED):
         return ConditionalOperationResult(
             condition_was_satisfied=False,
-            requested_condition=condition,
             actual_etag=expected_etag,
             resulting_etag=expected_etag,
             new_value=VALUE_NOT_RETRIEVED,
@@ -91,7 +89,6 @@ def test_transform_succeeds_when_conflict_resolves_before_exhaustion(monkeypatch
         if attempt[0] <= 2:
             return ConditionalOperationResult(
                 condition_was_satisfied=False,
-                requested_condition=condition,
                 actual_etag=expected_etag,
                 resulting_etag=expected_etag,
                 new_value=VALUE_NOT_RETRIEVED,

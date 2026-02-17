@@ -5,7 +5,7 @@ import pytest
 from moto import mock_aws
 
 from persidict.jokers_and_status_flags import (
-    ANY_ETAG, ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME,
+    ITEM_NOT_AVAILABLE, ETAG_IS_THE_SAME,
     ConditionalOperationResult,
 )
 
@@ -51,7 +51,6 @@ def test_get_with_etag_condition_fields(tmpdir, DictToTest, kwargs):
     result = d.get_with_etag("k")
 
     assert result.condition_was_satisfied is True
-    assert result.requested_condition is ANY_ETAG
 
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)

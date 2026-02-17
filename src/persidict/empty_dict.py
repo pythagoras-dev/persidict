@@ -57,7 +57,7 @@ class EmptyDict(PersiDict[ValueType]):
         """Evaluate a conditional operation against an always-absent key."""
         satisfied = self._check_condition(
             condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return self._result_item_not_available(condition, satisfied)
+        return self._result_item_not_available(satisfied)
 
     def get_item_if(
             self,

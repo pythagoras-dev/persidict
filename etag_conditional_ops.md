@@ -212,7 +212,6 @@ Returned by `get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`.
 | Field | Type | Description |
 |---|---|---|
 | `condition_was_satisfied` | `bool` | Did the ETag check pass? |
-| `requested_condition` | `ETagConditionFlag` | Which condition was requested |
 | `actual_etag` | `ETagValue \| ITEM_NOT_AVAILABLE` | ETag at check time |
 | `resulting_etag` | `ETagValue \| ITEM_NOT_AVAILABLE` | ETag after the operation |
 | `new_value` | `Value \| ITEM_NOT_AVAILABLE \| VALUE_NOT_RETRIEVED` | Value after the operation |

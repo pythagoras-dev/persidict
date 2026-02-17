@@ -19,7 +19,6 @@ def test_value_was_mutated_true_when_etags_differ():
     """Property is True when resulting_etag differs from actual_etag."""
     r = ConditionalOperationResult(
         condition_was_satisfied=True,
-        requested_condition=ETAG_IS_THE_SAME,
         actual_etag="etag_v1",
         resulting_etag="etag_v2",
         new_value="hello",
@@ -31,7 +30,6 @@ def test_value_was_mutated_false_when_etags_equal():
     """Property is False when resulting_etag equals actual_etag."""
     r = ConditionalOperationResult(
         condition_was_satisfied=True,
-        requested_condition=ETAG_IS_THE_SAME,
         actual_etag="etag_v1",
         resulting_etag="etag_v1",
         new_value="hello",
@@ -43,7 +41,6 @@ def test_value_was_mutated_true_for_new_key():
     """Property is True when actual_etag is ITEM_NOT_AVAILABLE (new key created)."""
     r = ConditionalOperationResult(
         condition_was_satisfied=True,
-        requested_condition=ETAG_IS_THE_SAME,
         actual_etag=ITEM_NOT_AVAILABLE,
         resulting_etag="etag_v1",
         new_value="hello",
@@ -55,7 +52,6 @@ def test_value_was_mutated_true_for_deletion():
     """Property is True when resulting_etag is ITEM_NOT_AVAILABLE (key deleted)."""
     r = ConditionalOperationResult(
         condition_was_satisfied=True,
-        requested_condition=ETAG_IS_THE_SAME,
         actual_etag="etag_v1",
         resulting_etag=ITEM_NOT_AVAILABLE,
         new_value=ITEM_NOT_AVAILABLE,
@@ -67,7 +63,6 @@ def test_value_was_mutated_false_for_missing_key():
     """Property is False when both etags are ITEM_NOT_AVAILABLE (key was and remains absent)."""
     r = ConditionalOperationResult(
         condition_was_satisfied=False,
-        requested_condition=ETAG_IS_THE_SAME,
         actual_etag=ITEM_NOT_AVAILABLE,
         resulting_etag=ITEM_NOT_AVAILABLE,
         new_value=ITEM_NOT_AVAILABLE,

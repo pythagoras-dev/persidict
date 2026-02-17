@@ -311,20 +311,17 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
     @staticmethod
     def _result_item_not_available(
-            condition: ETagConditionFlag,
             satisfied: bool
     ) -> ConditionalOperationResult[ValueType]:
         """Build result when the key is absent."""
         return ConditionalOperationResult(
             condition_was_satisfied=satisfied,
-            requested_condition=condition,
             actual_etag=ITEM_NOT_AVAILABLE,
             resulting_etag=ITEM_NOT_AVAILABLE,
             new_value=ITEM_NOT_AVAILABLE)
 
     @staticmethod
     def _result_unchanged(
-            condition: ETagConditionFlag,
             satisfied: bool,
             actual_etag: ETagIfExists,
             new_value: Any
@@ -332,14 +329,12 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Build result when no mutation occurred (resulting_etag == actual_etag)."""
         return ConditionalOperationResult(
             condition_was_satisfied=satisfied,
-            requested_condition=condition,
             actual_etag=actual_etag,
             resulting_etag=actual_etag,
             new_value=new_value)
 
     @staticmethod
     def _result_write_success(
-            condition: ETagConditionFlag,
             actual_etag: ETagIfExists,
             resulting_etag: ETagValue,
             new_value: Any
@@ -347,20 +342,17 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         """Build result for a successful write."""
         return ConditionalOperationResult(
             condition_was_satisfied=True,
-            requested_condition=condition,
             actual_etag=actual_etag,
             resulting_etag=resulting_etag,
             new_value=new_value)
 
     @staticmethod
     def _result_delete_success(
-            condition: ETagConditionFlag,
             actual_etag: ETagIfExists
     ) -> ConditionalOperationResult[ValueType]:
         """Build result for a successful delete."""
         return ConditionalOperationResult(
             condition_was_satisfied=True,
-            requested_condition=condition,
             actual_etag=actual_etag,
             resulting_etag=ITEM_NOT_AVAILABLE,
             new_value=ITEM_NOT_AVAILABLE)
@@ -377,8 +369,8 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         round-trip.
 
         The result uses the same ConditionalOperationResult type as the
-        conditional _if methods, with condition_was_satisfied always True
-        and requested_condition set to ANY_ETAG. When the key is absent,
+        conditional _if methods, with condition_was_satisfied always True.
+        When the key is absent,
         new_value and actual_etag are both ITEM_NOT_AVAILABLE.
 
         Args:
@@ -431,29 +423,29 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             except KeyError:
                 satisfied = self._check_condition(
                     condition, expected_etag, ITEM_NOT_AVAILABLE)
-                return self._result_item_not_available(condition, satisfied)
+                return self._result_item_not_available(satisfied)
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
-            return self._result_unchanged(condition, satisfied, actual_etag, value)
+            return self._result_unchanged(satisfied, actual_etag, value)
 
         actual_etag = self._actual_etag(key)
         if actual_etag is ITEM_NOT_AVAILABLE:
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
-            return self._result_item_not_available(condition, satisfied)
+            return self._result_item_not_available(satisfied)
 
         if retrieve_value is NEVER_RETRIEVE or expected_etag == actual_etag:
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
             return self._result_unchanged(
-                condition, satisfied, actual_etag, VALUE_NOT_RETRIEVED)
+                satisfied, actual_etag, VALUE_NOT_RETRIEVED)
 
         try:
             value, actual_etag = self._get_value_and_etag(key)
         except KeyError:
             satisfied = self._check_condition(
                 condition, expected_etag, ITEM_NOT_AVAILABLE)
-            return self._result_item_not_available(condition, satisfied)
+            return self._result_item_not_available(satisfied)
 
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
-        return self._result_unchanged(condition, satisfied, actual_etag, value)
+        return self._result_unchanged(satisfied, actual_etag, value)
 
     def set_item_if(
             self,
@@ -495,7 +487,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(False)
             if retrieve_value is NEVER_RETRIEVE or (
                     retrieve_value is IF_ETAG_CHANGED
                     and expected_etag == actual_etag):
@@ -504,22 +496,22 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 try:
                     existing_value, actual_etag = self._get_value_and_etag(key)
                 except KeyError:
-                    return self._result_item_not_available(condition, False)
-            return self._result_unchanged(condition, False, actual_etag, existing_value)
+                    return self._result_item_not_available(False)
+            return self._result_unchanged(False, actual_etag, existing_value)
 
         if value is KEEP_CURRENT:
             return self._result_unchanged(
-                condition, True, actual_etag, VALUE_NOT_RETRIEVED)
+                True, actual_etag, VALUE_NOT_RETRIEVED)
 
         if value is DELETE_CURRENT:
             if not self.discard(key):
-                return self._result_item_not_available(condition, satisfied)
-            return self._result_delete_success(condition, actual_etag)
+                return self._result_item_not_available(satisfied)
+            return self._result_delete_success(actual_etag)
 
         self[key] = value
         resulting_etag = self._actual_etag(key)
         return self._result_write_success(
-            condition, actual_etag, resulting_etag, value)
+            actual_etag, resulting_etag, value)
 
     def setdefault_if(
             self,
@@ -568,9 +560,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 self[key] = default_value
                 resulting_etag = self._actual_etag(key)
                 return self._result_write_success(
-                    condition, ITEM_NOT_AVAILABLE, resulting_etag, default_value)
+                    ITEM_NOT_AVAILABLE, resulting_etag, default_value)
             else:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(False)
 
         if retrieve_value is NEVER_RETRIEVE or (
                 retrieve_value is IF_ETAG_CHANGED
@@ -579,7 +571,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         else:
             existing_value = self[key]
         return self._result_unchanged(
-            condition, satisfied, actual_etag, existing_value)
+            satisfied, actual_etag, existing_value)
 
     def discard_item_if(
             self,
@@ -612,18 +604,18 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if actual_etag is ITEM_NOT_AVAILABLE:
-            return self._result_item_not_available(condition, satisfied)
+            return self._result_item_not_available(satisfied)
 
         if satisfied:
             self._check_delete_policy()
             try:
                 self._remove_item(key)
             except KeyError:
-                return self._result_item_not_available(condition, False)
-            return self._result_delete_success(condition, actual_etag)
+                return self._result_item_not_available(False)
+            return self._result_delete_success(actual_etag)
 
         return self._result_unchanged(
-            condition, False, actual_etag, VALUE_NOT_RETRIEVED)
+            False, actual_etag, VALUE_NOT_RETRIEVED)
 
     def transform_item(
             self,

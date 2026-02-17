@@ -335,13 +335,13 @@ class BasicS3Dict(PersiDict[ValueType]):
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult[ValueType]:
         """Build a ConditionalOperationResult for a missing key."""
-        satisfied = self._check_condition(condition, expected_etag, ITEM_NOT_AVAILABLE)
-        return self._result_item_not_available(condition, satisfied)
+        satisfied = self._check_condition(
+            condition, expected_etag, ITEM_NOT_AVAILABLE)
+        return self._result_item_not_available(satisfied)
 
     def _conditional_failure_result(
             self,
             key: NonEmptySafeStrTuple,
-            condition: ETagConditionFlag,
             *,
             expected_etag: ETagIfExists = ITEM_NOT_AVAILABLE,
             retrieve_value: RetrieveValueFlag = IF_ETAG_CHANGED,
@@ -351,31 +351,31 @@ class BasicS3Dict(PersiDict[ValueType]):
         if not return_existing_value or retrieve_value is NEVER_RETRIEVE:
             new_actual = self._actual_etag(key)
             if new_actual is ITEM_NOT_AVAILABLE:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(False)
             return self._result_unchanged(
-                condition, False, new_actual, VALUE_NOT_RETRIEVED)
+                False, new_actual, VALUE_NOT_RETRIEVED)
 
         if retrieve_value is ALWAYS_RETRIEVE:
             try:
                 new_value, new_actual = self._get_value_and_etag(key)
             except KeyError:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(False)
             return self._result_unchanged(
-                condition, False, new_actual, new_value)
+                False, new_actual, new_value)
 
         # IF_ETAG_CHANGED: fetch only if actual ETag differs from expected
         new_actual = self._actual_etag(key)
         if new_actual is ITEM_NOT_AVAILABLE:
-            return self._result_item_not_available(condition, False)
+            return self._result_item_not_available(False)
         if expected_etag != new_actual:
             try:
                 new_value, new_actual = self._get_value_and_etag(key)
             except KeyError:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(False)
             return self._result_unchanged(
-                condition, False, new_actual, new_value)
+                False, new_actual, new_value)
         return self._result_unchanged(
-            condition, False, new_actual, VALUE_NOT_RETRIEVED)
+            False, new_actual, VALUE_NOT_RETRIEVED)
 
     def get_item_if(
             self,
@@ -416,7 +416,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 return self._result_for_missing_key(condition, expected_etag)
 
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
-            return self._result_unchanged(condition, satisfied, actual_etag, value)
+            return self._result_unchanged(satisfied, actual_etag, value)
 
         if retrieve_value is NEVER_RETRIEVE:
             actual_etag = self._actual_etag(key)
@@ -424,7 +424,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 return self._result_for_missing_key(condition, expected_etag)
             satisfied = self._check_condition(condition, expected_etag, actual_etag)
             return self._result_unchanged(
-                condition, satisfied, actual_etag, VALUE_NOT_RETRIEVED)
+                satisfied, actual_etag, VALUE_NOT_RETRIEVED)
 
         obj_name = self._build_full_objectname(key)
         use_if_none_match = not isinstance(expected_etag, ItemNotAvailableFlag)
@@ -446,12 +446,12 @@ class BasicS3Dict(PersiDict[ValueType]):
                 satisfied = self._check_condition(
                     condition, expected_etag, expected_etag)
                 return self._result_unchanged(
-                    condition, satisfied, expected_etag, VALUE_NOT_RETRIEVED)
+                    satisfied, expected_etag, VALUE_NOT_RETRIEVED)
             raise
 
         self._validate_returned_value(value)
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
-        return self._result_unchanged(condition, satisfied, actual_etag, value)
+        return self._result_unchanged(satisfied, actual_etag, value)
 
     def __getitem__(self, key: NonEmptyPersiDictKey) -> ValueType:
         """Retrieve the value stored for a key directly from S3.
@@ -737,14 +737,14 @@ class BasicS3Dict(PersiDict[ValueType]):
                 key, value,
                 if_match=if_match, if_none_match=if_none_match)
             return self._result_write_success(
-                condition, actual_etag, resulting_etag, value)
+                actual_etag, resulting_etag, value)
         except ClientError as e:
             if not_found_error(e):
                 return self._result_for_missing_key(condition, expected_etag)
             if not conditional_request_failed(e):
                 raise
             return self._conditional_failure_result(
-                key, condition,
+                key,
                 expected_etag=expected_etag,
                 retrieve_value=retrieve_value,
                 return_existing_value=True)
@@ -771,7 +771,7 @@ class BasicS3Dict(PersiDict[ValueType]):
 
         if not satisfied:
             if actual_etag is ITEM_NOT_AVAILABLE:
-                return self._result_item_not_available(condition, False)
+                return self._result_item_not_available(False)
             if retrieve_value is NEVER_RETRIEVE or (
                     retrieve_value is IF_ETAG_CHANGED
                     and expected_etag == actual_etag):
@@ -779,15 +779,15 @@ class BasicS3Dict(PersiDict[ValueType]):
             else:
                 existing_value = self[key]
             return self._result_unchanged(
-                condition, False, actual_etag, existing_value)
+                False, actual_etag, existing_value)
 
         # Handle joker values before attempting S3 write
         if value is KEEP_CURRENT:
             return self._result_unchanged(
-                condition, True, actual_etag, VALUE_NOT_RETRIEVED)
+                True, actual_etag, VALUE_NOT_RETRIEVED)
         if value is DELETE_CURRENT:
             if actual_etag is ITEM_NOT_AVAILABLE:
-                return self._result_item_not_available(condition, satisfied)
+                return self._result_item_not_available(satisfied)
             if not type(self)._conditional_delete_probed:
                 self._probe_conditional_delete()
             if type(self)._conditional_delete_supported:
@@ -797,18 +797,18 @@ class BasicS3Dict(PersiDict[ValueType]):
                         Bucket=self.bucket_name,
                         Key=obj_name,
                         IfMatch=actual_etag)
-                    return self._result_delete_success(condition, actual_etag)
+                    return self._result_delete_success(actual_etag)
                 except ClientError as e:
                     if not_found_error(e) or conditional_request_failed(e):
                         return self._conditional_failure_result(
-                            key, condition,
+                            key,
                             retrieve_value=NEVER_RETRIEVE,
                             return_existing_value=False)
                     raise
             else:
                 if not self.discard(key):
-                    return self._result_item_not_available(condition, satisfied)
-                return self._result_delete_success(condition, actual_etag)
+                    return self._result_item_not_available(satisfied)
+                return self._result_delete_success(actual_etag)
 
         # Attempt conditional write when possible
         if condition in (ETAG_IS_THE_SAME, ETAG_HAS_CHANGED):
@@ -819,11 +819,11 @@ class BasicS3Dict(PersiDict[ValueType]):
                     key, value,
                     if_match=if_match, if_none_match=if_none_match)
                 return self._result_write_success(
-                    condition, actual_etag, resulting_etag, value)
+                    actual_etag, resulting_etag, value)
             except ClientError as e:
                 if conditional_request_failed(e):
                     return self._conditional_failure_result(
-                        key, condition,
+                        key,
                         expected_etag=expected_etag,
                         retrieve_value=retrieve_value,
                         return_existing_value=True)
@@ -832,7 +832,7 @@ class BasicS3Dict(PersiDict[ValueType]):
         # For ANY_ETAG: unconditional write
         resulting_etag = self._put_object_get_etag(key, value)
         return self._result_write_success(
-            condition, actual_etag, resulting_etag, value)
+            actual_etag, resulting_etag, value)
 
     def _probe_conditional_delete(self) -> None:
         """Test whether the S3 backend enforces IfMatch on delete_object.
@@ -953,14 +953,14 @@ class BasicS3Dict(PersiDict[ValueType]):
                 Bucket=self.bucket_name,
                 Key=obj_name,
                 IfMatch=expected_etag)
-            return self._result_delete_success(condition, expected_etag)
+            return self._result_delete_success(expected_etag)
         except ClientError as e:
             if not_found_error(e):
                 return self._result_for_missing_key(condition, expected_etag)
             if not conditional_request_failed(e):
                 raise
             return self._conditional_failure_result(
-                key, condition,
+                key,
                 retrieve_value=NEVER_RETRIEVE,
                 return_existing_value=False)
 
@@ -979,10 +979,10 @@ class BasicS3Dict(PersiDict[ValueType]):
         satisfied = self._check_condition(condition, expected_etag, actual_etag)
 
         if actual_etag is ITEM_NOT_AVAILABLE:
-            return self._result_item_not_available(condition, satisfied)
+            return self._result_item_not_available(satisfied)
         if not satisfied:
             return self._result_unchanged(
-                condition, False, actual_etag, VALUE_NOT_RETRIEVED)
+                False, actual_etag, VALUE_NOT_RETRIEVED)
         if self.append_only:
             raise MutationPolicyError("append-only")
 
@@ -993,11 +993,11 @@ class BasicS3Dict(PersiDict[ValueType]):
                 Bucket=self.bucket_name,
                 Key=obj_name,
                 IfMatch=actual_etag)
-            return self._result_delete_success(condition, actual_etag)
+            return self._result_delete_success(actual_etag)
         except ClientError as e:
             if not_found_error(e) or conditional_request_failed(e):
                 return self._conditional_failure_result(
-                    key, condition,
+                    key,
                     retrieve_value=NEVER_RETRIEVE,
                     return_existing_value=False)
             raise
@@ -1050,24 +1050,24 @@ class BasicS3Dict(PersiDict[ValueType]):
             else:
                 existing_value = self[key]
             return self._result_unchanged(
-                condition, satisfied, actual_etag, existing_value)
+                satisfied, actual_etag, existing_value)
 
         if not satisfied:
-            return self._result_item_not_available(condition, False)
+            return self._result_item_not_available(False)
 
         # Key is absent and condition is satisfied — atomic insert
         try:
             resulting_etag = self._put_object_with_conditions(
                 key, default_value, if_none_match="*")
             return self._result_write_success(
-                condition, ITEM_NOT_AVAILABLE, resulting_etag, default_value)
+                ITEM_NOT_AVAILABLE, resulting_etag, default_value)
         except ClientError as e:
             if conditional_request_failed(e):
                 # Concurrent writer inserted the key between our check
                 # and our put — treat as "key already exists"
                 actual_etag = self._actual_etag(key)
                 if actual_etag is ITEM_NOT_AVAILABLE:
-                    return self._result_item_not_available(condition, satisfied)
+                    return self._result_item_not_available(satisfied)
                 if retrieve_value is NEVER_RETRIEVE:
                     existing_value = VALUE_NOT_RETRIEVED
                 else:
@@ -1080,9 +1080,9 @@ class BasicS3Dict(PersiDict[ValueType]):
                         # Key deleted between etag check and read —
                         # report as absent.
                         return self._result_item_not_available(
-                            condition, satisfied)
+                            satisfied)
                 return self._result_unchanged(
-                    condition, satisfied, actual_etag, existing_value)
+                    satisfied, actual_etag, existing_value)
             raise
 
     def __setitem__(self, key: NonEmptyPersiDictKey, value: ValueType | Joker) -> None:

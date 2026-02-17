@@ -307,7 +307,6 @@ class ConditionalOperationResult(Generic[ValueType]):
 
     Attributes:
         condition_was_satisfied: Whether the ETag condition was met.
-        requested_condition: The condition flag that was requested.
         actual_etag: ETag of the key before the operation, or
             ITEM_NOT_AVAILABLE if the key was absent.
         resulting_etag: ETag after the operation, or ITEM_NOT_AVAILABLE
@@ -317,7 +316,6 @@ class ConditionalOperationResult(Generic[ValueType]):
             (value fetch was skipped).
     """
     condition_was_satisfied: bool
-    requested_condition: ETagConditionFlag
     actual_etag: ETagIfExists
     resulting_etag: ETagIfExists
     new_value: ValueType | ItemNotAvailableFlag | ValueNotRetrievedFlag
