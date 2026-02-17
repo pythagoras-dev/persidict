@@ -23,7 +23,7 @@ Conditional operations are the primary mechanism for avoiding lost updates and d
 - Joker values and full results: `KEEP_CURRENT` and `DELETE_CURRENT` allow no‑op and delete in write paths; results include actual and resulting ETags plus the resulting value.
 - Backend atomicity is explicit: `BasicS3Dict` uses S3 conditional headers for atomicity, while `FileDirDict` uses check‑then‑act to remain compatible with shared folders that do not propagate locks.
 
-For the full contract, see [`etag_conditional_ops_requirements.md`](https://github.com/pythagoras-dev/persidict/blob/master/etag_conditional_ops_requirements.md).
+For the full contract, see [`etag_conditional_ops.md`](https://github.com/pythagoras-dev/persidict/blob/master/etag_conditional_ops.md).
 
 ## 4. Pluggable, cloud‑ready storage backends
 
