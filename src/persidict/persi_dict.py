@@ -272,7 +272,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
     def _get_value_and_etag(
             self, key: NonEmptySafeStrTuple,
-            _max_retries: int = 7,
+            _max_retries: int = 3,
             ) -> tuple[ValueType, ETagValue]:
         """Return the value and ETag for a key.
 
