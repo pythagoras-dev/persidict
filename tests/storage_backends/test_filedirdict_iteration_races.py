@@ -1,10 +1,12 @@
-"""Tests for FileDirDict iteration resilience when keys are deleted mid-iteration.
+"""Tests for FileDirDict iteration resilience under concurrent modification.
 
 Verifies that items()/values() skip entries whose underlying file disappears
-between the directory listing and the file read, rather than crashing.
+between the directory listing and the file read, and that
+items_and_timestamps() returns timestamps consistent with the values read.
 """
 
 import os
+import time
 
 from persidict import FileDirDict
 
@@ -58,3 +60,31 @@ def test_values_skips_key_deleted_during_iteration(tmp_path):
 
     assert len(values) == 1
     assert 2 in values
+
+
+def test_items_and_timestamps_value_timestamp_consistency(tmp_path):
+    """items_and_timestamps() returns timestamps matching the values read.
+
+    Writes a value, overwrites it with a new value after a delay, and
+    verifies that the timestamp returned alongside each value corresponds
+    to the version of the file that was actually read (not a stale or
+    future timestamp from a different version).
+    """
+    d = FileDirDict(base_dir=str(tmp_path), serialization_format="json",
+                    digest_len=0)
+    d["a"] = "first"
+    ts_first = d.timestamp("a")
+
+    # Ensure the second write gets a different mtime
+    time.sleep(0.05)
+    d["a"] = "second"
+    ts_second = d.timestamp("a")
+    assert ts_second > ts_first
+
+    results = list(d.items_and_timestamps())
+    assert len(results) == 1
+    key, value, ts = results[0]
+
+    # The value and timestamp must describe the same file version.
+    assert value == "second"
+    assert ts == ts_second

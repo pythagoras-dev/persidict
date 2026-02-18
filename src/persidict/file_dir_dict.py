@@ -104,6 +104,11 @@ else:
 jsonpickle_numpy.register_handlers()
 jsonpickle_pandas.register_handlers()
 
+
+class _InPlaceModificationError(Exception):
+    """File was modified in-place during read (detected by fstat guard)."""
+
+
 FILEDIRDICT_DEFAULT_BASE_DIR: Final[str] = "__file_dir_dict__"
 
 class FileDirDict(PersiDict[ValueType]):
@@ -436,14 +441,49 @@ class FileDirDict(PersiDict[ValueType]):
                 else:
                     raise
 
-    def _read_from_file_impl(self, file_name:str) -> Any:
-        """Read a value from a single file without retries.
+    def _fstat_deserialize(
+            self, f, file_name: str
+            ) -> tuple[Any, os.stat_result]:
+        """Deserialize from an open file with a double-fstat guard.
+
+        Calls ``os.fstat`` before and after deserialization. If the two
+        stats differ the file was modified in-place during the read, and
+        ``_InPlaceModificationError`` is raised so that the caller (via
+        ``_with_retry``) can retry.
+
+        Args:
+            f: An open file object with a valid ``.fileno()``.
+            file_name: Path used only for the error message.
+
+        Returns:
+            ``(deserialized_value, stat_result)`` where *stat_result*
+            is the ``os.fstat`` taken before the read.
+        """
+        stat_before = os.fstat(f.fileno())
+        value = self._deserialize_from_file(f)
+        stat_after = os.fstat(f.fileno())
+        if self._etag_from_stat(stat_before) != self._etag_from_stat(stat_after):
+            raise _InPlaceModificationError(file_name)
+        return value, stat_before
+
+    def _read_from_file_impl(
+            self, file_name: str
+            ) -> tuple[Any, os.stat_result]:
+        """Read a value and its fstat from a single file without retries.
+
+        Uses ``os.fstat`` on the open file descriptor so the returned
+        stat always describes the exact bytes that were read.
 
         Args:
             file_name: Absolute path to the file to read.
 
         Returns:
-            The deserialized value according to serialization_format.
+            ``(deserialized_value, stat_result)``.
+
+        Raises:
+            FileNotFoundError: If *file_name* does not exist.
+            _InPlaceModificationError: If the double-fstat guard
+                detects that the file was modified during the read.
         """
         file_open_mode = 'rb' if self.serialization_format == "pkl" else 'r'
         file_encoding = None if self.serialization_format == "pkl" else "utf-8"
@@ -473,24 +513,32 @@ class FileDirDict(PersiDict[ValueType]):
                 raise
 
             with f:
-                return self._deserialize_from_file(f)
+                return self._fstat_deserialize(f, file_name)
         else:
             with open(file_name, file_open_mode, encoding=file_encoding) as f:
-                return self._deserialize_from_file(f)
+                return self._fstat_deserialize(f, file_name)
 
 
-    def _read_from_file(self,file_name:str) -> Any:
-        """Read a value from a file with retry/backoff for concurrency.
+    def _read_from_file(
+            self, file_name: str
+            ) -> tuple[Any, os.stat_result]:
+        """Read a value and its fstat from a file, with retry/backoff.
+
+        Retries on transient errors (e.g. ``PermissionError``,
+        ``_InPlaceModificationError``) with exponential backoff.
 
         Args:
             file_name: Absolute path of the file to read.
 
         Returns:
-            The deserialized value according to serialization_format.
+            ``(deserialized_value, stat_result)`` where *stat_result*
+            is the ``os.fstat`` of the open file descriptor.
 
         Raises:
             FileNotFoundError: Immediately if the file does not exist.
-            Exception: Propagates the last exception if all retries fail.
+            _InPlaceModificationError: If the double-fstat guard
+                consistently detects in-place modification after all
+                retries are exhausted.
         """
 
         return self._with_retry(
@@ -612,7 +660,7 @@ class FileDirDict(PersiDict[ValueType]):
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
         try:
-            result = self._read_from_file(filename)
+            result, _stat = self._read_from_file(filename)
         except FileNotFoundError as exc:
             raise KeyError(key) from exc
         self._validate_returned_value(result)
@@ -620,38 +668,29 @@ class FileDirDict(PersiDict[ValueType]):
 
     def _get_value_and_etag(
             self, key: NonEmptySafeStrTuple,
-            _max_retries: int = 3,
             ) -> tuple[ValueType, ETagValue]:
         """Return the value and ETag for a key.
 
-        Uses stat-read-stat to ensure the returned ETag corresponds to the
-        returned value: if the file was modified during the read, the pre-
-        and post-read stats will differ and the operation is retried.
+        Uses ``os.fstat`` on the open file descriptor so the returned
+        ETag is guaranteed to correspond to the exact bytes read.
+
+        Args:
+            key: Normalized dictionary key.
+
+        Returns:
+            The value and its current ETag.
+
+        Raises:
+            KeyError: If the key does not exist.
         """
-        if _max_retries < 1:
-            raise ValueError("_max_retries must be at least 1")
         key = NonEmptySafeStrTuple(key)
         filename = self._build_full_path(key)
-        for _ in range(_max_retries):
-            try:
-                stat_before = self._with_retry(os.stat, filename)
-            except FileNotFoundError as exc:
-                raise KeyError(key) from exc
-            try:
-                result = self._read_from_file(filename)
-            except FileNotFoundError as exc:
-                raise KeyError(key) from exc
-            try:
-                stat_after = self._with_retry(os.stat, filename)
-            except FileNotFoundError as exc:
-                raise KeyError(key) from exc
-            if self._etag_from_stat(stat_before) == self._etag_from_stat(stat_after):
-                self._validate_returned_value(result)
-                return result, self._etag_from_stat(stat_after)
-        # Retries exhausted — file is being continuously modified.
-        # Fall back to the last read with the post-read etag (conservative).
-        self._validate_returned_value(result)
-        return result, self._etag_from_stat(stat_after)
+        try:
+            value, stat_result = self._read_from_file(filename)
+        except FileNotFoundError as exc:
+            raise KeyError(key) from exc
+        self._validate_returned_value(value)
+        return value, self._etag_from_stat(stat_result)
 
 
     def __setitem__(self, key:NonEmptyPersiDictKey, value: ValueType | Joker) -> None:
@@ -776,12 +815,14 @@ class FileDirDict(PersiDict[ValueType]):
                             result_key, self.digest_len)
 
                         value_to_return = None
+                        stat_result = None
                         if "values" in result_type:
                             # The file can be deleted between listing and fetching.
                             # Skip such races instead of raising to make iteration robust.
                             full_path = os.path.join(dir_name, f)
                             try:
-                                value_to_return = self._read_from_file(full_path)
+                                value_to_return, stat_result = (
+                                    self._read_from_file(full_path))
                             except Exception:
                                 if not os.path.isfile(full_path):
                                     continue
@@ -791,8 +832,11 @@ class FileDirDict(PersiDict[ValueType]):
 
                         timestamp_to_return = None
                         if "timestamps" in result_type:
-                            timestamp_to_return = os.path.getmtime(
-                                os.path.join(dir_name, f))
+                            if stat_result is not None:
+                                timestamp_to_return = stat_result.st_mtime
+                            else:
+                                timestamp_to_return = os.path.getmtime(
+                                    os.path.join(dir_name, f))
 
                         yield self._assemble_iter_result(
                             result_type

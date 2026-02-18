@@ -1,13 +1,17 @@
-"""Tests for FileDirDict stat-read-stat etag/value consistency.
+"""Tests for FileDirDict fstat-based etag/value consistency.
 
-Verifies that _get_value_and_etag (exercised via get_item_if) retries
-when the file is modified mid-read, so the returned etag always
-corresponds to the returned value.
+Verifies that _get_value_and_etag (exercised via get_item_if) uses
+os.fstat on the open file descriptor so the returned etag always
+corresponds to the returned value, and that the double-fstat guard
+detects in-place modifications.
 """
 
 import os
 
+import pytest
+
 from persidict import FileDirDict
+from persidict.file_dir_dict import _InPlaceModificationError
 from persidict.jokers_and_status_flags import (
     ALWAYS_RETRIEVE,
     ETAG_IS_THE_SAME,
@@ -44,31 +48,32 @@ def test_consistent_etag_when_file_unchanged(tmp_path):
     assert result.actual_etag == etag
 
 
-def test_retry_on_concurrent_modification(tmp_path, monkeypatch):
-    """Stat-read-stat detects a mid-read change and retries.
+def test_fstat_guard_retries_on_inplace_modification(tmp_path, monkeypatch):
+    """Double-fstat guard detects in-place modification and retries.
 
-    Simulates a file modified between the first stat and the second stat
-    by returning a stale mtime on the very first os.stat call. The retry
-    should converge and return a consistent value/etag pair.
+    Simulates an external process modifying the file in-place by making
+    the second os.fstat call (the post-read check) return a different
+    mtime on the first attempt. The retry via _with_retry should
+    converge and return a consistent value/etag pair.
     """
     d = _make_dict(tmp_path)
     d["k"] = "value"
-    path = d._build_full_path("k")
     etag = d.etag("k")
 
-    real_stat = os.stat
-    call_count = 0
+    real_fstat = os.fstat
+    fstat_calls = 0
 
-    def counting_stat(p, *args, **kwargs):
-        nonlocal call_count
-        result = real_stat(p, *args, **kwargs)
-        if p == path:
-            call_count += 1
-            if call_count == 1:
-                return _fake_stat_result(result, mtime_offset=-1)
+    def counting_fstat(fd):
+        nonlocal fstat_calls
+        result = real_fstat(fd)
+        fstat_calls += 1
+        # On the 2nd fstat call (post-read of first attempt),
+        # return a shifted mtime to simulate in-place modification.
+        if fstat_calls == 2:
+            return _fake_stat_result(result, mtime_offset=1)
         return result
 
-    monkeypatch.setattr(os, "stat", counting_stat)
+    monkeypatch.setattr(os, "fstat", counting_fstat)
 
     result = d.get_item_if(
         "k", condition=ETAG_IS_THE_SAME, expected_etag=etag,
@@ -76,69 +81,44 @@ def test_retry_on_concurrent_modification(tmp_path, monkeypatch):
     )
 
     assert result.new_value == "value"
-    # First attempt: stat_before (stale, count=1) != stat_after (real, count=2)
-    # → retry. Second attempt: stat_before (count=3) == stat_after (count=4).
-    assert call_count == 4
+    assert result.actual_etag == etag
 
 
-def test_fallback_after_retries_exhausted(tmp_path, monkeypatch):
-    """When every retry sees a different stat, falls back to post-read etag.
-
-    Even in the fallback case the method must return a value and a valid
-    etag (not raise).
-    """
+def test_persistent_inplace_modification_raises(tmp_path, monkeypatch):
+    """When fstat always detects in-place modification, retries are
+    exhausted and _InPlaceModificationError propagates."""
     d = _make_dict(tmp_path)
     d["k"] = "data"
-    path = d._build_full_path("k")
 
-    real_stat = os.stat
+    real_fstat = os.fstat
     counter = 0
 
-    def always_changing_stat(p, *args, **kwargs):
+    def always_changing_fstat(fd):
         nonlocal counter
-        result = real_stat(p, *args, **kwargs)
-        if p == path:
-            counter += 1
+        result = real_fstat(fd)
+        counter += 1
+        # Every post-read fstat (even calls) returns a different mtime.
+        if counter % 2 == 0:
             return _fake_stat_result(result, mtime_offset=counter)
         return result
 
-    monkeypatch.setattr(os, "stat", always_changing_stat)
+    monkeypatch.setattr(os, "fstat", always_changing_fstat)
 
-    result = d.get_item_if(
-        "k", condition=ETAG_IS_THE_SAME, expected_etag="will-not-match",
-        retrieve_value=ALWAYS_RETRIEVE,
-    )
-
-    assert result.new_value == "data"
-    assert result.actual_etag is not None
-    # All 3 retries attempted, 2 stat calls each = 6
-    assert counter == 6
+    with pytest.raises(_InPlaceModificationError):
+        d._read_from_file(d._build_full_path("k"))
 
 
-def test_deleted_during_read_raises_key_error(tmp_path, monkeypatch):
-    """If the file vanishes between stat_before and stat_after, KeyError."""
+def test_deleted_before_open_raises_key_error(tmp_path):
+    """If the file does not exist at open time, KeyError is raised."""
     d = _make_dict(tmp_path)
     d["k"] = "ephemeral"
-    path = d._build_full_path("k")
     etag_before = d.etag("k")
-
-    real_stat = os.stat
-    call_count = 0
-
-    def stat_then_vanish(p, *args, **kwargs):
-        nonlocal call_count
-        if p == path:
-            call_count += 1
-            if call_count >= 2:
-                raise FileNotFoundError(f"File {p} does not exist")
-        return real_stat(p, *args, **kwargs)
-
-    monkeypatch.setattr(os, "stat", stat_then_vanish)
+    os.remove(d._build_full_path("k"))
 
     result = d.get_item_if(
         "k", condition=ETAG_IS_THE_SAME, expected_etag=etag_before,
         retrieve_value=ALWAYS_RETRIEVE,
     )
-    # File vanished mid-read; get_item_if catches the KeyError and
+    # File does not exist; get_item_if catches the KeyError and
     # reports the item as not available.
     assert result.actual_etag is ITEM_NOT_AVAILABLE
