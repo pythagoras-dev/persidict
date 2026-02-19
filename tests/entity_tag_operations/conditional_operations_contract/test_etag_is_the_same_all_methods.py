@@ -30,7 +30,6 @@ from persidict.jokers_and_status_flags import (
     DELETE_CURRENT,
     ALWAYS_RETRIEVE,
     NEVER_RETRIEVE,
-    IF_ETAG_CHANGED,
 )
 from persidict.write_once_dict import WriteOnceDict
 
@@ -228,7 +227,6 @@ class TestSetItemIfEtagIsTheSame:
         with maybe_mock_aws(spec["uses_s3"]):
             d = spec["factory"](tmp_path)
             d["k"] = "existing"
-            etag = d.etag("k")
 
             result = d.set_item_if(
                 "k", value="new",
@@ -1238,7 +1236,6 @@ class TestMutableDictCachedEtagIsTheSame:
         """MutableDictCached set_item_if mismatch: value unchanged."""
         d = self._make("mc-set-mismatch", tmp_path)
         d["k"] = "v1"
-        etag = d.etag("k")
 
         result = d.set_item_if(
             "k", value="v2",

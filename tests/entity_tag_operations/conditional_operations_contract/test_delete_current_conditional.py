@@ -5,7 +5,6 @@ focusing on result fields, retrieve_value interaction, value_was_mutated,
 condition evaluation edge cases, and append-only rejection.
 """
 
-import time
 import pytest
 from moto import mock_aws
 
@@ -285,7 +284,6 @@ def test_discard_if_any_etag_deletes_existing(tmpdir, DictToTest, kwargs):
     """discard_if with ANY_ETAG on existing key: unconditionally deletes."""
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "value"
-    etag = d.etag("k")
 
     result = d.discard_if("k", condition=ANY_ETAG, expected_etag="ignored")
 

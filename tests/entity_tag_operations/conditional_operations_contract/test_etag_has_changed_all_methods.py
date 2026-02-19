@@ -35,7 +35,6 @@ from persidict.jokers_and_status_flags import (
     DELETE_CURRENT,
     ALWAYS_RETRIEVE,
     NEVER_RETRIEVE,
-    IF_ETAG_CHANGED,
 )
 from persidict.write_once_dict import WriteOnceDict
 
@@ -1071,7 +1070,6 @@ class TestWriteOnceDictEtagHasChanged:
             serialization_format="json")
         d = WriteOnceDict(wrapped_dict=inner)
         d["k"] = "val"
-        etag = d.etag("k")
 
         result = d.get_item_if(
             "k", condition=ETAG_HAS_CHANGED,
@@ -1103,7 +1101,6 @@ class TestWriteOnceDictEtagHasChanged:
             serialization_format="json")
         d = WriteOnceDict(wrapped_dict=inner)
         d["k"] = "val"
-        etag = d.etag("k")
 
         result = d.setdefault_if(
             "k", default_value="default",
@@ -1170,7 +1167,6 @@ class TestAppendOnlyDictCachedEtagHasChanged:
         """AppendOnlyDictCached get_item_if + mismatched ETag: satisfied."""
         d = self._make(tmp_path)
         d["k"] = "val"
-        etag = d.etag("k")
 
         result = d.get_item_if(
             "k", condition=ETAG_HAS_CHANGED,
@@ -1238,7 +1234,6 @@ class TestAppendOnlyDictCachedEtagHasChanged:
         """AppendOnlyDictCached set_item_if KEEP_CURRENT + mismatched ETag."""
         d = self._make(tmp_path)
         d["k"] = "val"
-        etag = d.etag("k")
 
         result = d.set_item_if(
             "k", value=KEEP_CURRENT,
@@ -1270,7 +1265,6 @@ class TestAppendOnlyDictCachedEtagHasChanged:
         satisfied, no overwrite."""
         d = self._make(tmp_path)
         d["k"] = "existing"
-        etag = d.etag("k")
 
         result = d.setdefault_if(
             "k", default_value="default",
@@ -1286,7 +1280,6 @@ class TestAppendOnlyDictCachedEtagHasChanged:
         """AppendOnlyDictCached discard_if always raises MutationPolicyError."""
         d = self._make(tmp_path)
         d["k"] = "val"
-        etag = d.etag("k")
 
         with pytest.raises(MutationPolicyError):
             d.discard_if(
@@ -1316,7 +1309,6 @@ class TestMutableDictCachedEtagHasChanged:
         """MutableDictCached set_item_if + mismatched ETag: write succeeds."""
         d = self._make("mc-hc-set-mismatch", tmp_path)
         d["k"] = "v1"
-        etag = d.etag("k")
 
         result = d.set_item_if(
             "k", value="v2",
@@ -1346,7 +1338,6 @@ class TestMutableDictCachedEtagHasChanged:
         """MutableDictCached discard_if + mismatched ETag: deletes."""
         d = self._make("mc-hc-discard", tmp_path)
         d["k"] = "v1"
-        etag = d.etag("k")
 
         result = d.discard_if(
             "k", condition=ETAG_HAS_CHANGED,
@@ -1373,7 +1364,6 @@ class TestMutableDictCachedEtagHasChanged:
         """MutableDictCached get_item_if + mismatched ETag: returns value."""
         d = self._make("mc-hc-get", tmp_path)
         d["k"] = "v1"
-        etag = d.etag("k")
 
         result = d.get_item_if(
             "k", condition=ETAG_HAS_CHANGED,
@@ -1430,7 +1420,6 @@ class TestMutableDictCachedEtagHasChanged:
         satisfied, no mutation."""
         d = self._make("mc-hc-keep", tmp_path)
         d["k"] = "val"
-        etag = d.etag("k")
 
         result = d.set_item_if(
             "k", value=KEEP_CURRENT,
@@ -1449,7 +1438,6 @@ class TestMutableDictCachedEtagHasChanged:
         key removed."""
         d = self._make("mc-hc-del", tmp_path)
         d["k"] = "val"
-        etag = d.etag("k")
 
         result = d.set_item_if(
             "k", value=DELETE_CURRENT,
