@@ -103,6 +103,7 @@ rules:
       - tests/entity_tag_operations/conditional_operations_contract/test_get_with_etag.py
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value.py
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value_default.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value_with_keep_current.py
       - tests/entity_tag_operations/conditional_operations_contract/test_value_was_mutated.py
       - tests/entity_tag_operations/conditional_operations_contract/test_never_retrieve_skips_deserialization.py
       - tests/entity_tag_operations/conditional_operations_contract/test_setdefault_if_rejects_jokers.py

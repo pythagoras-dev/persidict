@@ -466,7 +466,9 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             condition: ANY_ETAG, ETAG_IS_THE_SAME, or ETAG_HAS_CHANGED.
             expected_etag: The caller's expected ETag, or ITEM_NOT_AVAILABLE
                 if the caller believes the key is absent.
-            retrieve_value: Controls value retrieval on condition failure.
+            retrieve_value: Controls whether the existing value is fetched.
+                Applies both when the condition is not satisfied and when
+                KEEP_CURRENT is used with a satisfied condition.
                 IF_ETAG_CHANGED (default) fetches only if
                 expected_etag != actual_etag. ALWAYS_RETRIEVE fetches
                 the existing value. NEVER_RETRIEVE returns
@@ -495,8 +497,19 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             return self._result_unchanged(False, actual_etag, existing_value)
 
         if value is KEEP_CURRENT:
+            if actual_etag is ITEM_NOT_AVAILABLE:
+                return self._result_item_not_available(True)
+            if retrieve_value is NEVER_RETRIEVE or (
+                    retrieve_value is IF_ETAG_CHANGED
+                    and expected_etag == actual_etag):
+                existing_value = VALUE_NOT_RETRIEVED
+            else:
+                try:
+                    existing_value, actual_etag = self._get_value_and_etag(key)
+                except KeyError:
+                    return self._result_item_not_available(True)
             return self._result_unchanged(
-                True, actual_etag, VALUE_NOT_RETRIEVED)
+                True, actual_etag, existing_value)
 
         if value is DELETE_CURRENT:
             if not self.discard(key):
