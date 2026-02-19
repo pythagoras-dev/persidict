@@ -652,7 +652,6 @@ class TestSetdefaultIfItemNotAvailable:
         with maybe_mock_aws(spec["uses_s3"]):
             d = spec["factory"](tmp_path)
             d["k"] = "existing"
-            etag = d.etag("k")
 
             result = d.setdefault_if(
                 "k", default_value="default",
