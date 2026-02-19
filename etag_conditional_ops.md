@@ -1,6 +1,6 @@
 # Persidict ETag & Conditional Operations
 
-## Problem
+## The Concurrent Access Problem
 
 Multiple processes (or machines) may read and write the same persistent dictionary concurrently. Without coordination, a classic race condition occurs:
 
@@ -11,39 +11,92 @@ Multiple processes (or machines) may read and write the same persistent dictiona
 
 This is the **lost update** problem.
 
-A secondary problem is **wasted IO**. When a caller already has a cached copy of a value, re-reading it from the backend just to confirm it hasn't changed transfers data unnecessarily — a significant cost when values are large or the backend is remote (e.g. S3).
+A secondary concern is **wasted IO**. When a caller already has a cached copy of a value, re-reading it from the backend just to confirm it hasn't changed transfers data unnecessarily — a significant cost when values are large or the backend is remote (e.g. S3).
 
-## Solution: Optimistic Concurrency via ETags
+## Persidict's Solution: Optimistic Concurrency via ETags
 
-Every stored item carries an **ETag** — an opaque version string that changes whenever the stored representation changes; backends may or may not change the ETag on idempotent writes.
+Persidict addresses both problems using **ETags** — opaque version strings that change whenever a stored item changes. Every stored item carries an ETag, and backends may or may not change it on idempotent writes.
 
-ETags serve two design goals:
+ETags enable two critical capabilities:
 
-1. **Correctness (preventing lost updates).** Callers read the ETag, do their work, then submit a conditional write: "store this new value, but **only if the ETag is still what I saw**." If someone else wrote in between, the ETag won't match and the operation reports failure instead of silently clobbering.
+1. **Correctness (preventing lost updates).** Callers read the ETag along with the value, do their work, then submit a conditional write: "store this new value, but **only if the ETag is still what I saw**." If someone else wrote in between, the ETag won't match and the operation reports failure instead of silently clobbering. This is optimistic concurrency — processes proceed without locks and detect conflicts at write time.
 
 2. **IO efficiency (skipping redundant reads).** Callers can ask "give me the value, but **only if the ETag has changed** since I last looked." If it hasn't changed, the backend skips transferring the value — the same idea as HTTP `304 Not Modified`. This is controlled by the `retrieve_value` parameter on every read-capable operation, with three modes: `ALWAYS_RETRIEVE`, `IF_ETAG_CHANGED` (the default), and `NEVER_RETRIEVE`.
 
-This is the same model used by HTTP (`If-Match` / `If-None-Match`) and S3 conditional requests.
+This model follows the same principles as HTTP conditional requests (`If-Match` / `If-None-Match`) and S3 conditional operations.
 
 ---
 
-## Requirements
+## Conditional Operations API
 
-### R1. Every item has a version identifier (ETag)
+Persidict provides four conditional operations that take an `expected_etag` and a `condition` parameter. Each returns a structured result indicating whether the condition was satisfied, what the actual ETag was, and what the resulting state is. This lets callers implement optimistic concurrency loops without extra round-trips.
 
-- `etag(key)` returns an opaque string intended to change when the item's value changes.
-- If the key does not exist, `etag()` raises `KeyError`.
-- ETag stability: calling `etag()` twice without an intervening write returns the same value.
-- ETag is opaque; do not assume a new ETag after a write if the value is identical.
+### `get_item_if(key, *, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
 
-**Weak semantics note:** ETags are best-effort version identifiers, not a
-cryptographic guarantee. `FileDirDict` uses stat-derived ETags (`mtime_ns:size:inode`), which can
-repeat under coarse filesystem resolution, and even native S3 ETags have
-a non-zero theoretical collision probability. `LocalDict` uses a monotonic
-integer counter, which eliminates collisions within a single process. Treat
-ETag matches as a strong hint, not absolute proof of identity.
+Read-only operation that never mutates state. The result's `condition_was_satisfied` field tells you whether the condition held. The default `retrieve_value=IF_ETAG_CHANGED` skips the value transfer when the ETag matches, making this the primary tool for IO-efficient cache validation.
 
-### R2. Three condition modes
+```python
+r = d.get_item_if(k, condition=ETAG_HAS_CHANGED, expected_etag=cached_etag, retrieve_value=IF_ETAG_CHANGED)
+if r.condition_was_satisfied:
+    # ETag changed -> r.new_value has fresh data
+else:
+    # r.new_value is VALUE_NOT_RETRIEVED -> use your cached copy
+```
+
+### `set_item_if(key, *, value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
+
+Conditional write operation — the workhorse of optimistic concurrency. The `value` parameter accepts a real value, `KEEP_CURRENT` (no-op), or `DELETE_CURRENT` (delete). On condition failure, no mutation occurs. The `retrieve_value` parameter controls whether the existing value is fetched on failure — use `NEVER_RETRIEVE` when only the ETag matters for your retry logic.
+
+```python
+r = d.get_item_if(k, condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE)
+new_val = transform(r.new_value)
+r2 = d.set_item_if(k, value=new_val, condition=ETAG_IS_THE_SAME, expected_etag=r.actual_etag)
+if not r2.condition_was_satisfied:
+    pass  # conflict — retry
+```
+
+### `setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
+
+Conditional insert-if-absent operation. If the key already exists, returns the existing value without mutation regardless of condition. This differs from `set_item_if`, which would overwrite when the condition is satisfied. The `default_value` must be a real value (not `KEEP_CURRENT` or `DELETE_CURRENT`).
+
+```python
+r = d.setdefault_if(k, default_value=initial_value, condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
+```
+
+### `discard_if(key, *, condition, expected_etag)`
+
+Conditional delete operation. Unlike the read-capable operations, this has no `retrieve_value` parameter. On condition failure, `new_value` is `VALUE_NOT_RETRIEVED` (or `ITEM_NOT_AVAILABLE` if the key is missing); on success, `new_value` is `ITEM_NOT_AVAILABLE`.
+
+```python
+r = d.discard_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
+```
+
+### `transform_item(key, *, transformer, n_retries=6)`
+
+Higher-level read-modify-write operation implemented as a conditional-ops retry loop. The `transformer` function receives the current value (or `ITEM_NOT_AVAILABLE` if absent) and returns the new value, `KEEP_CURRENT`, or `DELETE_CURRENT`. Persidict automatically handles ETag conflicts and retries, making this the simplest way to implement atomic updates. The operation is atomic only when the backend's conditional operations are atomic; on persistent conflicts it raises `ConcurrencyConflictError`. The transformer may be called multiple times under contention.
+
+```python
+def increment(v):
+    if v is ITEM_NOT_AVAILABLE:
+        return 1
+    return v + 1
+
+r = d.transform_item(k, transformer=increment)
+```
+
+---
+
+## Core Concepts
+
+### ETags as Version Identifiers
+
+Persidict's `etag(key)` method returns an opaque string that changes when the item's stored representation changes. If the key does not exist, `etag()` raises `KeyError`. Calling `etag()` twice without an intervening write returns the same value, ensuring stability for optimistic concurrency checks. ETags are opaque — backends may or may not generate a new ETag after a write if the value is identical.
+
+**Important:** ETags are best-effort version identifiers, not cryptographic guarantees. `FileDirDict` uses stat-derived ETags (`mtime_ns:size:inode`), which can repeat under coarse filesystem resolution. Even native S3 ETags have a non-zero theoretical collision probability. `LocalDict` uses a monotonic integer counter, which eliminates collisions within a single process. Treat ETag matches as a strong hint, not absolute proof of identity.
+
+### Condition Modes
+
+Conditional operations accept one of three condition flags:
 
 | Condition | Meaning |
 |---|---|
@@ -51,7 +104,7 @@ ETag matches as a strong hint, not absolute proof of identity.
 | `ETAG_IS_THE_SAME` | Proceed only if the item's current ETag equals the expected ETag |
 | `ETAG_HAS_CHANGED` | Proceed only if the item's current ETag differs from the expected ETag |
 
-#### Condition logic truth table
+The condition logic is straightforward:
 
 | Condition | `expected == actual` | `expected != actual` |
 |---|---|---|
@@ -59,32 +112,11 @@ ETag matches as a strong hint, not absolute proof of identity.
 | `ETAG_IS_THE_SAME` | **satisfied** | not satisfied |
 | `ETAG_HAS_CHANGED` | not satisfied | **satisfied** |
 
-`ITEM_NOT_AVAILABLE == ITEM_NOT_AVAILABLE` is `True`, so `ETAG_IS_THE_SAME` with `expected=ITEM_NOT_AVAILABLE` passes when the key is absent.
+### Absent Keys Participate in Conditions
 
-### R3. Absent keys participate uniformly
+When a key does not exist, persidict uses the sentinel `ITEM_NOT_AVAILABLE` in place of an ETag. This sentinel participates in condition evaluation: `ITEM_NOT_AVAILABLE == ITEM_NOT_AVAILABLE` is true, so `ETAG_IS_THE_SAME` with `expected=ITEM_NOT_AVAILABLE` is satisfied when the key is absent. This enables conditional insert-if-absent: "write only if the key still doesn't exist."
 
-- `ITEM_NOT_AVAILABLE` is used in place of an ETag when a key does not exist.
-- It participates in condition evaluation: `ITEM_NOT_AVAILABLE == ITEM_NOT_AVAILABLE` is true, so `ETAG_IS_THE_SAME` with `expected=ITEM_NOT_AVAILABLE` is satisfied when the key is absent.
-- This allows conditional insert-if-absent: "write only if the key still doesn't exist."
-
-### R4. Four conditional operations
-
-| Operation | Semantics |
-|---|---|
-| **get_item_if** | Read value, report whether condition held. Never mutates. |
-| **set_item_if** | Write value only if condition is satisfied. Supports joker values (`KEEP_CURRENT`, `DELETE_CURRENT`). |
-| **setdefault_if** | Insert default only if key is absent **and** condition is satisfied. If key exists, no mutation regardless of condition. |
-| **discard_if** | Delete only if condition is satisfied. |
-
-`setdefault_if` rejects joker values (`KEEP_CURRENT`, `DELETE_CURRENT`) with `TypeError`.
-
-### R5. One unconditional read-modify-write operation
-
-- **transform_item** reads the current value (or `ITEM_NOT_AVAILABLE`), passes it to a user-supplied transformer function, and writes the result back.
-- The transformer may return `KEEP_CURRENT` (no-op) or `DELETE_CURRENT` (delete the key).
-- `transform_item` supports bounded retries (`n_retries`) on ETag conflicts and may call the transformer multiple times under contention.
-
-### R6. Structured results carry full state
+### Structured Results
 
 Every conditional operation returns a result containing:
 - Whether the condition was satisfied
@@ -92,11 +124,11 @@ Every conditional operation returns a result containing:
 - The resulting ETag after the operation
 - The value after the operation (or sentinel if absent / not retrieved)
 
-This lets callers decide what to do next without an extra round-trip.
+This design lets callers decide what to do next without an extra round-trip.
 
-### R7. IO optimization via selective retrieval
+### IO Optimization via Selective Retrieval
 
-Transferring values is the dominant IO cost, especially for large values on remote backends. Every read-capable operation accepts a `retrieve_value` parameter to control whether the value is actually fetched:
+Transferring values is the dominant IO cost, especially for large values on remote backends like S3. Every read-capable operation accepts a `retrieve_value` parameter:
 
 | Mode | Behavior |
 |---|---|
@@ -106,18 +138,13 @@ Transferring values is the dominant IO cost, especially for large values on remo
 
 When retrieval is skipped, the result carries `VALUE_NOT_RETRIEVED` in the `new_value` field, signaling that the value exists but was not fetched.
 
-### R8. Joker values as commands
-
-- `KEEP_CURRENT` — passed as a value to mean "don't change anything" (useful in conditional pipelines where the decision to write is computed dynamically).
-- `DELETE_CURRENT` — passed as a value to mean "delete the key" (unifies write and delete into a single API call).
-
 ---
 
-## Atomicity
+## Backend Atomicity Guarantees
+
+The atomicity of conditional operations depends on the backend implementation. This is the most critical factor when choosing a backend for concurrent use cases.
 
 ### Atomicity matrix
-
-The following table summarizes which operation x backend combinations are atomic (free of TOCTOU races). This is the single most important property of the system — consult it before choosing a backend.
 
 | Operation | `BasicS3Dict` | `FileDirDict` | `LocalDict` | `MutableDictCached` | `AppendOnlyDictCached` |
 |---|---|---|---|---|---|
@@ -145,32 +172,34 @@ The following table summarizes which operation x backend combinations are atomic
 
 \* `FileDirDict` intentionally avoids OS-native file locking because it must work with shared folders synced via Dropbox (and similar services), where advisory/mandatory locks are not reliably propagated across machines.
 
-### Testable invariants
+### Key atomicity properties
 
-- **No lost updates (atomic backends):** Under concurrent writers, `set_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must never produce a lost update. If two processes race, exactly one succeeds and the other receives `condition_was_satisfied=False`.
-- **Insert-if-absent (atomic backends):** `setdefault_if` with `ETAG_IS_THE_SAME` + `expected=ITEM_NOT_AVAILABLE` on `BasicS3Dict` must ensure at most one writer inserts the key. All others receive the existing value.
-- **Delete-known-version (atomic backends):** `discard_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must not delete a version that differs from the expected ETag.
-- **Cache coherence:** After a successful conditional write through `MutableDictCached`, the cache must reflect the written value and its resulting ETag. After a failed conditional write, the cache must not reflect the *proposed* value. However, when the operation retrieves the current value from the backend (i.e. `retrieve_value=ALWAYS_RETRIEVE`), caches may be updated to reflect the *actual* backend state (see R11).
+- **No lost updates (atomic backends):** Under concurrent writers on `BasicS3Dict`, `set_item_if` with `ETAG_IS_THE_SAME` never produces a lost update. If two processes race, exactly one succeeds and the other receives `condition_was_satisfied=False`.
+- **Insert-if-absent (atomic backends):** `setdefault_if` with `ETAG_IS_THE_SAME` + `expected=ITEM_NOT_AVAILABLE` on `BasicS3Dict` ensures at most one writer inserts the key. All others receive the existing value.
+- **Delete-known-version (atomic backends):** `discard_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` never deletes a version that differs from the expected ETag.
+- **Cache coherence:** Caching layers (`MutableDictCached`, `AppendOnlyDictCached`) delegate to their `main_dict` and update caches as side effects. They never introduce their own TOCTOU window.
 
-### R9. S3 backend must be atomic
+### S3: True Atomicity
 
-`BasicS3Dict` must use S3 conditional request headers (`IfMatch`, `IfNoneMatch`) so that the ETag check and the mutation happen as a single server-side operation. No TOCTOU races.
+`BasicS3Dict` uses S3 conditional request headers (`IfMatch`, `IfNoneMatch`) so the ETag check and mutation happen as a single server-side operation — no TOCTOU races.
 
-### R10. File backend intentionally non-atomic
+### FileDirDict: Intentionally Non-Atomic
 
-`FileDirDict` uses check-then-act (read ETag, then write). This is a deliberate choice: OS-native file locking (advisory or mandatory) is **not reliably propagated** across machines by sync services like Dropbox. Since `FileDirDict` must work with shared folders, locking is not used. Callers who need atomicity on the filesystem should use a different coordination mechanism.
+`FileDirDict` uses check-then-act (read ETag, then write). This is deliberate: OS-native file locking is **not reliably propagated** across machines by sync services like Dropbox. Since `FileDirDict` must work with shared folders, locking is not used. Callers who need atomicity on the filesystem should use external coordination.
 
-### R11. Caching layers preserve atomicity of the underlying backend
+### LocalDict: Single-Threaded Only
 
-`MutableDictCached` and `AppendOnlyDictCached` delegate all conditional operations to their `main_dict`. Cache updates are side effects: successful writes update caches, and read paths refresh caches whenever a value is retrieved from the main dict, even if the condition failed. They never introduce their own TOCTOU window.
+`LocalDict` is not thread-safe. Conditional operations use check-then-act, but no concurrent writer can interleave in single-threaded use.
 
-### R12. transform_item uses conditional operations
+### transform_item Inherits Backend Atomicity
 
-`transform_item` is implemented as a conditional-ops retry loop. It is atomic only when the backend's conditional operations are atomic; otherwise it remains non-atomic. On persistent conflicts it raises `ConcurrencyConflictError` after exhausting `n_retries` retries. For strict control, callers can still use explicit `get_item_if` + `set_item_if` loops or external synchronization.
+`transform_item` is implemented as a conditional-ops retry loop. It is atomic only when the backend's conditional operations are atomic. On persistent conflicts it raises `ConcurrencyConflictError` after exhausting `n_retries`. For strict control, callers can use explicit `get_item_if` + `set_item_if` loops or external synchronization.
 
 ---
 
-## Types at a Glance
+## Types and Sentinels
+
+Persidict uses typed sentinels to distinguish between different states without `None` ambiguity.
 
 ### ETag Values
 
@@ -179,7 +208,7 @@ The following table summarizes which operation x backend combinations are atomic
 | `ETagValue` (`str`) | Opaque version identifier for a stored item |
 | `ITEM_NOT_AVAILABLE` | Key is absent (used in place of an ETag when key doesn't exist) |
 
-### ETag Conditions
+### Condition Flags
 
 | Flag | Semantics |
 |---|---|
@@ -187,23 +216,27 @@ The following table summarizes which operation x backend combinations are atomic
 | `ETAG_IS_THE_SAME` | `expected == actual` |
 | `ETAG_HAS_CHANGED` | `expected != actual` |
 
-### Joker Values (in place of real values)
+### Joker Values
+
+These can be passed as the `value` parameter to `set_item_if` (but not `setdefault_if`):
 
 | Flag | Effect when written |
 |---|---|
 | `KEEP_CURRENT` | No-op; keep existing value unchanged |
 | `DELETE_CURRENT` | Delete the key (same as `discard`) |
 
-### Sentinels in Results
+### Result Sentinels
 
 | Flag | Meaning |
 |---|---|
-| `ITEM_NOT_AVAILABLE` | Key does not exist (in `actual_etag`, `resulting_etag`, or `new_value`) |
-| `VALUE_NOT_RETRIEVED` | Value exists but wasn't fetched (IO optimization — see R7) |
+| `ITEM_NOT_AVAILABLE` | Key does not exist (appears in `actual_etag`, `resulting_etag`, or `new_value`) |
+| `VALUE_NOT_RETRIEVED` | Value exists but wasn't fetched (IO optimization) |
 
 ---
 
 ## Result Types
+
+All conditional operations return structured results with full state information, allowing callers to make decisions without extra round-trips.
 
 ### `ConditionalOperationResult` (frozen dataclass)
 
@@ -227,7 +260,7 @@ Returned by `get_item_if`, `set_item_if`, `setdefault_if`, `discard_if`.
 
 ### `OperationResult` (frozen dataclass)
 
-Returned by `transform_item` (unconditional).
+Returned by `transform_item`. Since `transform_item` handles retries internally and is unconditional from the caller's perspective, the result omits condition-related fields.
 
 | Field | Type | Description |
 |---|---|---|
@@ -236,68 +269,9 @@ Returned by `transform_item` (unconditional).
 
 ---
 
-## API Methods
+## S3 Implementation Details
 
-### `get_item_if(key, *, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
-
-Read-only. Never mutates. `condition_was_satisfied` tells you whether the condition held. The default `retrieve_value=IF_ETAG_CHANGED` skips the value transfer when the ETag matches, making this the primary tool for IO-efficient cache validation.
-
-```python
-r = d.get_item_if(k, condition=ETAG_HAS_CHANGED, expected_etag=cached_etag, retrieve_value=IF_ETAG_CHANGED)
-if r.condition_was_satisfied:
-    # ETag changed -> r.new_value has fresh data
-else:
-    # r.new_value is VALUE_NOT_RETRIEVED -> use your cached copy
-```
-
-### `set_item_if(key, *, value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
-
-Conditional write. `value` can be a real value, `KEEP_CURRENT`, or `DELETE_CURRENT`. On condition failure: no mutation. The `retrieve_value` parameter controls whether the existing value is fetched on failure — use `NEVER_RETRIEVE` when only the ETag matters for your retry logic.
-
-```python
-r = d.get_item_if(k, condition=ANY_ETAG, expected_etag=ITEM_NOT_AVAILABLE)
-new_val = transform(r.new_value)
-r2 = d.set_item_if(k, value=new_val, condition=ETAG_IS_THE_SAME, expected_etag=r.actual_etag)
-if not r2.condition_was_satisfied:
-    pass  # conflict — retry
-```
-
-### `setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED)`
-
-Insert-if-absent, guarded by condition. If key exists, returns existing value without mutation regardless of condition.
-`default_value` must be a real value (not `KEEP_CURRENT` or `DELETE_CURRENT`).
-
-```python
-r = d.setdefault_if(k, default_value=initial_value, condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
-```
-
-### `discard_if(key, *, condition, expected_etag)`
-
-Conditional delete. No `retrieve_value` parameter — on condition failure, `new_value`
-is `VALUE_NOT_RETRIEVED` (unless the key is missing, in which case
-`ITEM_NOT_AVAILABLE`); on success, `new_value` is `ITEM_NOT_AVAILABLE`.
-
-```python
-r = d.discard_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
-```
-
-### `transform_item(key, *, transformer, n_retries=6)`
-
-Unconditional read-modify-write implemented as a conditional-ops retry loop. `transformer` receives current value (or `ITEM_NOT_AVAILABLE`) and returns new value, `KEEP_CURRENT`, or `DELETE_CURRENT`.
-Atomic only when the backend's conditional operations are atomic; on persistent conflicts it raises `ConcurrencyConflictError`. The transformer may be called multiple times under contention.
-
-```python
-def increment(v):
-    if v is ITEM_NOT_AVAILABLE:
-        return 1
-    return v + 1
-
-r = d.transform_item(k, transformer=increment)
-```
-
----
-
-## S3 Atomicity (BasicS3Dict)
+`BasicS3Dict` achieves true atomicity by mapping persidict conditions directly to S3 conditional request headers.
 
 ### Condition-to-header mapping
 
@@ -309,15 +283,17 @@ r = d.transform_item(k, transformer=increment)
 | `ETAG_HAS_CHANGED` | `ITEM_NOT_AVAILABLE` | `IfMatch: <actual_etag>` (from HEAD) |
 | `ANY_ETAG` | any | (no headers) |
 
-### Round-trip strategies
+### Round-trip optimization
 
-- **Fast path:** `set_item_if` with `ETAG_IS_THE_SAME` + real value — single S3 PUT with conditional headers.
-- **Fallback path:** Other conditions — HEAD to get actual ETag, then conditional PUT/DELETE.
-- On S3 409/412 (condition failed): re-reads current state and returns a failure result.
+- **Fast path:** `set_item_if` with `ETAG_IS_THE_SAME` and a known ETag executes as a single conditional PUT.
+- **Fallback path:** Other conditions issue a HEAD to get the actual ETag, then a conditional PUT/DELETE.
+- When S3 returns 409/412 (condition failed), persidict re-reads the current state and returns a structured failure result.
 
 ---
 
 ## Caching Layer Behavior
+
+Persidict's caching layers delegate conditional operations to the underlying backend and update caches as side effects:
 
 | Wrapper | Conditional ops delegation | Cache sync |
 |---|---|---|
@@ -327,7 +303,9 @@ r = d.transform_item(k, transformer=increment)
 
 ---
 
-## Common Patterns
+## Usage Patterns
+
+These patterns demonstrate how to use persidict's conditional operations in practice.
 
 ### Optimistic concurrency (compare-and-swap loop)
 ```python
@@ -364,7 +342,7 @@ r = d.discard_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
 
 ## Failure Modes & Recovery
 
-Conditional operations are designed to fail gracefully — they return structured results instead of raising exceptions for condition mismatches. However, callers must understand the distinct failure scenarios to handle them correctly.
+Persidict conditional operations fail gracefully, returning structured results instead of raising exceptions for condition mismatches. Understanding the failure scenarios helps you write correct retry logic.
 
 ### F1. ETag mismatch (condition not satisfied)
 
@@ -427,8 +405,10 @@ Conditional operations are designed to fail gracefully — they return structure
 
 ---
 
-## Design Decisions
+## Design Rationale
 
-- **Singletons for sentinels** — `ITEM_NOT_AVAILABLE`, `KEEP_CURRENT`, etc. are singleton instances, enabling fast `is` identity checks.
-- **Frozen dataclass results** — `ConditionalOperationResult` and `OperationResult` are immutable, preventing accidental mutation of returned state.
-- **Uniform absent-key representation** — a single sentinel (`ITEM_NOT_AVAILABLE`) is used in all positions (expected_etag, actual_etag, resulting_etag, new_value, transformer input), avoiding null/None ambiguity.
+Key design choices that shape persidict's conditional operations:
+
+- **Singletons for sentinels** — `ITEM_NOT_AVAILABLE`, `KEEP_CURRENT`, etc. are singleton instances, enabling fast `is` identity checks instead of value comparisons.
+- **Frozen dataclass results** — `ConditionalOperationResult` and `OperationResult` are immutable, preventing accidental mutation of returned state and making them safe to cache.
+- **Uniform absent-key representation** — A single sentinel (`ITEM_NOT_AVAILABLE`) is used in all positions (expected_etag, actual_etag, resulting_etag, new_value, transformer input), eliminating null/None ambiguity and simplifying condition logic.
