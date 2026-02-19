@@ -74,7 +74,7 @@ ETag matches as a strong hint, not absolute proof of identity.
 | **get_item_if** | Read value, report whether condition held. Never mutates. |
 | **set_item_if** | Write value only if condition is satisfied. Supports joker values (`KEEP_CURRENT`, `DELETE_CURRENT`). |
 | **setdefault_if** | Insert default only if key is absent **and** condition is satisfied. If key exists, no mutation regardless of condition. |
-| **discard_item_if** | Delete only if condition is satisfied. |
+| **discard_if** | Delete only if condition is satisfied. |
 
 `setdefault_if` rejects joker values (`KEEP_CURRENT`, `DELETE_CURRENT`) with `TypeError`.
 
@@ -124,7 +124,7 @@ The following table summarizes which operation x backend combinations are atomic
 | `get_item_if` | **Atomic** (S3 conditional GET) | Best-effort | Single-threaded | Delegates to `main_dict` | Delegates to `main_dict` |
 | `set_item_if` | **Atomic** (S3 conditional PUT) | Best-effort | Single-threaded | Delegates to `main_dict` | Delegates to `main_dict` |
 | `setdefault_if` | **Atomic** (`IfNoneMatch: *`) | Best-effort | Single-threaded | Delegates to `main_dict` | Delegates to `main_dict` |
-| `discard_item_if` | **Atomic** (S3 conditional DELETE) | Best-effort | Single-threaded | Delegates to `main_dict` | N/A (`append_only`) |
+| `discard_if` | **Atomic** (S3 conditional DELETE) | Best-effort | Single-threaded | Delegates to `main_dict` | N/A (`append_only`) |
 | `transform_item` | **Atomic** (via atomic conditional ops) | Best-effort | Single-threaded | Delegates to `main_dict` | N/A (`append_only`) |
 | `etag` | S3-native ETag | `mtime_ns:size:inode` (weak) | Monotonic counter (strong) | Cached, from `main_dict` | From `main_dict` |
 
@@ -149,7 +149,7 @@ The following table summarizes which operation x backend combinations are atomic
 
 - **No lost updates (atomic backends):** Under concurrent writers, `set_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must never produce a lost update. If two processes race, exactly one succeeds and the other receives `condition_was_satisfied=False`.
 - **Insert-if-absent (atomic backends):** `setdefault_if` with `ETAG_IS_THE_SAME` + `expected=ITEM_NOT_AVAILABLE` on `BasicS3Dict` must ensure at most one writer inserts the key. All others receive the existing value.
-- **Delete-known-version (atomic backends):** `discard_item_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must not delete a version that differs from the expected ETag.
+- **Delete-known-version (atomic backends):** `discard_if` with `ETAG_IS_THE_SAME` on `BasicS3Dict` must not delete a version that differs from the expected ETag.
 - **Cache coherence:** After a successful conditional write through `MutableDictCached`, the cache must reflect the written value and its resulting ETag. After a failed conditional write, the cache must not reflect the *proposed* value. However, when the operation retrieves the current value from the backend (i.e. `retrieve_value=ALWAYS_RETRIEVE`), caches may be updated to reflect the *actual* backend state (see R11).
 
 ### R9. S3 backend must be atomic
@@ -207,7 +207,7 @@ The following table summarizes which operation x backend combinations are atomic
 
 ### `ConditionalOperationResult` (frozen dataclass)
 
-Returned by `get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`.
+Returned by `get_item_if`, `set_item_if`, `setdefault_if`, `discard_if`.
 
 | Field | Type | Description |
 |---|---|---|
@@ -271,14 +271,14 @@ Insert-if-absent, guarded by condition. If key exists, returns existing value wi
 r = d.setdefault_if(k, default_value=initial_value, condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 ```
 
-### `discard_item_if(key, *, condition, expected_etag)`
+### `discard_if(key, *, condition, expected_etag)`
 
 Conditional delete. No `retrieve_value` parameter — on condition failure, `new_value`
 is `VALUE_NOT_RETRIEVED` (unless the key is missing, in which case
 `ITEM_NOT_AVAILABLE`); on success, `new_value` is `ITEM_NOT_AVAILABLE`.
 
 ```python
-r = d.discard_item_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
+r = d.discard_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
 ```
 
 ### `transform_item(key, *, transformer, n_retries=6)`
@@ -357,7 +357,7 @@ if r.condition_was_satisfied:
 
 ### Delete only a known version
 ```python
-r = d.discard_item_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
+r = d.discard_if(k, condition=ETAG_IS_THE_SAME, expected_etag=known_etag)
 ```
 
 ---
@@ -369,14 +369,14 @@ Conditional operations are designed to fail gracefully — they return structure
 ### F1. ETag mismatch (condition not satisfied)
 
 - **Trigger:** The item's current ETag does not satisfy the requested condition. Another process wrote or deleted the item between the caller's read and conditional write.
-- **Applies to:** `set_item_if`, `setdefault_if`, `discard_item_if`, `get_item_if`.
+- **Applies to:** `set_item_if`, `setdefault_if`, `discard_if`, `get_item_if`.
 - **Result fields:** `condition_was_satisfied=False`. `actual_etag` reflects the current state. `resulting_etag == actual_etag` (no mutation). `new_value` is the existing value (if `retrieve_value=ALWAYS_RETRIEVE`), `VALUE_NOT_RETRIEVED` (if `NEVER_RETRIEVE` or `IF_ETAG_CHANGED`), or `ITEM_NOT_AVAILABLE` (if the key is absent).
 - **Recovery:** Re-read with `get_item_if` using `ANY_ETAG` to get the fresh value and ETag, then retry the conditional write. This is the standard optimistic-concurrency retry loop.
 
 ### F2. Key disappeared between read and write
 
 - **Trigger:** The caller read an item and its ETag, but by the time the conditional write executes, the key no longer exists (another process deleted it).
-- **Applies to:** `set_item_if`, `discard_item_if`.
+- **Applies to:** `set_item_if`, `discard_if`.
 - **Result fields:** `condition_was_satisfied=False`. `actual_etag=ITEM_NOT_AVAILABLE`. `resulting_etag=ITEM_NOT_AVAILABLE`. `new_value=ITEM_NOT_AVAILABLE`.
 - **Recovery:** The caller can choose to re-insert (via `set_item_if` with `expected=ITEM_NOT_AVAILABLE`) or treat the deletion as authoritative and stop.
 
@@ -397,7 +397,7 @@ Conditional operations are designed to fail gracefully — they return structure
 ### F5. S3 conditional request failure (412/409)
 
 - **Trigger:** S3 returns HTTP 412 Precondition Failed or 409 Conflict because the conditional header (`IfMatch`, `IfNoneMatch`) did not match the object's current ETag.
-- **Applies to:** `BasicS3Dict` internal handling of `set_item_if`, `setdefault_if`, `discard_item_if`.
+- **Applies to:** `BasicS3Dict` internal handling of `set_item_if`, `setdefault_if`, `discard_if`.
 - **Visible effect:** The S3 error is caught internally and translated into a `ConditionalOperationResult` with `condition_was_satisfied=False`. The caller never sees the `ClientError` — it is the same as F1.
 - **Recovery:** Same as F1.
 

@@ -900,7 +900,7 @@ class BasicS3Dict(PersiDict[ValueType]):
             cls._if_none_match_etag_supported = False
         cls._if_none_match_etag_probed = True
 
-    def discard_item_if(
+    def discard_if(
             self,
             key: NonEmptyPersiDictKey,
             *,
@@ -930,13 +930,13 @@ class BasicS3Dict(PersiDict[ValueType]):
             if not type(self)._conditional_delete_probed:
                 self._probe_conditional_delete()
             if type(self)._conditional_delete_supported:
-                return self._discard_item_if_fast_path(
+                return self._discard_if_fast_path(
                     key, condition, expected_etag)
 
-        return self._discard_item_if_fallback(
+        return self._discard_if_fallback(
             key, condition, expected_etag)
 
-    def _discard_item_if_fast_path(
+    def _discard_if_fast_path(
             self,
             key: NonEmptySafeStrTuple,
             condition: ETagConditionFlag,
@@ -964,7 +964,7 @@ class BasicS3Dict(PersiDict[ValueType]):
                 retrieve_value=NEVER_RETRIEVE,
                 return_existing_value=False)
 
-    def _discard_item_if_fallback(
+    def _discard_if_fallback(
             self,
             key: NonEmptySafeStrTuple,
             condition: ETagConditionFlag,

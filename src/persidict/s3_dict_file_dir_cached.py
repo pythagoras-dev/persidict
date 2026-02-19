@@ -281,7 +281,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             key, default_value=default_value, condition=condition,
             expected_etag=expected_etag, retrieve_value=retrieve_value)
 
-    def discard_item_if(
+    def discard_if(
             self,
             key: NonEmptyPersiDictKey,
             *,
@@ -289,7 +289,7 @@ class S3Dict_FileDirCached(PersiDict[ValueType]):
             expected_etag: ETagIfExists
     ) -> ConditionalOperationResult[ValueType]:
         """Discard item only if ETag satisfies a condition; delegate to cached dict."""
-        return self._cached_dict.discard_item_if(
+        return self._cached_dict.discard_if(
             key, condition=condition, expected_etag=expected_etag)
 
     def transform_item(

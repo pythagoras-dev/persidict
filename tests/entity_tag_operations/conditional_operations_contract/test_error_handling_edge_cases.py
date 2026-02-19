@@ -216,7 +216,7 @@ def test_return_type_delete_item_if_etag_equal_success(tmpdir, DictToTest, kwarg
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    result = d.discard_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert result.condition_was_satisfied
 
@@ -228,7 +228,7 @@ def test_return_type_delete_item_if_etag_equal_failure(tmpdir, DictToTest, kwarg
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["key1"] = "value"
 
-    result = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag="wrong_etag")
+    result = d.discard_if("key1", condition=ETAG_IS_THE_SAME, expected_etag="wrong_etag")
 
     assert not result.condition_was_satisfied
 
@@ -241,8 +241,8 @@ def test_return_type_discard_is_bool(tmpdir, DictToTest, kwargs):
     d["key1"] = "value"
     etag = d.etag("key1")
 
-    result_success = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
-    result_missing = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)  # Now missing
+    result_success = d.discard_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    result_missing = d.discard_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)  # Now missing
 
     assert isinstance(result_success, ConditionalOperationResult)
     assert isinstance(result_missing, ConditionalOperationResult)
@@ -308,7 +308,7 @@ def test_conditional_set_then_delete_in_sequence(tmpdir, DictToTest, kwargs):
     etag2 = result_set.resulting_etag
 
     # Conditional delete with new etag
-    result = d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag2)
+    result = d.discard_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag2)
     assert result.condition_was_satisfied
     assert "key1" not in d
 
@@ -322,7 +322,7 @@ def test_conditional_delete_then_recreate(tmpdir, DictToTest, kwargs):
     etag = d.etag("key1")
 
     # Delete
-    d.discard_item_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    d.discard_if("key1", condition=ETAG_IS_THE_SAME, expected_etag=etag)
     assert "key1" not in d
 
     # Recreate

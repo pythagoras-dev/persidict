@@ -111,7 +111,7 @@ class EmptyDict(PersiDict[ValueType]):
         NonEmptySafeStrTuple(key)
         return self._absent_key_result(condition, expected_etag)
 
-    def discard_item_if(
+    def discard_if(
             self,
             key: NonEmptyPersiDictKey,
             *,

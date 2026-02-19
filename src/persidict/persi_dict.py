@@ -568,7 +568,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
         return self._result_unchanged(
             satisfied, actual_etag, existing_value)
 
-    def discard_item_if(
+    def discard_if(
             self,
             key: NonEmptyPersiDictKey,
             *,
@@ -679,7 +679,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                     new_value=current_value)
 
             if new_value is DELETE_CURRENT:
-                delete_res = self.discard_item_if(
+                delete_res = self.discard_if(
                     key,
                     condition=ETAG_IS_THE_SAME,
                     expected_etag=actual_etag)
@@ -687,7 +687,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                     return OperationResult(
                         resulting_etag=ITEM_NOT_AVAILABLE,
                         new_value=ITEM_NOT_AVAILABLE)
-                # discard_item_if has no retrieve_value param,
+                # discard_if has no retrieve_value param,
                 # so we must re-read on the next iteration.
                 need_read = True
             else:
@@ -937,7 +937,7 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
         Performs the raw deletion without policy or existence pre-checks.
         Subclasses should override this with a direct backend deletion
-        so that ``discard`` and ``discard_item_if`` can bypass the
+        so that ``discard`` and ``discard_if`` can bypass the
         existence check in ``_process_delitem_args``.  The default
         falls back to ``del self[key]``.
 

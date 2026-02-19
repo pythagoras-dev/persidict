@@ -41,15 +41,15 @@ def test_set_item_if_mismatch_returns_result_not_exception():
 
 
 @mock_aws
-def test_discard_item_if_mismatch_returns_result_not_exception():
-    """ETag mismatch on discard_item_if yields structured result, no exception."""
+def test_discard_if_mismatch_returns_result_not_exception():
+    """ETag mismatch on discard_if yields structured result, no exception."""
     d = BasicS3Dict(bucket_name="mismatch-bucket", serialization_format="json")
     d["k"] = "v1"
     old_etag = d.etag("k")
 
     d["k"] = "v2"
 
-    result = d.discard_item_if(
+    result = d.discard_if(
         "k",
         condition=ETAG_IS_THE_SAME,
         expected_etag=old_etag,

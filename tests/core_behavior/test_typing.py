@@ -80,7 +80,7 @@ if TYPE_CHECKING:
             expected_etag=ITEM_NOT_AVAILABLE),
         ConditionalOperationResult[int])
     assert_type(
-        int_dict.discard_item_if(
+        int_dict.discard_if(
             "key", condition=ETAG_HAS_CHANGED,
             expected_etag=ITEM_NOT_AVAILABLE),
         ConditionalOperationResult[int])

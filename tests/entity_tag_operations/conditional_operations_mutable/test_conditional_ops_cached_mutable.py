@@ -94,10 +94,10 @@ def test_delete_item_if_etag_equal_clears_caches(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag="bogus").condition_was_satisfied
+    assert not wrapper.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag="bogus").condition_was_satisfied
     assert "k" in main and "k" in data_cache and "k" in etag_cache
 
-    assert wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag).condition_was_satisfied
+    assert wrapper.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag).condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
@@ -108,45 +108,45 @@ def test_delete_item_if_etag_different_clears_caches_on_mismatch(cached_env):
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag=etag).condition_was_satisfied
+    assert not wrapper.discard_if("k", condition=ETAG_HAS_CHANGED, expected_etag=etag).condition_was_satisfied
     assert "k" in main
 
-    assert wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag="bogus").condition_was_satisfied
+    assert wrapper.discard_if("k", condition=ETAG_HAS_CHANGED, expected_etag="bogus").condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
 
 
-def test_discard_item_if_etag_equal_clears_caches(cached_env):
+def test_discard_if_etag_equal_clears_caches(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag="bogus").condition_was_satisfied
+    assert not wrapper.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag="bogus").condition_was_satisfied
     assert "k" in main
 
-    assert wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag).condition_was_satisfied
+    assert wrapper.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag).condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
 
 
-def test_discard_item_if_etag_different_clears_caches_on_mismatch(cached_env):
+def test_discard_if_etag_different_clears_caches_on_mismatch(cached_env):
     main, data_cache, etag_cache, wrapper = cached_env
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
 
-    assert not wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag=etag).condition_was_satisfied
+    assert not wrapper.discard_if("k", condition=ETAG_HAS_CHANGED, expected_etag=etag).condition_was_satisfied
     assert "k" in main
 
-    assert wrapper.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag="bogus").condition_was_satisfied
+    assert wrapper.discard_if("k", condition=ETAG_HAS_CHANGED, expected_etag="bogus").condition_was_satisfied
     assert "k" not in main
     assert "k" not in data_cache
     assert "k" not in etag_cache
 
 
-def test_discard_item_if_missing_key_purges_stale_caches(cached_env):
-    """Verify discard_item_if on a missing key purges ghost cache entries."""
+def test_discard_if_missing_key_purges_stale_caches(cached_env):
+    """Verify discard_if on a missing key purges ghost cache entries."""
     main, data_cache, etag_cache, wrapper = cached_env
 
     # Seed stale entries in caches for a key that doesn't exist in main
@@ -154,14 +154,14 @@ def test_discard_item_if_missing_key_purges_stale_caches(cached_env):
     etag_cache["ghost"] = "stale_etag"
     assert "ghost" not in main
 
-    wrapper.discard_item_if("ghost", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
+    wrapper.discard_if("ghost", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)
 
     assert "ghost" not in data_cache
     assert "ghost" not in etag_cache
 
 
-def test_discard_item_if_failed_condition_purges_caches_for_gone_key(cached_env):
-    """Verify discard_item_if purges caches when the key was already deleted externally."""
+def test_discard_if_failed_condition_purges_caches_for_gone_key(cached_env):
+    """Verify discard_if purges caches when the key was already deleted externally."""
     main, data_cache, etag_cache, wrapper = cached_env
     wrapper["k"] = "v1"
     etag = wrapper.etag("k")
@@ -172,7 +172,7 @@ def test_discard_item_if_failed_condition_purges_caches_for_gone_key(cached_env)
     assert "k" in data_cache
     assert "k" in etag_cache
 
-    res = wrapper.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    res = wrapper.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     # Key is gone, so actual_etag is ITEM_NOT_AVAILABLE != etag → not satisfied
     assert not res.condition_was_satisfied

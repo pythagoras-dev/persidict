@@ -312,7 +312,7 @@ class AppendOnlyDictCached(PersiDict[ValueType]):
             self._data_cache[key] = res.new_value
         return res
 
-    def discard_item_if(
+    def discard_if(
             self,
             key: NonEmptyPersiDictKey,
             *,

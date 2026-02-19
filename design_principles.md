@@ -18,7 +18,7 @@ Concurrent access from multiple processes or machines is a first‑class use cas
 
 Conditional operations are the primary mechanism for avoiding lost updates and decreasing IO. Instead of implicit compare‑and‑swap, the API makes the condition explicit and returns structured results:
 
-- Conditional reads and writes: `get_item_if`, `set_item_if`, `setdefault_if`, `discard_item_if`, and the retrying `transform_item`.
+- Conditional reads and writes: `get_item_if`, `set_item_if`, `setdefault_if`, `discard_if`, and the retrying `transform_item`.
 - Explicit conditions and absent‑key handling: `ANY_ETAG`, `ETAG_IS_THE_SAME`, `ETAG_HAS_CHANGED`, with `ITEM_NOT_AVAILABLE` standing in for missing keys.
 - Joker values and full results: `KEEP_CURRENT` and `DELETE_CURRENT` allow no‑op and delete in write paths; results include actual and resulting ETags plus the resulting value.
 - Backend atomicity is explicit: `BasicS3Dict` uses S3 conditional headers for atomicity, while `FileDirDict` uses check‑then‑act to remain compatible with shared folders that do not propagate locks.

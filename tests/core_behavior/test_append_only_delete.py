@@ -2,7 +2,7 @@
 
 Deletion is an unsupported operation for append-only dictionaries, regardless
 of the backend.  Every deletion path (__delitem__, clear, discard, pop,
-popitem, discard_item_if) must raise MutationPolicyError consistently.
+popitem, discard_if) must raise MutationPolicyError consistently.
 """
 
 import pytest
@@ -86,8 +86,8 @@ def test_popitem_raises_mutation_policy_error(tmpdir, DictToTest, kwargs):
 @pytest.mark.parametrize("DictToTest, kwargs", append_only_tests)
 @pytest.mark.parametrize("condition", [ANY_ETAG, ETAG_IS_THE_SAME, ETAG_HAS_CHANGED])
 @mock_aws
-def test_discard_item_if_raises_mutation_policy_error(tmpdir, DictToTest, kwargs, condition):
-    """discard_item_if() on an append-only dict raises MutationPolicyError
+def test_discard_if_raises_mutation_policy_error(tmpdir, DictToTest, kwargs, condition):
+    """discard_if() on an append-only dict raises MutationPolicyError
     when the condition would be satisfied."""
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v"
@@ -100,5 +100,5 @@ def test_discard_item_if_raises_mutation_policy_error(tmpdir, DictToTest, kwargs
     }
 
     with pytest.raises(MutationPolicyError):
-        d.discard_item_if("k", condition=condition, expected_etag=expected_etag_map[condition])
+        d.discard_if("k", condition=condition, expected_etag=expected_etag_map[condition])
     assert "k" in d

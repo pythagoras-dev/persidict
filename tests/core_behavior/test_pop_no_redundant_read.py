@@ -1,7 +1,7 @@
 """Verify that pop does not perform a redundant existence check.
 
 pop delegates to transform_item, which reads the value via get_item_if
-and deletes via discard_item_if → _remove_item.  The deletion path must
+and deletes via discard_if → _remove_item.  The deletion path must
 not re-check existence through __contains__, which would be a wasted
 backend read.  This test guards against regressions.
 """

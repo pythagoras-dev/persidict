@@ -37,12 +37,12 @@ def test_empty_dict_conditional_operations():
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
-    # discard_item_if on empty dict: key absent
-    res = d.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag="e")
+    # discard_if on empty dict: key absent
+    res = d.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag="e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
-    res = d.discard_item_if("k", condition=ETAG_HAS_CHANGED, expected_etag="e")
+    res = d.discard_if("k", condition=ETAG_HAS_CHANGED, expected_etag="e")
     assert isinstance(res, ConditionalOperationResult)
     assert res.actual_etag is ITEM_NOT_AVAILABLE
 
@@ -89,8 +89,8 @@ def test_append_only_set_item_if_etag_different_keep_current_mismatch_noop(appen
 @pytest.mark.parametrize(
     "method_name,kwargs",
     [
-        ("discard_item_if", dict(condition=ETAG_IS_THE_SAME, expected_etag="e")),
-        ("discard_item_if", dict(condition=ETAG_HAS_CHANGED, expected_etag="e")),
+        ("discard_if", dict(condition=ETAG_IS_THE_SAME, expected_etag="e")),
+        ("discard_if", dict(condition=ETAG_HAS_CHANGED, expected_etag="e")),
     ],
 )
 def test_append_only_delete_and_discard_not_supported(append_only_env, method_name, kwargs):

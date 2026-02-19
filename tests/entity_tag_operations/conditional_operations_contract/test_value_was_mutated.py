@@ -157,13 +157,13 @@ def test_get_with_etag_shows_not_mutated(tmpdir, DictToTest, kwargs):
 
 @pytest.mark.parametrize("DictToTest, kwargs", mutable_tests)
 @mock_aws
-def test_discard_item_if_successful_shows_mutated(tmpdir, DictToTest, kwargs):
+def test_discard_if_successful_shows_mutated(tmpdir, DictToTest, kwargs):
     """Successful conditional discard reports value_was_mutated as True."""
     d = make_test_dict(DictToTest, tmpdir, **kwargs)
     d["k"] = "v1"
     etag = d.etag("k")
 
-    result = d.discard_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    result = d.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
 
     assert result.condition_was_satisfied
     assert result.value_was_mutated is True
