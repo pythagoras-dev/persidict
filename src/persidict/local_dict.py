@@ -401,7 +401,17 @@ class LocalDict(PersiDict[ValueType]):
         return value
 
     def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
-        """Return the value and ETag for a key in a single lookup."""
+        """Return a consistent value and ETag for a key in a single lookup.
+
+        Args:
+            key: Normalized dictionary key.
+
+        Returns:
+            A matching (value, ETag) pair.
+
+        Raises:
+            KeyError: If the key does not exist.
+        """
         key = NonEmptySafeStrTuple(key)
         bucket, leaf = self._lookup_leaf(key)
         entry = bucket[leaf]

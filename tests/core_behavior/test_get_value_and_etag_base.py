@@ -7,13 +7,13 @@ minimal stub that delegates to self[key] and self.etag(key).
 Covers:
 - Consistent value/etag return when nothing changes.
 - Retry when the etag shifts between the pre-read and post-read checks.
-- Fallback to last-read value after retries are exhausted.
-- ValueError when _max_retries < 1.
+- ConcurrencyConflictError when retries are exhausted.
 """
 
 import pytest
 
 from persidict import LocalDict
+from persidict.exceptions import ConcurrencyConflictError
 from persidict.persi_dict import PersiDict
 from persidict.safe_str_tuple import NonEmptySafeStrTuple
 
@@ -84,11 +84,8 @@ def test_retry_on_mid_read_etag_change(monkeypatch):
     assert call_count == 4
 
 
-def test_fallback_after_retries_exhausted(monkeypatch):
-    """When every retry sees a different etag, falls back to post-read etag.
-
-    Even in the fallback case the method returns a value and a valid etag.
-    """
+def test_raises_concurrency_conflict_after_retries_exhausted(monkeypatch):
+    """When every retry sees a different etag, raises ConcurrencyConflictError."""
     d = _make_stub()
     d["k"] = "data"
 
@@ -103,22 +100,11 @@ def test_fallback_after_retries_exhausted(monkeypatch):
     monkeypatch.setattr(d, "etag", always_changing_etag)
 
     key = NonEmptySafeStrTuple("k")
-    value, etag = d._get_value_and_etag(key)
+    with pytest.raises(ConcurrencyConflictError):
+        d._get_value_and_etag(key)
 
-    assert value == "data"
-    assert isinstance(etag, str)
     # 3 retries × 2 etag calls each = 6
     assert counter == 6
-
-
-def test_max_retries_less_than_one_raises_value_error():
-    """_max_retries < 1 raises ValueError."""
-    d = _make_stub()
-    d["k"] = "v"
-
-    key = NonEmptySafeStrTuple("k")
-    with pytest.raises(ValueError):
-        d._get_value_and_etag(key, _max_retries=0)
 
 
 def test_missing_key_raises_key_error():

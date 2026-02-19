@@ -669,7 +669,7 @@ class FileDirDict(PersiDict[ValueType]):
     def _get_value_and_etag(
             self, key: NonEmptySafeStrTuple,
             ) -> tuple[ValueType, ETagValue]:
-        """Return the value and ETag for a key.
+        """Return a consistent value and ETag for a key.
 
         Uses ``os.fstat`` on the open file descriptor so the returned
         ETag is guaranteed to correspond to the exact bytes read.
@@ -678,7 +678,7 @@ class FileDirDict(PersiDict[ValueType]):
             key: Normalized dictionary key.
 
         Returns:
-            The value and its current ETag.
+            A matching (value, ETag) pair.
 
         Raises:
             KeyError: If the key does not exist.

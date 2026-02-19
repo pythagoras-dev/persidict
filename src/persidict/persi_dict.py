@@ -60,6 +60,8 @@ URL/filename-safe. Strings and sequences are automatically converted into
 SafeStrTuple.
 """
 
+_GET_VALUE_AND_ETAG_MAX_RETRIES: int = 3
+
 
 class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], ParameterizableMixin):
     """Abstract dict-like interface for durable key-value stores.
@@ -272,40 +274,33 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
 
     def _get_value_and_etag(
             self, key: NonEmptySafeStrTuple,
-            _max_retries: int = 3,
             ) -> tuple[ValueType, ETagValue]:
-        """Return the value and ETag for a key.
+        """Return a consistent value and ETag for a key.
 
         Uses a read-with-validation pattern (check+get+check) to detect
         concurrent modifications. If the ETag changes between the pre-read
-        check and the post-read check, the read is retried up to
-        ``_max_retries`` times. If retries are exhausted, falls back to the
-        last read value with the post-read etag.
+        check and the post-read check, the read is retried.
 
         Subclasses can override to fetch both in a single backend pass.
 
         Args:
             key: Normalized dictionary key.
-            _max_retries: Maximum number of attempts (default 3).
 
         Returns:
-            The value and its current ETag.
+            A matching (value, ETag) pair.
 
         Raises:
             KeyError: If the key does not exist.
-            ValueError: If _max_retries is less than 1.
+            ConcurrencyConflictError: If retries are exhausted due to
+                concurrent modification.
         """
-        if _max_retries < 1:
-            raise ValueError("_max_retries must be at least 1")
-        for _ in range(_max_retries):
+        for _ in range(_GET_VALUE_AND_ETAG_MAX_RETRIES):
             etag_before = self.etag(key)
             value = self[key]
             etag_after = self.etag(key)
             if etag_before == etag_after:
                 return value, etag_after
-        # Retries exhausted — key is being continuously modified.
-        # Fall back to the last read with the post-read etag (conservative).
-        return value, etag_after
+        raise ConcurrencyConflictError(key, _GET_VALUE_AND_ETAG_MAX_RETRIES)
 
     # --- ConditionalOperationResult factory methods ---
 

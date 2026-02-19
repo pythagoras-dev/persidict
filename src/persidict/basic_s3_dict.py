@@ -303,13 +303,13 @@ class BasicS3Dict(PersiDict[ValueType]):
             body.close()
 
     def _get_value_and_etag(self, key: NonEmptySafeStrTuple) -> tuple[ValueType, ETagValue]:
-        """Return the value and ETag for a key in a single S3 request.
+        """Return a consistent value and ETag for a key in a single S3 request.
 
         Args:
             key: Normalized dictionary key.
 
         Returns:
-            The deserialized value and ETag.
+            A matching (value, ETag) pair.
 
         Raises:
             KeyError: If the key does not exist in S3.
