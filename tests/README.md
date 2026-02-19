@@ -94,6 +94,7 @@ feature-oriented so it is quick to scan.
   - tests/entity_tag_operations/conditional_operations_contract/test_etag_is_the_same_all_methods.py
   - tests/entity_tag_operations/conditional_operations_contract/test_any_etag_all_methods.py
   - tests/entity_tag_operations/conditional_operations_contract/test_etag_has_changed_all_methods.py
+  - tests/entity_tag_operations/conditional_operations_contract/test_item_not_available_expected_etag.py
   - tests/entity_tag_operations/conditional_operations_mutable/
 
 - Variants (cached/append-only/write-once/multi-dict):
