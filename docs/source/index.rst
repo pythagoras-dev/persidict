@@ -357,7 +357,7 @@ skipped).
    setdefault_if(key, *, default_value, condition, expected_etag, retrieve_value=IF_ETAG_CHANGED) -> ConditionalOperationResult
        Insert-if-absent
 
-   discard_item_if(key, *, condition, expected_etag) -> ConditionalOperationResult
+   discard_if(key, *, condition, expected_etag) -> ConditionalOperationResult
        Conditional delete
 
    transform_item(key, *, transformer, n_retries=6) -> OperationResult
@@ -712,13 +712,13 @@ Project Statistics
      - Unit Tests
      - Total
    * - Lines Of Code (LOC)
-     - 7421
-     - 13782
-     - 21203
+     - 7445
+     - 13796
+     - 21241
    * - Source Lines Of Code (SLOC)
-     - 3287
-     - 8758
-     - 12045
+     - 3285
+     - 8767
+     - 12052
    * - Classes
      - 37
      - 8
