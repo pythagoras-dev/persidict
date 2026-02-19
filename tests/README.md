@@ -86,6 +86,7 @@ feature-oriented so it is quick to scan.
   - tests/entity_tag_operations/conditional_operations_contract/test_value_was_mutated.py
   - tests/entity_tag_operations/conditional_operations_contract/test_never_retrieve_skips_deserialization.py
   - tests/entity_tag_operations/conditional_operations_contract/test_setdefault_if_rejects_jokers.py
+  - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value_with_keep_current.py
   - tests/entity_tag_operations/conditional_operations_contract/test_transform_item_retry_exhaustion.py
   - tests/entity_tag_operations/conditional_operations_mutable/
 
