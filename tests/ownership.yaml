@@ -100,15 +100,20 @@ rules:
     tests:
       - tests/entity_tag_operations/test_etag.py
       - tests/entity_tag_operations/conditional_operations_contract/
+      - tests/entity_tag_operations/conditional_operations_contract/test_etag_is_the_same_across_classes.py
       - tests/entity_tag_operations/conditional_operations_contract/test_get_with_etag.py
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value.py
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value_default.py
       - tests/entity_tag_operations/conditional_operations_contract/test_retrieve_value_with_keep_current.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_keep_current_conditional.py
       - tests/entity_tag_operations/conditional_operations_contract/test_value_was_mutated.py
       - tests/entity_tag_operations/conditional_operations_contract/test_never_retrieve_skips_deserialization.py
       - tests/entity_tag_operations/conditional_operations_contract/test_setdefault_if_rejects_jokers.py
       - tests/entity_tag_operations/conditional_operations_contract/test_delete_current_conditional.py
       - tests/entity_tag_operations/conditional_operations_contract/test_transform_item_retry_exhaustion.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_etag_is_the_same_all_methods.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_any_etag_all_methods.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_etag_has_changed_all_methods.py
       - tests/entity_tag_operations/conditional_operations_mutable/
 
   - name: subdicts

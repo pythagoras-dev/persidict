@@ -1,6 +1,15 @@
 from pathlib import Path
 
-from persidict import FileDirDict, KEEP_CURRENT, DELETE_CURRENT, MutationPolicyError, WriteOnceDict
+from persidict import (
+    FileDirDict,
+    KEEP_CURRENT,
+    DELETE_CURRENT,
+    ETAG_IS_THE_SAME,
+    ITEM_NOT_AVAILABLE,
+    VALUE_NOT_RETRIEVED,
+    MutationPolicyError,
+    WriteOnceDict,
+)
 
 import pytest
 
@@ -285,3 +294,68 @@ def test_write_once_dict_delete_current_raises(tmp_path):
         d["k"] = DELETE_CURRENT
 
     assert d["k"] == "value"
+
+
+def test_write_once_dict_set_item_if_etag_is_the_same_raises(tmp_path):
+    """set_item_if is not supported even when ETAG_IS_THE_SAME matches."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=0,
+    )
+    d["k"] = "v1"
+    etag = d.etag("k")
+
+    with pytest.raises(MutationPolicyError):
+        d.set_item_if(
+            "k", value="v2",
+            condition=ETAG_IS_THE_SAME, expected_etag=etag,
+        )
+    assert d["k"] == "v1"
+
+
+def test_write_once_dict_get_item_if_etag_is_the_same_skips_value(tmp_path):
+    """get_item_if should skip value retrieval when the ETag matches."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=0,
+    )
+    d["k"] = "v1"
+    etag = d.etag("k")
+
+    result = d.get_item_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag == etag
+    assert result.resulting_etag == etag
+    assert result.new_value is VALUE_NOT_RETRIEVED
+
+
+def test_write_once_dict_setdefault_if_etag_is_the_same_inserts(tmp_path):
+    """setdefault_if should insert when ETAG_IS_THE_SAME expects absence."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=0,
+    )
+
+    result = d.setdefault_if(
+        "k", default_value="v1",
+        condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE,
+    )
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert d["k"] == "v1"
+
+
+def test_write_once_dict_discard_if_etag_is_the_same_raises(tmp_path):
+    """discard_if should raise MutationPolicyError on existing keys."""
+    d = WriteOnceDict(
+        wrapped_dict=FileDirDict(base_dir=tmp_path, append_only=True),
+        p_consistency_checks=0,
+    )
+    d["k"] = "v1"
+    etag = d.etag("k")
+
+    with pytest.raises(MutationPolicyError):
+        d.discard_if("k", condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    assert d["k"] == "v1"

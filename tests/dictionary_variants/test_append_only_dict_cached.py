@@ -7,6 +7,7 @@ from persidict.jokers_and_status_flags import (
     ITEM_NOT_AVAILABLE,
     ETAG_HAS_CHANGED,
     ETAG_IS_THE_SAME,
+    VALUE_NOT_RETRIEVED,
 )
 from persidict.jokers_and_status_flags import KEEP_CURRENT
 
@@ -96,6 +97,82 @@ def test_set_item_if_failed_condition_populates_cache(append_only_env):
     assert not res.condition_was_satisfied
     assert res.new_value == "v1"
     assert cache[("k",)] == "v1"
+
+
+def test_get_item_if_etag_is_the_same_match_skips_value(append_only_env):
+    main, cache, wrapper = append_only_env
+
+    wrapper[("k",)] = "v1"
+    etag = wrapper.etag(("k",))
+
+    result = wrapper.get_item_if(("k",), condition=ETAG_IS_THE_SAME, expected_etag=etag)
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag == etag
+    assert result.resulting_etag == etag
+    assert result.new_value is VALUE_NOT_RETRIEVED
+    assert wrapper[("k",)] == "v1"
+
+
+def test_set_item_if_etag_is_the_same_inserts_when_missing(append_only_env):
+    main, cache, wrapper = append_only_env
+
+    result = wrapper.set_item_if(
+        ("k",),
+        value="v1",
+        condition=ETAG_IS_THE_SAME,
+        expected_etag=ITEM_NOT_AVAILABLE,
+    )
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert main[("k",)] == "v1"
+    assert cache[("k",)] == "v1"
+
+
+def test_set_item_if_etag_is_the_same_existing_raises(append_only_env):
+    main, cache, wrapper = append_only_env
+
+    wrapper[("k",)] = "v1"
+    etag = wrapper.etag(("k",))
+
+    with pytest.raises(MutationPolicyError):
+        wrapper.set_item_if(
+            ("k",),
+            value="v2",
+            condition=ETAG_IS_THE_SAME,
+            expected_etag=etag,
+        )
+    assert wrapper[("k",)] == "v1"
+
+
+def test_setdefault_if_etag_is_the_same_existing_skips_value(append_only_env):
+    main, cache, wrapper = append_only_env
+
+    wrapper[("k",)] = "v1"
+    etag = wrapper.etag(("k",))
+
+    result = wrapper.setdefault_if(
+        ("k",),
+        default_value="new",
+        condition=ETAG_IS_THE_SAME,
+        expected_etag=etag,
+    )
+
+    assert result.condition_was_satisfied
+    assert result.new_value is VALUE_NOT_RETRIEVED
+    assert wrapper[("k",)] == "v1"
+
+
+def test_discard_if_etag_is_the_same_raises(append_only_env):
+    main, cache, wrapper = append_only_env
+
+    wrapper[("k",)] = "v1"
+    etag = wrapper.etag(("k",))
+
+    with pytest.raises(MutationPolicyError):
+        wrapper.discard_if(("k",), condition=ETAG_IS_THE_SAME, expected_etag=etag)
+    assert wrapper[("k",)] == "v1"
 
 
 def test_get_params_returns_constructor_args(append_only_env):

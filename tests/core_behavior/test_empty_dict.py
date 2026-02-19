@@ -188,3 +188,34 @@ def test_empty_dict_transform_item():
     assert result.new_value is ITEM_NOT_AVAILABLE
     assert result.resulting_etag is ITEM_NOT_AVAILABLE
     assert called == [], "transformer should not be called on EmptyDict"
+
+
+@pytest.mark.parametrize(
+    "method_name, kwargs",
+    [
+        ("get_item_if", dict(condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)),
+        ("set_item_if", dict(value="v", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)),
+        ("setdefault_if", dict(default_value="v", condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)),
+        ("discard_if", dict(condition=ETAG_IS_THE_SAME, expected_etag=ITEM_NOT_AVAILABLE)),
+    ],
+)
+def test_empty_dict_etag_is_the_same_absent(method_name, kwargs):
+    """ETAG_IS_THE_SAME with ITEM_NOT_AVAILABLE should always report absent."""
+    empty_dict = EmptyDict()
+    result = getattr(empty_dict, method_name)("k", **kwargs)
+
+    assert result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
+    assert result.resulting_etag is ITEM_NOT_AVAILABLE
+    assert result.new_value is ITEM_NOT_AVAILABLE
+    assert "k" not in empty_dict
+
+
+def test_empty_dict_etag_is_the_same_mismatch_unsatisfied():
+    """ETAG_IS_THE_SAME must not be satisfied for a non-INA expected ETag."""
+    empty_dict = EmptyDict()
+    result = empty_dict.get_item_if(
+        "k", condition=ETAG_IS_THE_SAME, expected_etag="bogus")
+
+    assert not result.condition_was_satisfied
+    assert result.actual_etag is ITEM_NOT_AVAILABLE
