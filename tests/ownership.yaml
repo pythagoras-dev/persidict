@@ -107,6 +107,7 @@ rules:
       - tests/entity_tag_operations/conditional_operations_contract/test_value_was_mutated.py
       - tests/entity_tag_operations/conditional_operations_contract/test_never_retrieve_skips_deserialization.py
       - tests/entity_tag_operations/conditional_operations_contract/test_setdefault_if_rejects_jokers.py
+      - tests/entity_tag_operations/conditional_operations_contract/test_delete_current_conditional.py
       - tests/entity_tag_operations/conditional_operations_contract/test_transform_item_retry_exhaustion.py
       - tests/entity_tag_operations/conditional_operations_mutable/
 
