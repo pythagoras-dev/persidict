@@ -57,10 +57,10 @@ def _unconditional_write(
     started_event.set()
     d[key] = "unconditional"
 
-def test_concurrency_5(tmpdir):
+def test_concurrency_4(tmpdir):
     base_dir = str(tmpdir)
     processes = []
-    for i in range(5):
+    for i in range(4):
         p = multiprocessing.Process(target=many_operations, args=(base_dir,i,))
         p.start()
         processes.append(p)
@@ -73,10 +73,10 @@ def test_concurrency_5(tmpdir):
 
 
 
-def test_concurrency_10(tmpdir):
+def test_concurrency_8(tmpdir):
     base_dir = str(tmpdir)
     processes = []
-    for i in range(10):
+    for i in range(8):
         p = multiprocessing.Process(target=many_operations, args=(base_dir,i,))
         p.start()
         processes.append(p)

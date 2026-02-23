@@ -129,9 +129,9 @@ def test_write_once_dict_delete_raises_type_error(tmp_path):
 
 
 def test_write_once_dict_consistency_check_uses_prefetched_value(tmp_path):
-    """Verify that a duplicate write with p_consistency_checks=1 performs
-    exactly one backend read (inside setdefault_if) and none extra for the
-    consistency check itself."""
+    """Verify that a duplicate write with p_consistency_checks=1 does not
+    issue a separate __getitem__ for the consistency check; the value is
+    prefetched by setdefault_if and reused."""
     wrapped = FileDirDict(base_dir=tmp_path, append_only=True)
     d = WriteOnceDict(wrapped_dict=wrapped, p_consistency_checks=1)
 
@@ -153,9 +153,9 @@ def test_write_once_dict_consistency_check_uses_prefetched_value(tmp_path):
 
     assert d.consistency_checks_attempted == 1
     assert d.consistency_checks_passed == 1
-    # Exactly 1 read: setdefault_if retrieves existing value.
-    # The consistency check must reuse that value, not read again.
-    assert getitem_calls == 1
+    # No __getitem__: setdefault_if prefetches the value internally
+    # (via _get_value_and_etag), and the consistency check reuses it.
+    assert getitem_calls == 0
 
 
 def test_write_once_dict_low_p_skips_read_when_check_not_triggered(tmp_path):

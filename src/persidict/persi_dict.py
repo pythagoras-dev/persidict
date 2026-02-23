@@ -577,7 +577,10 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
                 and expected_etag == actual_etag):
             existing_value = VALUE_NOT_RETRIEVED
         else:
-            existing_value = self[key]
+            try:
+                existing_value, actual_etag = self._get_value_and_etag(key)
+            except KeyError:
+                return self._result_item_not_available(False)
         return self._result_unchanged(
             satisfied, actual_etag, existing_value)
 
@@ -1158,10 +1161,13 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
     def setdefault(self, key: NonEmptyPersiDictKey, default: ValueType | None = None) -> ValueType:
         """Insert key with default value if absent; return the current value.
 
-        Delegates to ``setdefault_if`` for an atomic insert-if-absent on
-        backends that support it. Behaves like the built-in
-        dict.setdefault(): if the key exists, return its current value;
-        otherwise, set the key to the default value and return that default.
+        Behaves like the built-in dict.setdefault(): if the key exists,
+        return its current value; otherwise, set the key to the default
+        value and return that default.
+
+        Warning:
+            This base class implementation is not atomic. Subclasses that
+            require concurrency safety should override this method.
 
         Args:
             key: Dictionary key.
@@ -1171,20 +1177,17 @@ class PersiDict(MutableMapping[NonEmptySafeStrTuple, ValueType], Parameterizable
             Existing value if key is present; otherwise the provided default value.
 
         Raises:
-            TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT).
+            TypeError: If default is a Joker command (KEEP_CURRENT/DELETE_CURRENT),
+                or if the key is missing and default violates value type constraints.
         """
         if isinstance(default, Joker):
             raise TypeError("default must be a regular value, not a Joker command")
-        result = self.setdefault_if(
-            key,
-            default_value=default,
-            condition=ANY_ETAG,
-            expected_etag=ITEM_NOT_AVAILABLE,
-            retrieve_value=ALWAYS_RETRIEVE,
-        )
-        if result.value_was_mutated:
+        key = NonEmptySafeStrTuple(key)
+        try:
+            return self[key]
+        except KeyError:
+            self[key] = default
             return default
-        return result.new_value
 
     def __eq__(self, other: Any) -> bool:
         """Compare dictionaries for equality.
